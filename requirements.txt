@@ -1,0 +1,4 @@
+avalanche-lib
+mypy
+omegaconf
+pydantic
