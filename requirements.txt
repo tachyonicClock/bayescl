@@ -1,4 +1,7 @@
 avalanche-lib
-mypy
 omegaconf
 pydantic
+transformers
+
+mypy
+ruff

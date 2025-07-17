@@ -1,0 +1,13 @@
+scenario:
+  dataset: CORe50
+  n_tasks: 1
+
+train_mb_size: 32
+
+model:
+  type: huggingface
+  name: facebook/dinov2-small
+
+
+# peft:
+#   r: 8

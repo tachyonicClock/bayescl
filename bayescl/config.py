@@ -9,8 +9,11 @@ class BaseConfig(BaseModel):
     model_config: ConfigDict = {"extra": "forbid"}  # type: ignore
 
 
+# --- Scenario Configurations ---
+
+
 class Scenario(BaseConfig):
-    dataset: Literal["SplitMNIST"] = "SplitMNIST"
+    dataset: Literal["SplitMNIST", "SplitCIFAR10"] = "SplitMNIST"
     n_tasks: int = 5
 
 
@@ -20,11 +23,41 @@ class ScenarioCORe50(BaseConfig):
     run: int = 0
 
 
+# --- Model Configurations ---
+
+
+class BasicModelConfig(BaseConfig):
+    type: Literal["basic"] = "basic"
+    name: str = "SimpleMLP"
+
+
+class HuggingFaceModelConfig(BaseConfig):
+    type: Literal["huggingface"] = "huggingface"
+    name: str = "facebook/dinov2-small"
+    freeze_backbone: bool = True
+
+
+class LoRAConfig(BaseConfig):
+    type: Literal["LoRA"] = "LoRA"
+    r: int = 16
+    lora_alpha: int = 1
+    lora_dropout: float = 0.0
+
+
 class Config(BaseConfig):
-    # Scenario Configuration
-    scenario: Scenario = Field(
+    #: Scenario configuration.
+    scenario: Scenario | ScenarioCORe50 = Field(
         Scenario(),
         discriminator="dataset",
+    )
+    #: Model configuration.
+    model: BasicModelConfig | HuggingFaceModelConfig = Field(
+        BasicModelConfig(),
+        discriminator="type",
+    )
+
+    peft: Optional[LoRAConfig] = Field(
+        None,
     )
 
     #: Parent directory containing datasets.
@@ -42,4 +75,4 @@ class Config(BaseConfig):
     #: Number of epochs for training each experience
     train_epochs: int = 1
     #: Number of workers for data loading
-    num_workers: int = 4
+    num_workers: int = 0

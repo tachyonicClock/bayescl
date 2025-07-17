@@ -13,20 +13,23 @@ from avalanche.evaluation.metrics import (
     timing_metrics,
 )
 from avalanche.logging import InteractiveLogger, TensorboardLogger
-from avalanche.models import SimpleMLP
 from avalanche.training import Naive
 from avalanche.training.plugins import EvaluationPlugin
+from claiutil.peft import LoRA_Factory, add_adapters, print_parameter_summary
 from omegaconf import OmegaConf
 from torch.nn import CrossEntropyLoss
 from torch.optim import SGD
 
 from bayescl.benchmark import get_benchmark
 from bayescl.config import Config
+from bayescl.model import get_model, get_peft_filter
 
 
 def get_logdir(cfg: Config) -> Path:
     log_dir = (
-        Path(cfg.log_root) / f"{cfg.scenario}" / time.strftime("%Y-%m-%d_%H-%M-%S")
+        Path(cfg.log_root)
+        / f"{cfg.scenario.dataset}"
+        / time.strftime("%Y-%m-%d_%H-%M-%S")
     )
     log_dir.mkdir(parents=True, exist_ok=False)
 
@@ -44,14 +47,19 @@ def main(cfg: Config):
     log_dir = get_logdir(cfg)
 
     benchmark = get_benchmark(cfg)
+    model = get_model(cfg, benchmark.n_classes)
 
-    # MODEL CREATION
-    model = SimpleMLP(num_classes=benchmark.n_classes)
-
-    # DEFINE THE EVALUATION PLUGIN and LOGGERS
-    # The evaluation plugin manages the metrics computation.
-    # It takes as argument a list of metrics, collectes their results and returns
-    # them to the strategy it is attached to.
+    if cfg.peft:
+        model = add_adapters(
+            model,
+            get_peft_filter(cfg),
+            LoRA_Factory(
+                r=cfg.peft.r,
+                lora_alpha=cfg.peft.lora_alpha,
+                lora_dropout=cfg.peft.lora_dropout,
+            ),
+        )
+        print_parameter_summary(model)
 
     # log to Tensorboard
     tb_logger = TensorboardLogger(log_dir)
