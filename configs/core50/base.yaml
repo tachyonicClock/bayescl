@@ -1,0 +1,14 @@
+scenario:
+  dataset: CORe50
+  scenario: ni
+
+lr: 0.001
+
+train_epochs: 5
+train_mb_size: 128
+eval_mb_size: 1024
+num_workers: 4
+
+model:
+  type: huggingface
+  name: facebook/dinov2-small

@@ -1,0 +1,6 @@
+include: [configs/core50/base.yaml]
+label: lora
+
+peft:
+  type: LoRA
+  r: 4

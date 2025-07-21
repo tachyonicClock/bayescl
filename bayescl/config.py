@@ -1,7 +1,9 @@
 from os import environ
+from pathlib import Path
 from typing import Literal, Optional
 
 import torch
+from claiutil.peft import BLoBConfig
 from pydantic import BaseModel, ConfigDict, Field
 
 
@@ -19,7 +21,7 @@ class Scenario(BaseConfig):
 
 class ScenarioCORe50(BaseConfig):
     dataset: Literal["CORe50"] = "CORe50"
-    scenario: Literal["nc"] = "nc"
+    scenario: Literal["nc", "ni"] = "nc"
     run: int = 0
 
 
@@ -37,14 +39,36 @@ class HuggingFaceModelConfig(BaseConfig):
     freeze_backbone: bool = True
 
 
+# --- Plugin Configurations ---
+
+
+# --- PEFT Configurations ---
+
+
 class LoRAConfig(BaseConfig):
     type: Literal["LoRA"] = "LoRA"
     r: int = 16
     lora_alpha: int = 1
     lora_dropout: float = 0.0
+    head_module: str = "model.classifier"
+
+
+class BLoB(BaseConfig):
+    """BLoB: Bayesian low-rank adaptation by backpropagation for large language
+    models
+    """
+
+    type: Literal["BLoB"] = "BLoB"
+    head_module: str = "model.classifier"
+    #: strength of the kl divergence loss
+    beta: float = 1.0
+    config: BLoBConfig
 
 
 class Config(BaseConfig):
+    include: list[Path] = []
+    label: str = "default"
+
     #: Scenario configuration.
     scenario: Scenario | ScenarioCORe50 = Field(
         Scenario(),
@@ -56,8 +80,9 @@ class Config(BaseConfig):
         discriminator="type",
     )
 
-    peft: Optional[LoRAConfig] = Field(
+    peft: Optional[LoRAConfig | BLoB] = Field(
         None,
+        discriminator="type",
     )
 
     #: Parent directory containing datasets.
@@ -68,6 +93,8 @@ class Config(BaseConfig):
     # Strategy
     #: Device to use for training (cuda or cpu)
     device: str = "cuda" if torch.cuda.is_available() else "cpu"
+    #: Learning rate for the optimizer
+    lr: float = 0.001
     #: Mini-batch size for training
     train_mb_size: int = 500
     #: Mini-batch size for evaluation. If None, defaults to train_mb_size

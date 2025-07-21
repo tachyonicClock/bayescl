@@ -8,7 +8,7 @@ fmt:
 
 link:
 	mkdir -p ${ECS_SCRATCH}/log/bayescl
-	ln -s ${ECS_SCRATCH}/log/bayescl/ ./log
+# 	ln -s ${ECS_SCRATCH}/log/bayescl/ ./log
 
 mypy:
 	mkdir -p ${ECS_SCRATCH}/mypy_cache/bayescl

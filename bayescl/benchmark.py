@@ -15,7 +15,9 @@ def get_benchmark(cfg: Config) -> NCScenario:
         logger.info(
             "huggingface model uses AutoImageProcessor for pre-processing transforms."
         )
-        image_processor = AutoImageProcessor.from_pretrained(cfg.model.name)
+        image_processor = AutoImageProcessor.from_pretrained(
+            cfg.model.name, use_fast=True
+        )
 
         def train_transform(img):
             return image_processor(img, return_tensors="pt").pixel_values.squeeze(0)
@@ -40,6 +42,7 @@ def get_benchmark(cfg: Config) -> NCScenario:
     elif cfg.scenario.dataset == "CORe50":
         return CORe50(  # type: ignore
             dataset_root=cfg.dataset_root,
+            scenario=cfg.scenario.scenario,
             run=cfg.scenario.run,
             train_transform=train_transform,
             eval_transform=eval_transform,
