@@ -1,9 +1,6 @@
 include: [base.yaml]
 label: blob
 
-# use_local_ce: False
-
-
 peft:
   type: BLoB
   beta: 1.0
@@ -19,6 +16,8 @@ peft:
       init_mu_std: 1e-3
       init_rho_std: 1e-3
 
+      deterministic_eval: True
+
     blob_A:
       prior_mu: 0.0
       prior_sigma: 1.0
@@ -29,3 +28,5 @@ peft:
 
       init_mu_std: 0.0
       init_rho_std: 1e-3
+
+      deterministic_eval: True

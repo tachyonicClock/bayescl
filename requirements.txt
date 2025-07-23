@@ -7,3 +7,4 @@ claiutil @ git+file:///home/antonlee/github.com/tachyonicClock/clai-util
 
 mypy
 ruff
+setproctitle

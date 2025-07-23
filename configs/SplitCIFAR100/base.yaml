@@ -6,10 +6,10 @@ scenario:
 
 lr: 0.001
 
-train_epochs: 1
+train_epochs: 5
 train_mb_size: 128
 eval_mb_size: 256
-num_workers: 4
+num_workers: 0
 
 model:
   type: huggingface

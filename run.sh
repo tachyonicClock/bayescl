@@ -3,12 +3,7 @@ set -e
 
 run_experiments () {
     set -e
-    python main.py --configs configs/SplitCIFAR10/blob.yaml
-    # python main.py --configs configs/SplitCIFAR10/blob.yaml --args peft.beta=100
-    # python main.py --configs configs/SplitCIFAR10/blob.yaml --args peft.beta=1000
-
-    # python main.py --configs configs/SplitCIFAR10/lora.yaml 
-    # python main.py --configs configs/SplitCIFAR10/blob.yaml --args peft.beta=0 label="blob_beta0"
+    python study_blob_beta.py
 }
 
 log_filename=$(mktemp --suffix ".${USER}.log")
@@ -29,4 +24,8 @@ on_success () {
         --text ":white_check_mark: bayescl run success"
 }
 
-(run_experiments) &>> "$log_filename" || on_failure && on_success
+if (run_experiments) &>> "$log_filename"; then
+    on_success
+else
+    on_failure
+fi

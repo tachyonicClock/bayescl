@@ -98,7 +98,6 @@ class Config(BaseConfig):
     device: str = "cuda" if torch.cuda.is_available() else "cpu"
     #: Learning rate for the optimizer
     lr: float = 0.001
-    l2_reg: float = 0.0
     #: Mini-batch size for training
     train_mb_size: int = 500
     #: Mini-batch size for evaluation. If None, defaults to train_mb_size
@@ -108,11 +107,12 @@ class Config(BaseConfig):
     #: Number of workers for data loading
     num_workers: int = 0
     #: Number of samples in the replay memory
-    replay_mem_size: int = 0
+    replay: int = 0
 
     #: Stop after training on this many tasks
     max_tasks: Optional[int] = None
 
+    #: Use local cross entropy by masking the output layer during training
     use_local_ce: bool = True
 
 
