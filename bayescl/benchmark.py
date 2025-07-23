@@ -1,4 +1,4 @@
-from avalanche.benchmarks.classic import CORe50, SplitCIFAR10, SplitMNIST
+from avalanche.benchmarks.classic import CORe50, SplitCIFAR10, SplitCIFAR100, SplitMNIST
 from avalanche.benchmarks.scenarios import NCScenario
 from loguru import logger
 
@@ -31,6 +31,7 @@ def get_benchmark(cfg: Config) -> NCScenario:
             n_experiences=cfg.scenario.n_tasks,
             train_transform=train_transform,
             eval_transform=eval_transform,
+            return_task_id=True,
         )
     elif cfg.scenario.dataset == "SplitCIFAR10":
         return SplitCIFAR10(
@@ -38,6 +39,15 @@ def get_benchmark(cfg: Config) -> NCScenario:
             n_experiences=cfg.scenario.n_tasks,
             train_transform=train_transform,
             eval_transform=eval_transform,
+            return_task_id=True,
+        )
+    elif cfg.scenario.dataset == "SplitCIFAR100":
+        return SplitCIFAR100(
+            dataset_root=cfg.dataset_root,
+            n_experiences=cfg.scenario.n_tasks,
+            train_transform=train_transform,
+            eval_transform=eval_transform,
+            return_task_id=True,
         )
     elif cfg.scenario.dataset == "CORe50":
         return CORe50(  # type: ignore

@@ -20,4 +20,8 @@ mypy:
 
 
 clean-log:
+	rm nohup.out || true
 	rm -rf log/*
+
+run:
+	nohup bash run.sh &

@@ -3,5 +3,7 @@ omegaconf
 pydantic
 transformers
 
+claiutil @ git+file:///home/antonlee/github.com/tachyonicClock/clai-util
+
 mypy
 ruff

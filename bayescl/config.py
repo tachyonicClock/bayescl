@@ -4,6 +4,7 @@ from typing import Literal, Optional
 
 import torch
 from claiutil.peft import BLoBConfig
+from omegaconf import DictConfig, OmegaConf
 from pydantic import BaseModel, ConfigDict, Field
 
 
@@ -15,13 +16,13 @@ class BaseConfig(BaseModel):
 
 
 class Scenario(BaseConfig):
-    dataset: Literal["SplitMNIST", "SplitCIFAR10"] = "SplitMNIST"
+    dataset: Literal["SplitMNIST", "SplitCIFAR10", "SplitCIFAR100"] = "SplitMNIST"
     n_tasks: int = 5
 
 
 class ScenarioCORe50(BaseConfig):
     dataset: Literal["CORe50"] = "CORe50"
-    scenario: Literal["nc", "ni"] = "nc"
+    scenario: Literal["nc", "ni", "nicv2_79"] = "nc"
     run: int = 0
 
 
@@ -62,6 +63,8 @@ class BLoB(BaseConfig):
     head_module: str = "model.classifier"
     #: strength of the kl divergence loss
     beta: float = 1.0
+    #: number of samples to use for bayesian evaluation
+    bayes_eval_samples: int = 1
     config: BLoBConfig
 
 
@@ -95,6 +98,7 @@ class Config(BaseConfig):
     device: str = "cuda" if torch.cuda.is_available() else "cpu"
     #: Learning rate for the optimizer
     lr: float = 0.001
+    l2_reg: float = 0.0
     #: Mini-batch size for training
     train_mb_size: int = 500
     #: Mini-batch size for evaluation. If None, defaults to train_mb_size
@@ -103,3 +107,26 @@ class Config(BaseConfig):
     train_epochs: int = 1
     #: Number of workers for data loading
     num_workers: int = 0
+    #: Number of samples in the replay memory
+    replay_mem_size: int = 0
+
+    #: Stop after training on this many tasks
+    max_tasks: Optional[int] = None
+
+    use_local_ce: bool = True
+
+
+def from_configs(
+    config_filenames: list[str], dotlist: list[str] | None = None
+) -> Config:
+    config = DictConfig({})  # type: ignore
+    for file in config_filenames:
+        file = Path(file)
+        config = OmegaConf.merge(config, OmegaConf.load(file))  # type: ignore
+        for included in config.get("include", []):
+            included = file.parent / included
+            config = OmegaConf.merge(config, OmegaConf.load(included))
+    if dotlist is not None:
+        config = OmegaConf.merge(config, OmegaConf.from_dotlist(dotlist))
+
+    return Config.model_validate(OmegaConf.to_object(config))

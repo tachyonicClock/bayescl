@@ -2,7 +2,7 @@ import pickle
 import time
 from pathlib import Path
 from pprint import pprint
-from typing import List
+from typing import Dict, List, Sequence
 
 import torch
 import yaml
@@ -14,8 +14,8 @@ from avalanche.evaluation.metrics import (
     timing_metrics,
 )
 from avalanche.logging import BaseLogger, InteractiveLogger, TensorboardLogger
-from avalanche.training import Naive
-from avalanche.training.plugins import EvaluationPlugin, SupervisedPlugin
+from avalanche.training import Naive, ReservoirSamplingBuffer
+from avalanche.training.plugins import EvaluationPlugin, ReplayPlugin, SupervisedPlugin
 from claiutil.peft import (
     BLoB,
     LoRA_Factory,
@@ -29,6 +29,7 @@ from loguru import logger
 from bayescl import config
 from bayescl.benchmark import get_benchmark
 from bayescl.model import get_model, get_peft_filter
+from bayescl.plugins.train_mask import TrainTaskMask
 from bayescl.plugins.vbnn import VBNNPlugin
 
 
@@ -90,7 +91,13 @@ class Experiment:
             self.model.get_submodule(peft_cfg.head_module).requires_grad_(True)
         elif peft_cfg.type == "BLoB":
             # Add plugin that contributes kl divergence loss
-            self.plugins += [VBNNPlugin(peft_cfg.beta, self.tb_log.writer)]
+            self.plugins += [
+                VBNNPlugin(
+                    beta=peft_cfg.beta,
+                    bayes_eval_samples=peft_cfg.bayes_eval_samples,
+                    writer=self.tb_log.writer,
+                )
+            ]
 
             # Add BLoB adapters
             factory = BLoB(peft_cfg.config)
@@ -103,9 +110,25 @@ class Experiment:
                 dim_in=linear.in_features,
                 dim_out=linear.out_features,
                 bias=linear.bias is not None,
-                config=peft_cfg.config.blob_A,
+                config=peft_cfg.config.blob_B,
             )  # type: ignore
             set_module(self.model, peft_cfg.head_module, new_linear)
+
+    def _add_replay_plugin(self):
+        if self.cfg.replay_mem_size <= 0:
+            return
+        logger.info(f"Add replay plugin with memory size: {self.cfg.replay_mem_size}")
+        self.plugins.append(
+            ReplayPlugin(
+                mem_size=self.cfg.replay_mem_size,
+                storage_policy=ReservoirSamplingBuffer(self.cfg.replay_mem_size),
+            )
+        )
+
+    def _add_plugins(self):
+        if self.cfg.use_local_ce:
+            logger.info("Add `TrainTaskMask` plugin")
+            self.plugins.append(TrainTaskMask(self.benchmark))
 
     def _preflight(self):
         pprint(self.cfg.model_dump(mode="python"))
@@ -122,8 +145,10 @@ class Experiment:
         self.eval_plugin: EvaluationPlugin = self._new_eval_plugin()
         self.model = get_model(cfg, self.benchmark.n_classes)
         self._add_peft_adapters()
+        self._add_replay_plugin()
+        self._add_plugins()
 
-    def run(self):
+    def run(self) -> float:
         self._preflight()
         strategy = Naive(
             model=self.model,
@@ -139,8 +164,8 @@ class Experiment:
 
         # TRAINING LOOP
         logger.info("Starting experiment...")
-        results = []
-        for experience in self.benchmark.train_stream:
+        results: Sequence[Dict[str, float]] = []
+        for t, experience in enumerate(self.benchmark.train_stream):
             logger.info(f"Start of experience: {experience.current_experience}")
             logger.info(f"Current Classes: {experience.classes_in_this_experience}")
 
@@ -156,6 +181,14 @@ class Experiment:
                 )
             )
 
+            if self.cfg.max_tasks is not None and t + 1 >= self.cfg.max_tasks:
+                logger.info(f"Stopping after {self.cfg.max_tasks} tasks")
+                break
+
         # Save results to log directory
         with open(self.log_dir / "results.pkl", "wb") as f:
             pickle.dump(results, f)
+
+        return results[-1].get(
+            "Accuracy_On_Trained_Experiences/eval_phase/test_stream/Task000", 0.0
+        )

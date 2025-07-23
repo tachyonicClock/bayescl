@@ -1,13 +1,14 @@
 scenario:
   # dataset: CORe50
   # scenario: nicv2_79
-  dataset: SplitCIFAR10
+  dataset: SplitCIFAR100
+  n_tasks: 10
 
 lr: 0.001
 
-train_epochs: 5
+train_epochs: 1
 train_mb_size: 128
-eval_mb_size: 128
+eval_mb_size: 256
 num_workers: 4
 
 model:

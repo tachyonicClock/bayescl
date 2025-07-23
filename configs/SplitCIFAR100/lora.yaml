@@ -1,0 +1,6 @@
+include: [base.yaml]
+label: lora
+
+peft:
+  type: LoRA
+  r: 4
