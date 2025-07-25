@@ -64,7 +64,7 @@ class BLoB(BaseConfig):
     #: strength of the kl divergence loss
     beta: float = 1.0
     #: number of samples to use for bayesian evaluation
-    bayes_eval_samples: int = 1
+    bayes_eval_samples: int = 0
     config: BLoBConfig
 
 
@@ -92,6 +92,7 @@ class Config(BaseConfig):
     dataset_root: str = environ.get("DATASETS", "./datasets")
     #: Parent directory containing run logs.
     log_root: str = "./log"
+    study_name: str = "manual"
 
     # Strategy
     #: Device to use for training (cuda or cpu)

@@ -61,6 +61,7 @@ class Experiment:
     def _new_log_dir(self) -> Path:
         log_dir = (
             Path(self.cfg.log_root)
+            / self.cfg.study_name
             / f"{self.cfg.scenario.dataset}"
             / self.cfg.label
             / time.strftime("%Y-%m-%d_%H-%M-%S")

@@ -3,7 +3,7 @@ label: blob
 
 peft:
   type: BLoB
-  beta: 1.0
+  beta: 100
   config:
     r: 4
     blob_B:
