@@ -3,7 +3,11 @@ set -e
 
 run_experiments () {
     set -e
-    python study_blob_beta.py
+    python hpsearch/blob.py
+    # python main.py --configs configs/SplitCIFAR100/blob.yaml
+    # python main.py --configs configs/SplitCIFAR100/clora.yaml
+    # python main.py --configs configs/SplitCIFAR100/linear.yaml
+    # python main.py --configs configs/SplitCIFAR100/lora.yaml
 }
 
 log_filename=$(mktemp --suffix ".${USER}.log")

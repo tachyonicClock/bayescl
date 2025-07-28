@@ -5,10 +5,10 @@ peft:
   type: BLoB
   beta: 100
   config:
-    r: 4
+    r: 5
     blob_B:
       prior_mu: 0.0
-      prior_sigma: 1.0
+      prior_sigma: 4.0
 
       init_mu_mean: 0.0
       init_sigma_mean: 0.05
@@ -20,7 +20,7 @@ peft:
 
     blob_A:
       prior_mu: 0.0
-      prior_sigma: 1.0
+      prior_sigma: 4.0
 
       # Initialization is close to zero to give BLoB a warm start
       init_mu_mean: 0.0

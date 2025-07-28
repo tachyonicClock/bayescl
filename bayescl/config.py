@@ -54,6 +54,13 @@ class LoRAConfig(BaseConfig):
     head_module: str = "model.classifier"
 
 
+class CLoRAConfig(BaseConfig):
+    type: Literal["CLoRA"] = "CLoRA"
+    r: int = 4
+    beta: float = 1.0
+    head_module: str = "model.classifier"
+
+
 class BLoB(BaseConfig):
     """BLoB: Bayesian low-rank adaptation by backpropagation for large language
     models
@@ -72,6 +79,9 @@ class Config(BaseConfig):
     include: list[Path] = []
     label: str = "default"
 
+    #: How many times should the experiment be run with this config
+    repeat: int = 1
+
     #: Scenario configuration.
     scenario: Scenario | ScenarioCORe50 = Field(
         Scenario(),
@@ -83,7 +93,7 @@ class Config(BaseConfig):
         discriminator="type",
     )
 
-    peft: Optional[LoRAConfig | BLoB] = Field(
+    peft: Optional[LoRAConfig | BLoB | CLoRAConfig] = Field(
         None,
         discriminator="type",
     )

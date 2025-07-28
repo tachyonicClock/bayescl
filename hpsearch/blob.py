@@ -1,4 +1,8 @@
+import os
+import sys
 from os import environ
+
+sys.path.append(os.getcwd())
 
 import optuna
 
@@ -14,8 +18,9 @@ def objective(trial: optuna.Trial) -> float:
     config.study_name = trial.study.study_name
 
     # Nuisance parameters
-    config.lr = trial.suggest_float("lr", 1e-5, 1e-2, log=True)
+    config.lr = trial.suggest_float("lr", 1e-4, 1e-3, log=True)
     # Scientific parameters
+    config.peft.beta = trial.suggest_float("config.peft.beta", 1, 5_000)
     config.peft.config.blob_A.prior_sigma = trial.suggest_float(
         "A_prior_sigma", 0.01, 5.0
     )
@@ -28,8 +33,8 @@ def objective(trial: optuna.Trial) -> float:
 if __name__ == "__main__":
     study = optuna.create_study(
         direction="maximize",
-        study_name="BLoB_00",
+        study_name="BLoB_02",
         storage=environ.get("OPTUNA_STORAGE"),
         load_if_exists=True,
     )
-    study.optimize(objective, n_trials=100)
+    study.optimize(objective, n_trials=20)

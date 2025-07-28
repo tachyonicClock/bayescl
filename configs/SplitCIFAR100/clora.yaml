@@ -1,6 +1,6 @@
 include: [base.yaml]
-label: lora
+label: clora
 
 peft:
-  type: LoRA
+  type: CLoRA
   r: 5

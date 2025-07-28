@@ -20,4 +20,6 @@ if __name__ == "__main__":
     )
     args = parser.parse_args()
     config = from_configs(args.configs, args.args)
-    Experiment(config).run()  # type: ignore
+
+    for _ in range(config.repeat):
+        Experiment(config).run()  # type: ignore

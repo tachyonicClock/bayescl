@@ -12,6 +12,7 @@ def objective(trial: optuna.Trial) -> float:
     config.max_tasks = 1
     assert config.peft and config.peft.type == "BLoB"
     config.peft.beta = 0.0
+    config.peft.config
     config.peft.config.blob_A.init_sigma_mean = trial.suggest_float(
         "init_sigma_mean", 1e-5, 0.1
     )

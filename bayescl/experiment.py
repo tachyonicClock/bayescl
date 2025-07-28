@@ -1,5 +1,7 @@
 import matplotlib
 
+from bayescl.plugins.clora import CLoRAPlugin
+
 matplotlib.use("Agg")
 
 import pickle
@@ -20,9 +22,11 @@ from avalanche.evaluation.metrics import (
 from avalanche.logging import BaseLogger, InteractiveLogger, TensorboardLogger
 from avalanche.training import Naive, ReservoirSamplingBuffer
 from avalanche.training.plugins import EvaluationPlugin, ReplayPlugin, SupervisedPlugin
-from claiutil.avalanche import CapymoaOCLMetrics
+from claiutil.avalanche import AvalancheResults
 from claiutil.peft import (
     BLoB,
+    CLoRA,
+    CLoRAConfig,
     LoRA_Factory,
     add_adapters,
     print_parameter_summary,
@@ -96,7 +100,17 @@ class Experiment:
                 ),
             )
             self.model.get_submodule(peft_cfg.head_module).requires_grad_(True)
+        elif peft_cfg.type == "CLoRA":
+            logger.info("Add CLoRA plugin")
+            add_adapters(
+                self.model,
+                get_peft_filter(self.cfg),
+                CLoRA(CLoRAConfig(r=peft_cfg.r)),
+            )
+            self.plugins.append(CLoRAPlugin(peft_cfg.beta, self.tb_log.writer))
+            self.model.get_submodule(peft_cfg.head_module).requires_grad_(True)
         elif peft_cfg.type == "BLoB":
+            logger.info("Add BLoB plugin")
             # Add plugin that contributes kl divergence loss
             self.plugins += [
                 VBNNPlugin(
@@ -153,7 +167,7 @@ class Experiment:
         self.log_dir: Path = self._new_log_dir()
         self.tb_log = self._new_logger()
         self.eval_plugin: EvaluationPlugin = self._new_eval_plugin()
-        self.capymoa_ocl_metrics = CapymoaOCLMetrics(self.num_tasks, self.num_classes)
+        self.capymoa_ocl_metrics = AvalancheResults(self.num_tasks, self.num_classes)
         self.model = get_model(cfg, self.benchmark.n_classes)
         self._add_peft_adapters()
         self._add_replay_plugin()
@@ -198,11 +212,10 @@ class Experiment:
                 break
 
         # Save results to log directory
-        with open(self.log_dir / "results.pkl", "wb") as f:
+        with open(self.log_dir / "avalanche_results.pkl", "wb") as f:
             pickle.dump(results, f)
 
         metrics = self.capymoa_ocl_metrics.build()
-        with open(self.log_dir / "ocl_metrics.pkl", "wb") as f:
-            pickle.dump(metrics, f)
+        metrics.save(self.log_dir / "results")
 
         return metrics.accuracy_seen_avg
