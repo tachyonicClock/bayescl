@@ -24,7 +24,7 @@ def run_study(config: Config):
 
     study = optuna.create_study(
         direction=config.hpsearch.direction,
-        study_name=f"bayescl/{config.scenario.dataset}/{config.label}/{commit_short_hash}",
+        study_name=f"bayescl/{config.scenario.dataset}/{config.label}/{commit_short_hash()}",
         storage=environ.get("OPTUNA_STORAGE"),
         load_if_exists=True,
     )
@@ -52,7 +52,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
     config = from_configs(args.configs, args.args)
 
-    if args.hpsearch is not None:
+    if args.hpsearch:
         run_study(config)
     else:
         for _ in range(config.repeat):

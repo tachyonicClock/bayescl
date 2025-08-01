@@ -1,0 +1,3 @@
+scenario:
+  dataset: CORe50
+  scenario: nicv2_79

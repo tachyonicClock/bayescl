@@ -1,0 +1,3 @@
+scenario:
+  dataset: SplitImageNetR
+  n_tasks: 20

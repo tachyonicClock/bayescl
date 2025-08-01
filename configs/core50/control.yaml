@@ -1,6 +1,0 @@
-# finetune a pretrained model on CORe50 dataset
-include: [configs/core50/base.yaml]
-label: control
-
-model:
-  freeze_backbone: False

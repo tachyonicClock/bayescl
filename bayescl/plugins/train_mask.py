@@ -10,7 +10,6 @@ class TrainTaskMask(SupervisedPlugin):
         self.mask = class_schedule_to_task_mask(
             avalanche_class_schedule(benchmark), benchmark.n_classes
         )
-        print(self.mask)
 
     def before_training(self, strategy: Any, *args, **kwargs) -> Any:
         self.mask = self.mask.to(strategy.device)

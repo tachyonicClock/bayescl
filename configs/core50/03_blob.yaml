@@ -1,12 +1,15 @@
-include: [base.yaml]
+# Tune BLoB
+include: [../base.yaml, 00_base.yaml]
 label: blob
+
+lr: 0.0008
 
 peft:
   type: BLoB
-  beta: 1.0
+  beta: 3000
   config:
-    r: 4
-    blob_A:
+    r: 5
+    blob_B:
       prior_mu: 0.0
       prior_sigma: 1.0
 
@@ -16,13 +19,17 @@ peft:
       init_mu_std: 1e-3
       init_rho_std: 1e-3
 
-    blob_B:
+      deterministic_eval: True
+
+    blob_A:
       prior_mu: 0.0
-      prior_sigma: 0.1
+      prior_sigma: 1.0
 
       # Initialization is close to zero to give BLoB a warm start
       init_mu_mean: 0.0
-      init_sigma_mean: 1e-5
+      init_sigma_mean: 0.001
 
-      init_mu_std: 1e-5
-      init_rho_std: 0
+      init_mu_std: 0.0
+      init_rho_std: 1e-3
+
+      deterministic_eval: True

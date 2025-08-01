@@ -4,4 +4,4 @@ for dataset in [
     # "imagenetr"
 ]:
     for method in ["01_linear", "02_lora", "03_blob", "04_clora"]:
-        print(f"python main.py --hpsearch 1 --configs configs/{dataset}/{method}.yaml")
+        print(f"python main.py --hpsearch --configs configs/{dataset}/{method}.yaml")
