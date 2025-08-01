@@ -1,0 +1,6 @@
+include: [../base.yaml, 00_cifar100.yaml]
+label: clora
+
+peft:
+  type: CLoRA
+  r: 5

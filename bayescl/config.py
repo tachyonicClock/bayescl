@@ -3,6 +3,7 @@ from pathlib import Path
 from typing import Literal, Optional
 
 import torch
+from claiutil.optuna import HyperparameterSearch
 from claiutil.peft import BLoBConfig
 from omegaconf import DictConfig, OmegaConf
 from pydantic import BaseModel, ConfigDict, Field
@@ -16,7 +17,9 @@ class BaseConfig(BaseModel):
 
 
 class Scenario(BaseConfig):
-    dataset: Literal["SplitMNIST", "SplitCIFAR10", "SplitCIFAR100"] = "SplitMNIST"
+    dataset: Literal[
+        "SplitMNIST", "SplitCIFAR10", "SplitCIFAR100", "SplitImageNetR"
+    ] = "SplitMNIST"
     n_tasks: int = 5
 
 
@@ -125,6 +128,8 @@ class Config(BaseConfig):
 
     #: Use local cross entropy by masking the output layer during training
     use_local_ce: bool = True
+
+    hpsearch: Optional[HyperparameterSearch] = None
 
 
 def from_configs(

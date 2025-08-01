@@ -10,10 +10,11 @@ class TrainTaskMask(SupervisedPlugin):
         self.mask = class_schedule_to_task_mask(
             avalanche_class_schedule(benchmark), benchmark.n_classes
         )
+        print(self.mask)
 
     def before_training(self, strategy: Any, *args, **kwargs) -> Any:
         self.mask = self.mask.to(strategy.device)
 
     def after_forward(self, strategy: Any, *args, **kwargs) -> Any:
-        _, _, t = strategy.mbatch
+        t = strategy.clock.train_exp_counter
         strategy.mb_output = self.mask[t] * strategy.mb_output

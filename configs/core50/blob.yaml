@@ -1,4 +1,4 @@
-include: [configs/core50/base.yaml]
+include: [base.yaml]
 label: blob
 
 peft:

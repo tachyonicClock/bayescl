@@ -1,0 +1,6 @@
+# Fit a linear layer to a pretrained model
+include: [../base.yaml, cifar100.yaml]
+label: linear
+
+model:
+  freeze_backbone: True

@@ -1,12 +1,12 @@
 scenario:
-  dataset: CORe50
-  scenario: nicv2_79
+  dataset: SplitImageNetR
+  n_tasks: 20
 
 lr: 0.001
 
 train_epochs: 5
 train_mb_size: 128
-eval_mb_size: 128
+eval_mb_size: 256
 num_workers: 4
 
 model:

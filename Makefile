@@ -19,6 +19,9 @@ mypy:
 		--explicit-package-bases .
 
 
+get-data:
+	rsync -P lagerfield.ecs.vuw.ac.nz:/local/scratch/antonlee/datasets/core50_128x128.zip /local/scratch/antonlee/datasets
+
 clean-log:
 	rm nohup.out || true
 	rm -rf log/*

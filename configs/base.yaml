@@ -1,9 +1,3 @@
-scenario:
-  # dataset: CORe50
-  # scenario: nicv2_79
-  dataset: SplitCIFAR100
-  n_tasks: 10
-
 lr: 0.001
 
 train_epochs: 5
@@ -14,3 +8,10 @@ num_workers: 4
 model:
   type: huggingface
   name: facebook/dinov2-small
+
+
+hpsearch:
+  params:
+    "lr": {type: float, low: 0.0001, high: 0.1, log: True}
+  n_trials: 10
+  direction: maximize

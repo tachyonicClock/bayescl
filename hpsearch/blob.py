@@ -37,4 +37,4 @@ if __name__ == "__main__":
         storage=environ.get("OPTUNA_STORAGE"),
         load_if_exists=True,
     )
-    study.optimize(objective, n_trials=20)
+    study.optimize(objective, n_trials=100)

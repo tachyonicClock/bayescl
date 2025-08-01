@@ -1,5 +1,6 @@
 # bayescl
 
 ```bash
-python main.py -c configs/core50/blob.yaml 
+
+echo main.py -c configs/${dataset}/${method}.yaml
 ```
