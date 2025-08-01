@@ -3,7 +3,8 @@ set -e
 
 run_experiments () {
     set -e
-    # python main.py --hpsearch --configs configs/cifar100/00_base.yaml
+    set -x
+    python main.py --hpsearch --configs configs/cifar100/00_base.yaml
     python main.py --hpsearch --configs configs/cifar100/01_linear.yaml
     python main.py --hpsearch --configs configs/cifar100/02_lora.yaml
     python main.py --hpsearch --configs configs/cifar100/03_blob.yaml

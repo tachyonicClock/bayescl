@@ -132,6 +132,13 @@ class Config(BaseConfig):
     hpsearch: Optional[HyperparameterSearch] = None
 
 
+def _resolve_includes(base: Path, filenames: list[str]) -> DictConfig:
+    if filenames:
+        return OmegaConf.merge(*(OmegaConf.load(base / f) for f in filenames))  # type: ignore
+    else:
+        return DictConfig({})
+
+
 def from_configs(
     config_filenames: list[str], dotlist: list[str] | None = None
 ) -> Config:
@@ -139,9 +146,8 @@ def from_configs(
     for file in config_filenames:
         file = Path(file)
         config = OmegaConf.merge(config, OmegaConf.load(file))  # type: ignore
-        for included in config.get("include", []):
-            included = file.parent / included
-            config = OmegaConf.merge(config, OmegaConf.load(included))
+        included = _resolve_includes(file.parent, config.get("include", []))  # type: ignore
+        config = OmegaConf.merge(included, config)
     if dotlist is not None:
         config = OmegaConf.merge(config, OmegaConf.from_dotlist(dotlist))
 
