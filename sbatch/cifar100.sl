@@ -6,7 +6,7 @@
 #SBATCH --gpus-per-node=L4:1
 #SBATCH --output=logs/runs/SplitCIFAR100/%x-%j.out
 #SBATCH --error=logs/runs/SplitCIFAR100/%x-%j.out
-#SBATCH --array=0-1
+#SBATCH --array=0-0
 # $SLURM_ARRAY_TASK_ID
 
 set -x # Echo commands to stdout

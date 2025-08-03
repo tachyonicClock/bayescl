@@ -3,7 +3,7 @@ omegaconf
 pydantic
 transformers
 
-claiutil @ git+https://github.com/tachyonicClock/clai-util.git
+claiutil @ git+ssh://git@github.com/tachyonicClock/clai-util.git
 
 mypy
 ruff
@@ -14,3 +14,4 @@ PyMySQL
 
 torch
 torchvision
+matplotlib
