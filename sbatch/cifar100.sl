@@ -15,9 +15,12 @@ set -e # Exit on error
 # Override python version
 export PATH=${HOME}/nobackup/pyvenv/bayescl/bin:${PATH}
 
-COMMON=(
-    "--seed=$SLURM_ARRAY_TASK_ID"
-    "--args study_name=run num_workers=${SLURM_CPUS_PER_TASK}"    
-)
-python main.py "${COMMON[@]}" --config=configs/cifar100/01_linear.yaml
+run () {
+    python main.py \
+        --seed="$SLURM_ARRAY_TASK_ID" \
+        --args study_name=run num_workers="$SLURM_CPUS_PER_TASK" \
+        --config="$1"
+}
+run configs/cifar100/01_linear.yaml
+
     
