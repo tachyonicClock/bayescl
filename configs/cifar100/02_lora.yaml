@@ -1,5 +1,5 @@
 # Tune LoRA
-include: [../base.yaml, base.yaml]
+include: [../base.yaml, 00_base.yaml]
 label: lora
 
 peft:

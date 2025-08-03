@@ -4,11 +4,11 @@ set -e
 run_experiments () {
     set -e
     set -x
-    python main.py --hpsearch --configs configs/cifar100/00_base.yaml
-    python main.py --hpsearch --configs configs/cifar100/01_linear.yaml
+    # python main.py --hpsearch --configs configs/cifar100/00_base.yaml
+    # python main.py --hpsearch --configs configs/cifar100/01_linear.yaml
     python main.py --hpsearch --configs configs/cifar100/02_lora.yaml
-    python main.py --hpsearch --configs configs/cifar100/03_blob.yaml
-    python main.py --hpsearch --configs configs/cifar100/04_clora.yaml
+    # python main.py --hpsearch --configs configs/cifar100/03_blob.yaml
+    # python main.py --hpsearch --configs configs/cifar100/04_clora.yaml
 }
 
 log_filename=$(mktemp --suffix ".${USER}.log")
