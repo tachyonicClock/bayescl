@@ -8,14 +8,14 @@ fmt:
 
 
 link:
-	rm -r logs
-	ln -s ${ECS_SCRATCH}/log/bayescl/ ./logs
+	rm -r log || true
 	mkdir -p ${ECS_SCRATCH}/logs/bayescl
+	ln -s ${ECS_SCRATCH}/logs/bayescl/ ./logs
 
 nesi-link:
-	rm -r logs 
+	rm -r log || true
 	mkdir -p ${HOME}/nobackup/logs/bayescl
-	ln -s ${HOME}/nobackup/logs/bayescl ./logs
+	ln -s ${HOME}/nobackup/logs/bayescl ./log
 
 nesi-conda:
 	mkdir -p ${HOME}/nobackup/pyvenv
