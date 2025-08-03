@@ -11,7 +11,8 @@ from claiutil.optuna import optuna_suggest
 
 from bayescl.config import Config, from_configs
 from bayescl.experiment import Experiment
-
+import torch
+import numpy as np
 
 def run_study(config: Config):
     assert config.hpsearch
@@ -49,8 +50,17 @@ if __name__ == "__main__":
         default=False,
         help="Enable hyperparameter search.",
     )
+    parser.add_argument(
+        "--seed",
+        type=int,
+        default=None,
+    )
     args = parser.parse_args()
     config = from_configs(args.configs, args.args)
+
+    if args.seed is not None:
+        torch.manual_seed(args.seed)
+        np.random.seed(args.seed)
 
     if args.hpsearch:
         run_study(config)
