@@ -1,3 +1,4 @@
+CONDA_ENV=bayescl
 
 .PHONY: fmt
 
@@ -7,8 +8,21 @@ fmt:
 
 
 link:
-	mkdir -p ${ECS_SCRATCH}/log/bayescl
-# 	ln -s ${ECS_SCRATCH}/log/bayescl/ ./log
+	rm -r logs
+	ln -s ${ECS_SCRATCH}/log/bayescl/ ./logs
+	mkdir -p ${ECS_SCRATCH}/logs/bayescl
+
+nesi-link:
+	rm -r logs 
+	mkdir -p ${HOME}/nobackup/logs/bayescl
+	ln -s ${HOME}/nobackup/logs/bayescl ./logs
+
+nesi-conda:
+	mkdir -p ${HOME}/nobackup/pyvenv
+	conda create --prefix ${HOME}/nobackup/pyvenv/bayescl python=3.12
+	# Run:
+	# 	conda activate ${HOME}/nobackup/pyvenv/${CONDA_ENV}
+	#	conda config --set env_prompt ${CONDA_ENV}
 
 mypy:
 	mkdir -p ${ECS_SCRATCH}/mypy_cache/bayescl
