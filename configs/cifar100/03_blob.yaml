@@ -2,7 +2,8 @@
 include: [../base.yaml, 00_base.yaml]
 label: blob
 
-lr: 0.0008
+# From hyper-parameter search bayescl/SplitCIFAR100/blob/37a54b2 (id=5135) n=10
+lr: 0.0006
 
 peft:
   type: BLoB
