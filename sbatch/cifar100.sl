@@ -1,11 +1,11 @@
 #!/bin/bash -e
 #SBATCH --job-name=bayecl.CIFAR100
-#SBATCH --time=00:10:00
-#SBATCH --mem=4G
-#SBATCH --cpus-per-task=3
+#SBATCH --time=00:02:00
+#SBATCH --mem=10G
+#SBATCH --cpus-per-task=2
 #SBATCH --gpus-per-node=L4:1
-#SBATCH --output=logs/runs/SplitCIFAR100/%x-%j.out
-#SBATCH --error=logs/runs/SplitCIFAR100/%x-%j.out
+#SBATCH --output=log/runs/SplitCIFAR100/%x-%j.out
+#SBATCH --error=log/runs/SplitCIFAR100/%x-%j.err
 #SBATCH --array=0-0
 # $SLURM_ARRAY_TASK_ID
 
@@ -14,4 +14,10 @@ set -e # Exit on error
 
 # Override python version
 export PATH=${HOME}/nobackup/pyvenv/bayescl/bin:${PATH}
-python main.py --config=configs/cifar100/01_linear.yaml --seed=$SLURM_ARRAY_TASK_ID --args num_workers=${SLURM_CPUS_PER_TASK}
+
+COMMON=(
+    "--seed=$SLURM_ARRAY_TASK_ID"
+    "--args study_name=run num_workers=${SLURM_CPUS_PER_TASK}"    
+)
+python main.py "${COMMON[@]}" --config=configs/cifar100/01_linear.yaml
+    
