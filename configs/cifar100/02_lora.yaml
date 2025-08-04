@@ -2,6 +2,9 @@
 include: [../base.yaml, 00_base.yaml]
 label: lora
 
+# From hyper-parameter search bayescl/SplitCIFAR100/lora/a4ca15f (id=5137) n=10 
+lr: 0.0003
+
 peft:
   type: LoRA
   r: 5
