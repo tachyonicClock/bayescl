@@ -14,8 +14,8 @@ link:
 
 nesi-link:
 	rm -r log || true
-	mkdir -p ${HOME}/nobackup/logs/bayescl
-	ln -s ${HOME}/nobackup/logs/bayescl ./log
+	mkdir -p ${HOME}/project/log/bayescl
+	ln -s ${HOME}/project/log/bayescl ./log
 
 nesi-conda:
 	mkdir -p ${HOME}/nobackup/pyvenv
