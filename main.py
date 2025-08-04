@@ -5,14 +5,15 @@ matplotlib.use("Agg")
 import argparse
 from os import environ
 
+import numpy as np
 import optuna
+import torch
 from claiutil.git import commit_short_hash, is_git_status_clean
 from claiutil.optuna import optuna_suggest
 
 from bayescl.config import Config, from_configs
 from bayescl.experiment import Experiment
-import torch
-import numpy as np
+
 
 def run_study(config: Config):
     assert config.hpsearch

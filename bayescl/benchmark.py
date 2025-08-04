@@ -1,9 +1,8 @@
-from typing import Any, Callable, Tuple
+from typing import Any, Callable, List, Tuple
 
 from avalanche.benchmarks.classic import CORe50, SplitCIFAR10, SplitCIFAR100, SplitMNIST
 from avalanche.benchmarks.scenarios import NCScenario
 from loguru import logger
-from torch.nn import Identity
 from torchvision import transforms as T
 from transformers import AutoImageProcessor
 
@@ -13,32 +12,26 @@ from bayescl.datasets import SplitImageNetR
 Transform = Callable[[Any], Any]
 
 LUT_TRAIN_TRANSFORMS = {
-    "SplitCIFAR100": T.Compose(
-        [
-            T.RandomCrop(32, 4),
-            T.RandomHorizontalFlip(),
-            T.RandomRotation(15),
-        ]
-    ),
-    "SplitImageNetR": T.Compose(
-        [
-            T.RandomResizedCrop(224),
-            T.RandomHorizontalFlip(),
-        ]
-    ),
-    "CORe50": T.Compose(
-        [
-            T.RandomResizedCrop(128),
-            T.RandomHorizontalFlip(),
-        ]
-    ),
+    "SplitCIFAR100": [
+        T.RandomCrop(32, 4),
+        T.RandomHorizontalFlip(),
+        T.RandomRotation(15),
+    ],
+    "SplitImageNetR": [
+        T.RandomResizedCrop(224),
+        T.RandomHorizontalFlip(),
+    ],
+    "CORe50": [
+        T.RandomResizedCrop(128),
+        T.RandomHorizontalFlip(),
+    ],
 }
 
 
 def get_transforms(cfg: Config) -> Tuple[Transform, Transform]:
-    identity_fn = Identity()
-    normalize: Callable[[Any], Any] = identity_fn
-    resize: Callable[[Any], Any] = identity_fn
+    train_transform: List[Callable[[Any], Any]] = [T.ToTensor()]
+    train_transform.extend(LUT_TRAIN_TRANSFORMS.get(cfg.scenario.dataset, []))
+    eval_transform: List[Callable[[Any], Any]] = [T.ToTensor()]
 
     if cfg.model.type == "huggingface":
         logger.info(
@@ -47,14 +40,15 @@ def get_transforms(cfg: Config) -> Tuple[Transform, Transform]:
         pre_process = AutoImageProcessor.from_pretrained(cfg.model.name, use_fast=True)
         normalize = T.Normalize(mean=pre_process.image_mean, std=pre_process.image_std)
         resize = T.Resize(pre_process.size["shortest_edge"])
-
-    train_transform = LUT_TRAIN_TRANSFORMS.get(cfg.scenario.dataset, identity_fn)
-    if train_transform is identity_fn:
-        logger.warning("No training transforms, consider adding some.")
+        crop = T.CenterCrop(
+            (pre_process.crop_size["height"], pre_process.crop_size["width"])
+        )
+        train_transform.extend([normalize, resize, crop])
+        eval_transform.extend([normalize, resize, crop])
 
     return (
-        T.Compose([T.ToTensor(), train_transform, normalize, resize]),
-        T.Compose([T.ToTensor(), normalize, resize]),
+        T.Compose(train_transform),
+        T.Compose(eval_transform),
     )
 
 

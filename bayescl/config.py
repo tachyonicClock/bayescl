@@ -117,7 +117,7 @@ class Config(BaseConfig):
     #: Mini-batch size for evaluation. If None, defaults to train_mb_size
     eval_mb_size: Optional[int] = None
     #: Number of epochs for training each experience
-    train_epochs: int = 1
+    epochs: int = 1
     #: Number of workers for data loading
     num_workers: int = 0
     #: Number of samples in the replay memory

@@ -182,7 +182,7 @@ class Experiment:
             criterion=torch.nn.CrossEntropyLoss(),
             train_mb_size=self.cfg.train_mb_size,
             eval_mb_size=self.cfg.eval_mb_size or self.cfg.train_mb_size,
-            train_epochs=self.cfg.train_epochs,
+            train_epochs=self.cfg.epochs,
             evaluator=self.eval_plugin,
             device=self.cfg.device,
             plugins=self.plugins,
