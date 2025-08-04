@@ -1,6 +1,6 @@
 #!/bin/bash -e
 #SBATCH --job-name=bayecl.cifar100
-#SBATCH --time=00:120:00
+#SBATCH --time=05:00:00
 #SBATCH --mem=5G
 #SBATCH --cpus-per-task=2
 #SBATCH --gpus-per-node=L4:1
@@ -17,7 +17,7 @@ export PATH=${HOME}/nobackup/pyvenv/bayescl/bin:${PATH}
 run () {
     python main.py \
         --seed="$SLURM_ARRAY_TASK_ID" \
-        --args study_name=runs num_workers="$SLURM_CPUS_PER_TASK" \
+        --args study_name=runs num_workers=4 \
         --config="$1"
 }
 run configs/cifar100/01_linear.yaml
