@@ -39,10 +39,13 @@ def get_transforms(cfg: Config) -> Tuple[Transform, Transform]:
         )
         pre_process = AutoImageProcessor.from_pretrained(cfg.model.name, use_fast=True)
         normalize = T.Normalize(mean=pre_process.image_mean, std=pre_process.image_std)
-        resize = T.Resize(pre_process.size["shortest_edge"])
-        crop = T.CenterCrop(
-            (pre_process.crop_size["height"], pre_process.crop_size["width"])
+        size = (
+            (pre_process.size["shortest_edge"], pre_process.size["shortest_edge"])
+            if "shortest_edge" in pre_process.size
+            else (pre_process.size["height"], pre_process.size["width"])
         )
+        resize = T.Resize(size[0])
+        crop = T.CenterCrop(size)
         train_transform.extend([normalize, resize, crop])
         eval_transform.extend([normalize, resize, crop])
 
@@ -61,6 +64,7 @@ def get_benchmark(cfg: Config) -> NCScenario:
             # train_transform=train_transform,
             # eval_transform=eval_transform,
             return_task_id=True,
+            shuffle=cfg.scenario.shuffle,
         )
     elif cfg.scenario.dataset == "SplitCIFAR10":
         return SplitCIFAR10(
@@ -69,6 +73,7 @@ def get_benchmark(cfg: Config) -> NCScenario:
             train_transform=train_transform,
             eval_transform=eval_transform,
             return_task_id=True,
+            shuffle=cfg.scenario.shuffle,
         )
     elif cfg.scenario.dataset == "SplitCIFAR100":
         return SplitCIFAR100(
@@ -77,6 +82,7 @@ def get_benchmark(cfg: Config) -> NCScenario:
             train_transform=train_transform,
             eval_transform=eval_transform,
             return_task_id=True,
+            shuffle=cfg.scenario.shuffle,
         )
     elif cfg.scenario.dataset == "SplitImageNetR":
         return SplitImageNetR(  # type: ignore
@@ -85,6 +91,7 @@ def get_benchmark(cfg: Config) -> NCScenario:
             train_transform=train_transform,
             eval_transform=eval_transform,
             return_task_id=True,
+            shuffle=cfg.scenario.shuffle,
         )
     elif cfg.scenario.dataset == "CORe50":
         return CORe50(  # type: ignore

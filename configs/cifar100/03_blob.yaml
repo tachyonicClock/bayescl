@@ -7,7 +7,7 @@ lr: 0.0006
 
 peft:
   type: BLoB
-  beta: 3000
+  beta: 0.01
   config:
     r: 5
     blob_B:
@@ -15,7 +15,7 @@ peft:
       prior_sigma: 1.0
 
       init_mu_mean: 0.0
-      init_sigma_mean: 0.05
+      init_sigma_mean: 0.1
 
       init_mu_std: 1e-3
       init_rho_std: 1e-3
@@ -34,3 +34,8 @@ peft:
       init_rho_std: 1e-3
 
       deterministic_eval: True
+
+
+hpsearch:
+  params:
+    "beta": {type: float, low: 0.01, high: 10, log: True}

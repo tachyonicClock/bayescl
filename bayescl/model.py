@@ -5,7 +5,10 @@ from transformers import AutoModelForImageClassification
 
 from bayescl.config import BasicModelConfig, Config, HuggingFaceModelConfig
 
-_PEFT_MODEL_REGEX = {"facebook/dinov2-small": ".*(dense|fc1|fc2|key|query|value)"}
+_PEFT_MODEL_REGEX = {
+    "facebook/dinov2-small": ".*(dense|fc1|fc2|key|query|value)",
+    "google/vit-base-patch16-224": ".*(key|query)",
+}
 
 
 class HuggingFaceAdapter(nn.Module):
