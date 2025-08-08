@@ -1,13 +1,14 @@
 import matplotlib
 
 from bayescl.plugins.clora import CLoRAPlugin
+from bayescl.plugins.inflora import PluginInfLoRA
 
 matplotlib.use("Agg")
 
 import pickle
 import time
 from pathlib import Path
-from pprint import pprint
+from pprint import pformat
 from typing import Dict, List, Sequence
 
 import torch
@@ -29,7 +30,8 @@ from claiutil.peft import (
     CLoRAConfig,
     LoRA_Factory,
     add_adapters,
-    print_parameter_summary,
+    iter_named_adapters,
+    parameter_summary_str,
     set_module,
 )
 from claiutil.vbnn import VariationalLinear
@@ -100,17 +102,23 @@ class Experiment:
                 ),
             )
             self.model.get_submodule(peft_cfg.head_module).requires_grad_(True)
-        elif peft_cfg.type == "CLoRA":
-            logger.info("Add CLoRA plugin")
+        elif peft_cfg.type == "CLoRA" or peft_cfg.type == "InfLoRA":
             add_adapters(
                 self.model,
                 get_peft_filter(self.cfg),
                 CLoRA(CLoRAConfig(r=peft_cfg.r)),
             )
-            self.plugins.append(CLoRAPlugin(peft_cfg.beta, self.tb_log.writer))
+            if peft_cfg.type == "InfLoRA":
+                self.plugins.append(
+                    PluginInfLoRA(
+                        threshold=peft_cfg.threshold,
+                        total_tasks=self.num_tasks,
+                    )
+                )
+            elif peft_cfg.type == "CLoRA":
+                self.plugins.append(CLoRAPlugin(peft_cfg.beta, self.tb_log.writer))
             self.model.get_submodule(peft_cfg.head_module).requires_grad_(True)
         elif peft_cfg.type == "BLoB":
-            logger.info("Add BLoB plugin")
             # Add plugin that contributes kl divergence loss
             self.plugins += [
                 VBNNPlugin(
@@ -135,6 +143,10 @@ class Experiment:
             )  # type: ignore
             set_module(self.model, peft_cfg.head_module, new_linear)
 
+        logger.info("ADAPTERS:")
+        for name, _ in iter_named_adapters(self.model):
+            logger.info(f"{name}")
+
     def _add_replay_plugin(self):
         if self.cfg.replay <= 0:
             return
@@ -153,8 +165,9 @@ class Experiment:
         self.plugins.append(self.capymoa_ocl_metrics)
 
     def _preflight(self):
-        pprint(self.cfg.model_dump(mode="python"))
-        print_parameter_summary(self.model)
+        logger.info("Resolved Config:\n{}", pformat(self.cfg.model_dump(mode="python")))
+        logger.info("Parameter Counts:\n{}", parameter_summary_str(self.model))
+        logger.info("Plugins:\n{}", [type(p).__name__ for p in self.plugins])
 
     def __init__(self, cfg: config.Config) -> None:
         self.cfg = cfg

@@ -21,6 +21,7 @@ class Scenario(BaseConfig):
         "SplitMNIST", "SplitCIFAR10", "SplitCIFAR100", "SplitImageNetR"
     ] = "SplitMNIST"
     n_tasks: int = 5
+    shuffle: bool = True
 
 
 class ScenarioCORe50(BaseConfig):
@@ -64,6 +65,20 @@ class CLoRAConfig(BaseConfig):
     head_module: str = "model.classifier"
 
 
+class InfLoRAConfig(BaseConfig):
+    """InfLoRA: Interference-Free Low-Rank Adaptation for Continual Learning
+
+    Liang, Y.-S., & Li, W.-J. (2024). InfLoRA: Interference-Free Low-Rank Adaptation for
+    Continual Learning. 23638–23647.
+    """
+
+    type: Literal["InfLoRA"] = "InfLoRA"
+    r: int = 4
+    #: Default threshold see Table 1 (Liang & Li, 2024)
+    threshold: float = 0.95
+    head_module: str = "model.classifier"
+
+
 class BLoB(BaseConfig):
     """BLoB: Bayesian low-rank adaptation by backpropagation for large language
     models
@@ -96,7 +111,7 @@ class Config(BaseConfig):
         discriminator="type",
     )
 
-    peft: Optional[LoRAConfig | BLoB | CLoRAConfig] = Field(
+    peft: Optional[LoRAConfig | BLoB | CLoRAConfig | InfLoRAConfig] = Field(
         None,
         discriminator="type",
     )

@@ -7,9 +7,13 @@ train_mb_size: 128
 eval_mb_size: 256
 num_workers: 4
 
+# model:
+#   type: huggingface
+#   name: facebook/dinov2-small
+
 model:
   type: huggingface
-  name: facebook/dinov2-small
+  name: google/vit-base-patch16-224
 
 
 hpsearch:

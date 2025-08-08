@@ -9,8 +9,8 @@ fmt:
 
 link:
 	rm -r log || true
-	mkdir -p ${ECS_SCRATCH}/logs/bayescl
-	ln -s ${ECS_SCRATCH}/logs/bayescl/ ./logs
+	mkdir -p ${ECS_SCRATCH}/log/bayescl
+	ln -s ${ECS_SCRATCH}/log/bayescl/ ./logs
 
 nesi-link:
 	rm -r log || true
@@ -24,6 +24,10 @@ nesi-conda:
 	# 	conda activate ${HOME}/nobackup/pyvenv/${CONDA_ENV}
 	#	conda config --set env_prompt ${CONDA_ENV}
 
+
+pull-nesi:
+	rsync -aP nesi:/home/leea6/project/repos/bayescl/log/. ./log
+
 mypy:
 	mkdir -p ${ECS_SCRATCH}/mypy_cache/bayescl
 	python -m mypy \
@@ -35,6 +39,7 @@ mypy:
 
 get-data:
 	rsync -P lagerfield.ecs.vuw.ac.nz:/local/scratch/antonlee/datasets/core50_128x128.zip /local/scratch/antonlee/datasets
+	rsync -P lagerfield.ecs.vuw.ac.nz:${DATASETS}/imagenet-r.tar ${DATASETS}
 
 clean-log:
 	rm nohup.out || true
