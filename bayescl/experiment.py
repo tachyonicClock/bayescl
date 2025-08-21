@@ -116,7 +116,7 @@ class Experiment:
                     )
                 )
             elif peft_cfg.type == "CLoRA":
-                self.plugins.append(CLoRAPlugin(peft_cfg.beta, self.tb_log.writer))
+                self.plugins.append(CLoRAPlugin(peft_cfg.lambda_, self.tb_log.writer))
             self.model.get_submodule(peft_cfg.head_module).requires_grad_(True)
         elif peft_cfg.type == "BLoB":
             # Add plugin that contributes kl divergence loss

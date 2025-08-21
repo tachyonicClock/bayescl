@@ -7,3 +7,7 @@ lr: 0.0003
 peft:
   type: CLoRA
   r: 5
+
+hpsearch:
+  params:
+    "peft.lambda_": {type: float, low: 0, high: 10}

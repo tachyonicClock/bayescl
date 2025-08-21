@@ -1,9 +1,13 @@
 include: [../base.yaml, 00_base.yaml]
 label: inflora
 
-# From hyper-parameter search bayescl/SplitCIFAR100/clora/37a54b2 (id=5136) n=10 
 lr: 0.001
 
 peft:
   type: InfLoRA
   r: 5
+
+
+hpsearch:
+  params:
+    "peft.threshold": {type: float, low: 0.9, high: 0.99, log: False}

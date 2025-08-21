@@ -7,8 +7,8 @@ from torch.utils.tensorboard import SummaryWriter
 
 
 class CLoRAPlugin(SupervisedPlugin):
-    def __init__(self, beta: float, writer: SummaryWriter | None = None):
-        self.beta = beta
+    def __init__(self, lambda_: float, writer: SummaryWriter | None = None):
+        self.lambda_ = lambda_
         self.writer = writer
 
     def after_training_exp(self, strategy: Any, *args, **kwargs) -> Any:
@@ -21,4 +21,4 @@ class CLoRAPlugin(SupervisedPlugin):
         if self.writer is not None:
             self.writer.add_scalar("CLoRA/reg_loss", reg_loss.item(), step)
             self.writer.add_scalar("CLoRA/ce_loss", strategy.loss.item(), step)
-        strategy.loss += self.beta * reg_loss
+        strategy.loss += self.lambda_ * reg_loss

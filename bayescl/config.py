@@ -61,7 +61,7 @@ class LoRAConfig(BaseConfig):
 class CLoRAConfig(BaseConfig):
     type: Literal["CLoRA"] = "CLoRA"
     r: int = 4
-    beta: float = 1.0
+    lambda_: float = 1.0
     head_module: str = "model.classifier"
 
 
@@ -74,8 +74,10 @@ class InfLoRAConfig(BaseConfig):
 
     type: Literal["InfLoRA"] = "InfLoRA"
     r: int = 4
-    #: Default threshold see Table 1 (Liang & Li, 2024)
     threshold: float = 0.95
+    """Also called epsilon in the paper. Controls how accurate the k-rank approximation
+    of the representation is. Default threshold is 0.95, see Table 1 in Liang & Li (2024).
+    """
     head_module: str = "model.classifier"
 
 
