@@ -9,7 +9,7 @@ peft:
   type: BLoB
   beta: 0.01
   config:
-    r: 5
+    r: 10
     blob_B:
       prior_mu: 0.0
       prior_sigma: 1.0

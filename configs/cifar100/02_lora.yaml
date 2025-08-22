@@ -7,4 +7,4 @@ lr: 0.0003
 
 peft:
   type: LoRA
-  r: 5
+  r: 10
