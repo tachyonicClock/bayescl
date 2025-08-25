@@ -1,3 +1,4 @@
+import os
 import matplotlib
 
 from bayescl.plugins.clora import CLoRAPlugin
@@ -65,12 +66,17 @@ class Experiment:
         )
 
     def _new_log_dir(self) -> Path:
+        id_ = time.strftime("%Y-%m-%d_%H-%M-%S")
+        # If running with slurm use the job id
+        if "SLURM_JOB_ID" in os.environ:
+            id_ = f"{os.environ['SLURM_JOB_ID']}_{os.environ.get('SLURM_ARRAY_TASK_ID',0)}"
+
         log_dir = (
             Path(self.cfg.log_root)
             / self.cfg.study_name
             / f"{self.cfg.scenario.dataset}"
             / self.cfg.label
-            / time.strftime("%Y-%m-%d_%H-%M-%S")
+            / id_
         )
         log_dir.mkdir(parents=True, exist_ok=False)
 

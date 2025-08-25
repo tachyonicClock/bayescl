@@ -14,14 +14,21 @@ ts --set_gpu_free_perc=97
 ts -S 3 #get/set the number of max simultaneous jobs of the server.
 
 # HYPERPARAMETER SEARCH PHASE ----------------------------------------------------------
-# CIFAR100
+# iCIFAR100/10
 ts -G 1 -m -L 01_linear  python main.py --hpsearch --configs configs/cifar100/01_linear.yaml
 ts -G 1 -m -L 02_lora    python main.py --hpsearch --configs configs/cifar100/02_lora.yaml
 ts -G 1 -m -L 03_blob    python main.py --hpsearch --configs configs/cifar100/03_blob.yaml
 ts -G 1 -m -L 04_clora   python main.py --hpsearch --configs configs/cifar100/04_clora.yaml
 ts -G 1 -m -L 05_inflora python main.py --hpsearch --configs configs/cifar100/05_inflora.yaml
 
-# ImageNet-R
+# iImageNet-R200/10
+ts -G 1 -m -L 01_linear  python main.py --hpsearch --configs configs/imagenetr/01_linear.yaml
+ts -G 1 -m -L 02_lora    python main.py --hpsearch --configs configs/imagenetr/02_lora.yaml
+ts -G 1 -m -L 03_blob    python main.py --hpsearch --configs configs/imagenetr/03_blob.yaml
+ts -G 1 -m -L 04_clora   python main.py --hpsearch --configs configs/imagenetr/04_clora.yaml
+ts -G 1 -m -L 05_inflora python main.py --hpsearch --configs configs/imagenetr/05_inflora.yaml
+
+# iDomainNet345/5
 ts -G 1 -m -L 01_linear  python main.py --hpsearch --configs configs/imagenetr/01_linear.yaml
 ts -G 1 -m -L 02_lora    python main.py --hpsearch --configs configs/imagenetr/02_lora.yaml
 ts -G 1 -m -L 03_blob    python main.py --hpsearch --configs configs/imagenetr/03_blob.yaml

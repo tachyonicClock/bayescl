@@ -6,10 +6,12 @@
 #SBATCH --gpus-per-node=L4:1
 #SBATCH --output=log/runs/SplitCIFAR100/%x-%j.out
 #SBATCH --error=log/runs/SplitCIFAR100/%x-%j.err
-#SBATCH --array=0-0
+#SBATCH --array=0-4
 
 set -x # Echo commands to stdout
 set -e # Exit on error
+
+module load Miniconda3
 
 # Override python version
 export PATH=${HOME}/nobackup/pyvenv/bayescl/bin:${PATH}
