@@ -206,6 +206,7 @@ class Experiment:
         results: Sequence[Dict[str, float]] = []
         for t, experience in enumerate(self.benchmark.train_stream):
             logger.info(f"Start of experience: {experience.current_experience}")
+            logger.info(f"Experience Size: {len(experience.dataset)}")
             logger.info(f"Current Classes: {experience.classes_in_this_experience}")
 
             # train returns a dictionary which contains all the metric values

@@ -10,7 +10,7 @@ python main.py -c configs/${dataset}/${method}.yaml
 cd /home/antonlee/github.com/tachyonicClock/bayescl_frozen
 conda activate bayescl
 pip install -r requirements.txt
-ts --set_gpu_free_perc=95
+ts --set_gpu_free_perc=97
 ts -S 3 #get/set the number of max simultaneous jobs of the server.
 
 # HYPERPARAMETER SEARCH PHASE ----------------------------------------------------------

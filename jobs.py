@@ -3,6 +3,7 @@ N=5
 DATASETS = [
     "cifar100",
     "imagenetr",
+    "domainnet",
 ]
 METHODS = [
     "01_linear",

@@ -38,8 +38,11 @@ mypy:
 
 
 get-data:
-	rsync -P lagerfield.ecs.vuw.ac.nz:/local/scratch/antonlee/datasets/core50_128x128.zip /local/scratch/antonlee/datasets
-	rsync -P lagerfield.ecs.vuw.ac.nz:${DATASETS}/imagenet-r.tar ${DATASETS}
+# 	rsync -P lagerfield.ecs.vuw.ac.nz:/local/scratch/antonlee/datasets/core50_128x128.zip /local/scratch/antonlee/datasets
+# 	rsync -P lagerfield.ecs.vuw.ac.nz:${DATASETS}/imagenet-r.tar ${DATASETS}
+	rsync -a --info=progress2 lagerfield.ecs.vuw.ac.nz:${DATASETS}/DomainNet ${DATASETS}
+
+# 	cd ${DATASETS} && tar -xf imagenet-r.tar
 
 clean-log:
 	rm nohup.out || true

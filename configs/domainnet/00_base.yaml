@@ -1,0 +1,5 @@
+scenario:
+  dataset: SplitDomainNet
+  n_tasks: 5
+
+epochs: 5

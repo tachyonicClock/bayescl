@@ -7,7 +7,7 @@ from torchvision import transforms as T
 from transformers import AutoImageProcessor
 
 from bayescl.config import Config
-from bayescl.datasets import SplitImageNetR
+from bayescl.datasets import SplitImageNetR, SplitDomainNet
 
 Transform = Callable[[Any], Any]
 
@@ -18,6 +18,10 @@ LUT_TRAIN_TRANSFORMS = {
         T.RandomRotation(15),
     ],
     "SplitImageNetR": [
+        T.RandomResizedCrop(224),
+        T.RandomHorizontalFlip(),
+    ],
+    "SplitDomainNet": [
         T.RandomResizedCrop(224),
         T.RandomHorizontalFlip(),
     ],
@@ -56,6 +60,7 @@ def get_transforms(cfg: Config) -> Tuple[Transform, Transform]:
 
 
 def get_benchmark(cfg: Config) -> NCScenario:
+    logger.info(f"Setting up '{cfg.scenario.dataset}' benchmark")
     train_transform, eval_transform = get_transforms(cfg)
     if cfg.scenario.dataset == "SplitMNIST":
         return SplitMNIST(
@@ -93,6 +98,15 @@ def get_benchmark(cfg: Config) -> NCScenario:
             return_task_id=True,
             shuffle=cfg.scenario.shuffle,
         )
+    elif cfg.scenario.dataset == "SplitDomainNet":
+        return SplitDomainNet(  # type: ignore
+            dataset_root=cfg.dataset_root,
+            n_experiences=cfg.scenario.n_tasks,
+            train_transform=train_transform,
+            eval_transform=eval_transform,
+            return_task_id=True,
+            shuffle=cfg.scenario.shuffle,
+        )
     elif cfg.scenario.dataset == "CORe50":
         return CORe50(  # type: ignore
             dataset_root=cfg.dataset_root,
@@ -101,5 +115,5 @@ def get_benchmark(cfg: Config) -> NCScenario:
             train_transform=train_transform,
             eval_transform=eval_transform,
         )
-    else:
-        raise ValueError(f"Unsupported scenario: {cfg.scenario}")
+
+    raise ValueError(f"Unsupported scenario: {cfg.scenario}")

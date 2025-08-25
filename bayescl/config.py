@@ -18,7 +18,7 @@ class BaseConfig(BaseModel):
 
 class Scenario(BaseConfig):
     dataset: Literal[
-        "SplitMNIST", "SplitCIFAR10", "SplitCIFAR100", "SplitImageNetR"
+        "SplitMNIST", "SplitCIFAR10", "SplitCIFAR100", "SplitImageNetR", "SplitDomainNet"
     ] = "SplitMNIST"
     n_tasks: int = 5
     shuffle: bool = True
