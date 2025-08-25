@@ -28,6 +28,7 @@ def SplitImageNetR(
     eval_transform: Callable[..., Any] | None = None,
     seed: int = 0,
     return_task_id: bool = False,
+    shuffle: bool = True,
 ) -> CLScenario:
     """Create SplitImageNetR200 by splitting ImageNet-R(endition)[#f1].
 
@@ -59,4 +60,5 @@ def SplitImageNetR(
         n_experiences=n_experiences,
         task_labels=return_task_id,
         seed=seed,
+        shuffle=shuffle,
     )

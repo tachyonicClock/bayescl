@@ -1,6 +1,0 @@
-# Fit a linear layer to a pretrained model
-include: [../base.yaml, 00_base.yaml]
-label: linear
-
-model:
-  freeze_backbone: True

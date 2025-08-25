@@ -1,6 +1,0 @@
-include: [../base.yaml, 00_base.yaml]
-label: clora
-
-peft:
-  type: CLoRA
-  r: 5

@@ -55,17 +55,21 @@ if __name__ == "__main__":
     parser.add_argument(
         "--seed",
         type=int,
-        default=None,
+        default=0,
+    )
+    parser.add_argument(
+        "--repeat",
+        type=int,
+        default=1,
+        help="Number of times to repeat the experiment with different seeds.",
     )
     args = parser.parse_args()
     config = from_configs(args.configs, args.args)
 
-    if args.seed is not None:
-        torch.manual_seed(args.seed)
-        np.random.seed(args.seed)
-
     if args.hpsearch:
         run_study(config)
     else:
-        for _ in range(config.repeat):
+        for i in range(args.repeat):
+            torch.manual_seed(args.seed + i)
+            np.random.seed(args.seed + i)
             Experiment(config).run()  # type: ignore

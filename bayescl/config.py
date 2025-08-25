@@ -99,9 +99,6 @@ class Config(BaseConfig):
     include: list[Path] = []
     label: str = "default"
 
-    #: How many times should the experiment be run with this config
-    repeat: int = 1
-
     #: Scenario configuration.
     scenario: Scenario | ScenarioCORe50 = Field(
         Scenario(),
