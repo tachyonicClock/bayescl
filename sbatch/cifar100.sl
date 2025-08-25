@@ -1,6 +1,7 @@
 #!/bin/bash -e
 #SBATCH --job-name=bayecl.cifar100
-#SBATCH --time=05:00:00
+##SBATCH --time=05:00:00
+#SBATCH --time=01:00:00
 #SBATCH --mem=5G
 #SBATCH --cpus-per-task=2
 #SBATCH --gpus-per-node=L4:1
@@ -22,7 +23,8 @@ run () {
         --args study_name=runs num_workers=4 \
         --config="$1"
 }
-run configs/cifar100/01_linear.yaml
-run configs/cifar100/02_lora.yaml
-run configs/cifar100/03_blob.yaml
-run configs/cifar100/04_clora.yaml
+# run configs/cifar100/01_linear.yaml
+# run configs/cifar100/02_lora.yaml
+# run configs/cifar100/03_blob.yaml
+# run configs/cifar100/04_clora.yaml
+run configs/cifar100/05_inflora.yaml
