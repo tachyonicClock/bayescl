@@ -11,32 +11,22 @@ peft:
   beta: 0.9870219406091099
   config:
     r: 10
-    blob_B:
-      prior_mu: 0.0
-      prior_sigma: 1.0
-
-      init_mu_mean: 0.0
-      init_sigma_mean: 0.1
-
-      init_mu_std: 1e-3
-      init_rho_std: 1e-3
-
-      deterministic_eval: True
-
     blob_A:
+      deterministic_eval: true
+      init_mu_mean: 0.0
+      init_mu_std: 0.0
+      init_rho_std: 0.001
+      init_sigma_mean: 0.001
       prior_mu: 0.0
       prior_sigma: 1.0
-
-      # Initialization is close to zero to give BLoB a warm start
+    blob_B:
+      deterministic_eval: true
       init_mu_mean: 0.0
+      init_mu_std: 0.001
+      init_rho_std: 0.001
       init_sigma_mean: 0.05
-
-      init_mu_std: 0.0
-      init_rho_std: 1e-3
-
-      deterministic_eval: True
-
-
+      prior_mu: 0.0
+      prior_sigma: 1.0
 hpsearch:
   params:
     "peft.beta": {type: float, low: 0.01, high: 50, log: False}
