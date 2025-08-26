@@ -69,7 +69,7 @@ def SplitImageNetR(
     n_experiences: int = 20,
     train_transform: Callable[..., Any] | None = None,
     eval_transform: Callable[..., Any] | None = None,
-    seed: int = 0,
+    seed: int | None = None,
     return_task_id: bool = False,
     shuffle: bool = True,
 ) -> CLScenario:
@@ -111,7 +111,7 @@ def SplitDomainNet(
     n_experiences: int = 5,
     train_transform: Callable[..., Any] | None = None,
     eval_transform: Callable[..., Any] | None = None,
-    seed: int = 0,
+    seed: int | None = None,
     return_task_id: bool = False,
     shuffle: bool = True,
 ) -> CLScenario:

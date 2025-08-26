@@ -1,6 +1,6 @@
 #!/bin/bash -e
 #SBATCH --job-name=bayecl.cifar100
-##SBATCH --time=05:00:00
+##SBATCH --time=06:00:00
 #SBATCH --time=01:00:00
 #SBATCH --mem=5G
 #SBATCH --cpus-per-task=2

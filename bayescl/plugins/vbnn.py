@@ -16,9 +16,7 @@ class VBNNPlugin(SupervisedPlugin):
         self.bayes_eval_samples = bayes_eval_samples
 
     def before_backward(self, strategy: BaseSGDTemplate, *args, **kwargs) -> Any:
-        dataset_size = len(strategy.dataloader.datasets[0])
-
-        kl = get_model_kl_loss(strategy.model, dataset_size)
+        kl = get_model_kl_loss(strategy.model, len(strategy.experience.dataset))
         if self.writer is not None:
             self.writer.add_scalar(
                 "VBNN/kl_loss", kl.item(), strategy.clock.train_iterations

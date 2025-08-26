@@ -29,7 +29,7 @@ peft:
 
       # Initialization is close to zero to give BLoB a warm start
       init_mu_mean: 0.0
-      init_sigma_mean: 0.001
+      init_sigma_mean: 0.05
 
       init_mu_std: 0.0
       init_rho_std: 1e-3
@@ -39,4 +39,4 @@ peft:
 
 hpsearch:
   params:
-    "peft.beta": {type: float, low: 0.01, high: 10, log: False}
+    "peft.beta": {type: float, low: 0.01, high: 50, log: False}

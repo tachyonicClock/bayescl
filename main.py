@@ -40,7 +40,7 @@ if __name__ == "__main__":
     # Accept any number of key value pairs as dotlist arguments
     parser.add_argument("--args", type=str, nargs="*", default=None)
     parser.add_argument(
-        "--configs",
+        "--configs", "-c",
         type=str,
         nargs="+",
         default=[],
