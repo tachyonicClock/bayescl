@@ -137,17 +137,18 @@ class Experiment:
             # Add BLoB adapters
             factory = BLoB(peft_cfg.config)
             add_adapters(self.model, get_peft_filter(self.cfg), factory)
+            self.model.get_submodule(peft_cfg.head_module).requires_grad_(True)
 
             # Replace classifier with VBNN linear layer
-            linear = self.model.get_submodule(peft_cfg.head_module)
-            assert isinstance(linear, torch.nn.Linear)
-            new_linear = VariationalLinear(
-                dim_in=linear.in_features,
-                dim_out=linear.out_features,
-                bias=linear.bias is not None,
-                config=peft_cfg.config.blob_B,
-            )  # type: ignore
-            set_module(self.model, peft_cfg.head_module, new_linear)
+            # linear = self.model.get_submodule(peft_cfg.head_module)
+            # assert isinstance(linear, torch.nn.Linear)
+            # new_linear = VariationalLinear(
+            #     dim_in=linear.in_features,
+            #     dim_out=linear.out_features,
+            #     bias=linear.bias is not None,
+            #     config=peft_cfg.config.blob_B,
+            # )  # type: ignore
+            # set_module(self.model, peft_cfg.head_module, new_linear)
 
         logger.info("ADAPTERS:")
         for name, _ in iter_named_adapters(self.model):
