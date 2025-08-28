@@ -1,4 +1,5 @@
 import os
+
 import matplotlib
 
 from bayescl.plugins.clora import CLoRAPlugin
@@ -33,9 +34,7 @@ from claiutil.peft import (
     add_adapters,
     iter_named_adapters,
     parameter_summary_str,
-    set_module,
 )
-from claiutil.vbnn import VariationalLinear
 from loguru import logger
 from setproctitle import setproctitle
 
@@ -69,7 +68,7 @@ class Experiment:
         id_ = time.strftime("%Y-%m-%d_%H-%M-%S")
         # If running with slurm use the job id
         if "SLURM_JOB_ID" in os.environ:
-            id_ = f"{os.environ['SLURM_JOB_ID']}_{os.environ.get('SLURM_ARRAY_TASK_ID',0)}"
+            id_ = f"{os.environ['SLURM_JOB_ID']}_{os.environ.get('SLURM_ARRAY_TASK_ID', 0)}"
 
         log_dir = (
             Path(self.cfg.log_root)
@@ -215,6 +214,13 @@ class Experiment:
             logger.info(f"Start of experience: {experience.current_experience}")
             logger.info(f"Experience Size: {len(experience.dataset)}")
             logger.info(f"Current Classes: {experience.classes_in_this_experience}")
+
+            # If first_exp_epochs is set, use it for the first experience
+            strategy.train_epochs = (
+                self.cfg.first_exp_epochs
+                if t == 0 and self.cfg.first_exp_epochs is not None
+                else self.cfg.epochs
+            )
 
             # train returns a dictionary which contains all the metric values
             strategy.train(experience, num_workers=self.cfg.num_workers)

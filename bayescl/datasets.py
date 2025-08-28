@@ -2,16 +2,15 @@ from pathlib import Path
 from typing import Any, Callable
 
 import torch
+import yaml
 from avalanche.benchmarks import (
     CLScenario,
     nc_benchmark,
 )
 from claiutil.env import datasets_path
-from torch.utils.data import Subset, Dataset
-from torch.utils.data.dataset import ConcatDataset
-from torchvision.datasets import ImageFolder
 from PIL import Image
-import yaml
+from torch.utils.data import Dataset, Subset
+from torchvision.datasets import ImageFolder
 
 
 class ImageNetR(ImageFolder):
@@ -25,7 +24,6 @@ class ImageNetR(ImageFolder):
 
 
 class DomainNet(Dataset):
-
     def __init__(
         self,
         root: str | Path,
@@ -48,10 +46,9 @@ class DomainNet(Dataset):
         self._data = self._metadata["data"]
         self.targets = torch.tensor(self._metadata["targets"], dtype=torch.int32)
 
-    
     def __len__(self) -> int:
         return len(self._data)
-    
+
     def __getitem__(self, index: int) -> tuple[Image.Image, int]:
         path = self.root / self._data[index]
         target = self.targets[index]
@@ -63,6 +60,7 @@ class DomainNet(Dataset):
             target = self.target_transform(target)
 
         return image, int(target)
+
 
 def SplitImageNetR(
     dataset_root: str | Path = datasets_path(),
@@ -106,6 +104,7 @@ def SplitImageNetR(
         shuffle=shuffle,
     )
 
+
 def SplitDomainNet(
     dataset_root: str | Path = datasets_path(),
     n_experiences: int = 5,
@@ -135,8 +134,8 @@ def SplitDomainNet(
     test_dataset = DomainNet(dataset_root, eval_transform, train=False)  # type: ignore
 
     return nc_benchmark(
-        train_dataset=train_dataset, # type: ignore
-        test_dataset=test_dataset, # type: ignore
+        train_dataset=train_dataset,  # type: ignore
+        test_dataset=test_dataset,  # type: ignore
         n_experiences=n_experiences,
         task_labels=return_task_id,
         seed=seed,

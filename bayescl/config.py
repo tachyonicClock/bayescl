@@ -18,7 +18,11 @@ class BaseConfig(BaseModel):
 
 class Scenario(BaseConfig):
     dataset: Literal[
-        "SplitMNIST", "SplitCIFAR10", "SplitCIFAR100", "SplitImageNetR", "SplitDomainNet"
+        "SplitMNIST",
+        "SplitCIFAR10",
+        "SplitCIFAR100",
+        "SplitImageNetR",
+        "SplitDomainNet",
     ] = "SplitMNIST"
     n_tasks: int = 5
     shuffle: bool = True
@@ -132,6 +136,9 @@ class Config(BaseConfig):
     eval_mb_size: Optional[int] = None
     #: Number of epochs for training each experience
     epochs: int = 1
+    #: Number of epochs in the first experience
+    first_exp_epochs: Optional[int] = None
+
     #: Number of workers for data loading
     num_workers: int = 0
     #: Number of samples in the replay memory

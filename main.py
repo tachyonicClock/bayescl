@@ -15,6 +15,14 @@ from bayescl.config import Config, from_configs
 from bayescl.experiment import Experiment
 
 
+def get_sampler(sampler: str) -> optuna.samplers.BaseSampler:
+    if sampler == "TPE":
+        return optuna.samplers.TPESampler()
+    elif sampler == "random":
+        return optuna.samplers.RandomSampler()
+    raise ValueError(f"Unknown sampler: {sampler}")
+
+
 def run_study(config: Config):
     assert config.hpsearch
     assert is_git_status_clean(), "Please ensure everything is committed"
@@ -28,7 +36,7 @@ def run_study(config: Config):
         direction=config.hpsearch.direction,
         study_name=f"bayescl/{config.scenario.dataset}/{config.label}/{commit_short_hash()}",
         storage=environ.get("OPTUNA_STORAGE"),
-        sampler=optuna.samplers.RandomSampler(),
+        sampler=get_sampler(config.hpsearch.optimizer),
         load_if_exists=True,
     )
     config.study_name = "hpsearch"
@@ -40,7 +48,8 @@ if __name__ == "__main__":
     # Accept any number of key value pairs as dotlist arguments
     parser.add_argument("--args", type=str, nargs="*", default=None)
     parser.add_argument(
-        "--configs", "-c",
+        "--configs",
+        "-c",
         type=str,
         nargs="+",
         default=[],

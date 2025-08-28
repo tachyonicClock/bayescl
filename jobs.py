@@ -1,5 +1,6 @@
 from itertools import product
-N=5
+
+N = 5
 DATASETS = [
     "cifar100",
     "imagenetr",

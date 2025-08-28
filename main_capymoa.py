@@ -1,21 +1,16 @@
-from capymoa.ocl.datasets import SplitCIFAR100ViT
-from capymoa.ocl.util.data import class_schedule_to_task_mask
-from capymoa.ocl.base import TrainTaskAware
-from capymoa.ocl.evaluation import ocl_train_eval_loop
-from capymoa.stream import Schema
-from capymoa.base import BatchClassifier
-from claiutil.vbnn import (
-    VariationalLinear,
-    get_model_kl_loss,
-    get_posterior_state,
-    set_prior_state,
-)
-from torch.optim import Adam
+import numpy as np
 import torch
+from bnn.nn.modules import FFGLinear
+from capymoa.base import BatchClassifier
+from capymoa.ocl.base import TrainTaskAware
+from capymoa.ocl.datasets import SplitCIFAR100ViT
+from capymoa.ocl.evaluation import ocl_train_eval_loop
+from capymoa.ocl.util.data import class_schedule_to_task_mask
+from capymoa.stream import Schema
 from loguru import logger
 from matplotlib import pyplot as plt
-import numpy as np
-from bnn.nn.modules import FFGLinear
+from torch.optim import Adam
+
 # from torch.distributions.kl import kl_divergence
 
 
@@ -67,7 +62,6 @@ class VCLHead(BatchClassifier, TrainTaskAware):
                 kl += module.kl_divergence()
         return kl
 
-
     def batch_train(self, x: torch.Tensor, y: torch.Tensor) -> None:
         mask = self.task_mask[self.train_task_id]
         nll = torch.zeros(1, device=self.device)
@@ -105,7 +99,7 @@ class VCLHead(BatchClassifier, TrainTaskAware):
 
         if self.train_task_id > 0:
             logger.info(f"Updating prior for task {task_id}.")
-            mask = self.task_mask[task_id - 1]
+            # mask = self.task_mask[task_id - 1]
             # self.head.weight.prior_mu[mask] = self.head.weight.mu[mask].detach().clone()
             # self.head.weight.prior_sigma[mask] = self.head.weight.sigma()[mask].detach().clone()
 
@@ -119,7 +113,12 @@ class VCLHead(BatchClassifier, TrainTaskAware):
                     logger.info(f"Updating prior for module {module}.")
                     module.prior_weight_mean = module.weight_mean.detach().clone()
                     module.prior_weight_sd = module.weight_sd.detach().clone()
-                    print(module.weight_sd.min(), module.weight_sd.max(), module.weight_sd.mean(), module.weight_sd.std())
+                    print(
+                        module.weight_sd.min(),
+                        module.weight_sd.max(),
+                        module.weight_sd.mean(),
+                        module.weight_sd.std(),
+                    )
                     if module.has_bias:
                         module.prior_bias_mean = module.bias_mean.detach().clone()
                         module.prior_bias_sd = module.bias_sd.detach().clone()

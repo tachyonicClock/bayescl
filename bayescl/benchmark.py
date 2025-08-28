@@ -7,7 +7,7 @@ from torchvision import transforms as T
 from transformers import AutoImageProcessor
 
 from bayescl.config import Config
-from bayescl.datasets import SplitImageNetR, SplitDomainNet
+from bayescl.datasets import SplitDomainNet, SplitImageNetR
 
 Transform = Callable[[Any], Any]
 
