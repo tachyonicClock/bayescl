@@ -32,8 +32,10 @@ from claiutil.peft import (
     CLoRAConfig,
     LoRA_Factory,
     add_adapters,
+    RegexFilter,
     iter_named_adapters,
     parameter_summary_str,
+    iter_adapter_parameters,
 )
 from loguru import logger
 from setproctitle import setproctitle
@@ -91,63 +93,54 @@ class Experiment:
         return tb_logger
 
     def _add_peft_adapters(self):
-        peft_cfg = self.cfg.peft
-        if not peft_cfg:
+        peft = self.cfg.peft
+        if not peft:
             return
-        logger.info(f"Add PEFT adapter: {peft_cfg}")
+        filter_regex = RegexFilter(self.cfg.model.adapter_filter)
 
-        if peft_cfg.type == "LoRA":
+        logger.info(f"Add PEFT adapter: {peft}")
+        if peft.type == "LoRA":
             add_adapters(
                 self.model,
                 get_peft_filter(self.cfg),
                 LoRA_Factory(
-                    r=peft_cfg.r,
-                    lora_alpha=peft_cfg.lora_alpha,
-                    lora_dropout=peft_cfg.lora_dropout,
+                    r=peft.r,
+                    lora_alpha=peft.lora_alpha,
+                    lora_dropout=peft.lora_dropout,
                 ),
             )
-            self.model.get_submodule(peft_cfg.head_module).requires_grad_(True)
-        elif peft_cfg.type == "CLoRA" or peft_cfg.type == "InfLoRA":
-            add_adapters(
-                self.model,
-                get_peft_filter(self.cfg),
-                CLoRA(CLoRAConfig(r=peft_cfg.r)),
-            )
-            if peft_cfg.type == "InfLoRA":
+            self.model.get_submodule(peft.head_module).requires_grad_(True)
+        elif peft.type == "CLoRA" or peft.type == "InfLoRA":
+            add_adapters(self.model, filter_regex, CLoRA(CLoRAConfig(r=peft.r)))
+
+            if peft.type == "InfLoRA":
                 self.plugins.append(
-                    PluginInfLoRA(
-                        threshold=peft_cfg.threshold,
-                        total_tasks=self.num_tasks,
-                    )
+                    PluginInfLoRA(threshold=peft.threshold, total_tasks=self.num_tasks)
                 )
-            elif peft_cfg.type == "CLoRA":
-                self.plugins.append(CLoRAPlugin(peft_cfg.lambda_, self.tb_log.writer))
-            self.model.get_submodule(peft_cfg.head_module).requires_grad_(True)
-        elif peft_cfg.type == "BLoB":
+            elif peft.type == "CLoRA":
+                self.plugins.append(CLoRAPlugin(peft.lambda_, self.tb_log.writer))
+            self.model.get_submodule(peft.head_module).requires_grad_(True)
+        elif peft.type == "BLoB":
             # Add plugin that contributes kl divergence loss
             self.plugins += [
                 VBNNPlugin(
-                    beta=peft_cfg.beta,
-                    bayes_eval_samples=peft_cfg.bayes_eval_samples,
+                    beta=peft.beta,
+                    bayes_eval_samples=peft.bayes_eval_samples,
                     writer=self.tb_log.writer,
                 )
             ]
 
             # Add BLoB adapters
-            factory = BLoB(peft_cfg.config)
-            add_adapters(self.model, get_peft_filter(self.cfg), factory)
-            self.model.get_submodule(peft_cfg.head_module).requires_grad_(True)
+            factory = BLoB(peft.config)
+            add_adapters(self.model, filter_regex, factory)
+            self.model.get_submodule(peft.head_module).requires_grad_(True)
 
-            # Replace classifier with VBNN linear layer
-            # linear = self.model.get_submodule(peft_cfg.head_module)
-            # assert isinstance(linear, torch.nn.Linear)
-            # new_linear = VariationalLinear(
-            #     dim_in=linear.in_features,
-            #     dim_out=linear.out_features,
-            #     bias=linear.bias is not None,
-            #     config=peft_cfg.config.blob_B,
-            # )  # type: ignore
-            # set_module(self.model, peft_cfg.head_module, new_linear)
+        # Optionally load adapter weights from checkpoint
+        if peft.checkpoint is not None:
+            logger.info(f"Loading checkpoint from '{peft.checkpoint}'.")
+            state_dict = torch.load(peft.checkpoint, map_location="cpu")
+            _, unexpected = self.model.load_state_dict(state_dict, strict=False)
+            assert len(unexpected) == 0, f"Unexpected keys: {unexpected}"
 
         logger.info("ADAPTERS:")
         for name, _ in iter_named_adapters(self.model):
@@ -166,7 +159,7 @@ class Experiment:
 
     def _add_plugins(self):
         if self.cfg.use_local_ce:
-            logger.info("Add `TrainTaskMask` plugin")
+            logger.info("Add 'TrainTaskMask' plugin")
             self.plugins.append(TrainTaskMask(self.benchmark))
         self.plugins.append(self.capymoa_ocl_metrics)
 
@@ -244,5 +237,17 @@ class Experiment:
 
         metrics = self.capymoa_ocl_metrics.build()
         metrics.save(self.log_dir / "results")
+
+        # Optionally save adapter weights
+        if self.cfg.peft and self.cfg.peft.save:
+            filename = self.log_dir / "adapter.pth"
+            logger.info(f"Saving adapter weights to '{filename}'.")
+            with open(filename, "wb") as f:
+                state = dict(iter_adapter_parameters(self.model))
+                head = self.cfg.peft.head_module
+                state.update(
+                    self.model.get_submodule(head).state_dict(prefix=head + ".")
+                )
+                torch.save(state, f)
 
         return metrics.accuracy_seen_avg

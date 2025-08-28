@@ -14,6 +14,7 @@ from matplotlib.axes import Axes
 from matplotlib.figure import Figure
 from seaborn import histplot
 from torch.utils.tensorboard import SummaryWriter
+from loguru import logger
 
 
 class VBNNPlugin(SupervisedPlugin):
@@ -67,6 +68,7 @@ class VBNNPlugin(SupervisedPlugin):
         plt.close(fig)
 
     def after_training_exp(self, strategy: Any, *args, **kwargs) -> Any:
+        logger.info("Setting prior to posterior after training experience.")
         set_prior_state(strategy.model, get_posterior_state(strategy.model))
 
     def after_eval_forward(self, strategy: Any, *args, **kwargs) -> Any:

@@ -9,6 +9,7 @@ peft:
   type: BLoB
   # From hyper-parameter search bayescl/SplitCIFAR100/blob/adb502b (id=5162) n=10
   beta: 0.9870219406091099
+  # bayes_eval_samples: 10
   config:
     r: 10
     vbnn:
@@ -24,4 +25,5 @@ hpsearch:
     "peft.config.vbnn.init_sigma": {type: categorical, choices: [0.1, 0.5, 1.0]}
     "first_exp_epochs": {type: categorical, choices: [5, 10, 20]}
 
+  n_trials: 50
   optimizer: "TPE"

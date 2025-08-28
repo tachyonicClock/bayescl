@@ -30,6 +30,8 @@ def run_study(config: Config):
     def objective(trial: optuna.Trial) -> float:
         assert config.hpsearch
         optuna_suggest(trial, config, config.hpsearch.params)
+        torch.manual_seed(0)
+        np.random.seed(0)
         return Experiment(config).run()
 
     study = optuna.create_study(

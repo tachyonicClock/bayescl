@@ -40,12 +40,16 @@ class ScenarioCORe50(BaseConfig):
 class BasicModelConfig(BaseConfig):
     type: Literal["basic"] = "basic"
     name: str = "SimpleMLP"
+    #: If adapters are used, regex to filter which modules to add adapters to.
+    adapter_module_filter: str = ""
 
 
 class HuggingFaceModelConfig(BaseConfig):
     type: Literal["huggingface"] = "huggingface"
     name: str = "facebook/dinov2-small"
     freeze_backbone: bool = True
+    #: If adapters are used, regex to filter which modules to add adapters to.
+    adapter_filter: str = ".*(key|query)"
 
 
 # --- Plugin Configurations ---
@@ -54,7 +58,16 @@ class HuggingFaceModelConfig(BaseConfig):
 # --- PEFT Configurations ---
 
 
-class LoRAConfig(BaseConfig):
+class PEFTConfig(BaseModel):
+    #: Name of the module containing the classification head
+    head_module: str = "model.classifier"
+    #: Optional checkpoint to load adapter weights from
+    checkpoint: Optional[Path] = None
+    #: Whether to save the adapter weights after training
+    save: bool = False
+
+
+class LoRAConfig(PEFTConfig):
     type: Literal["LoRA"] = "LoRA"
     r: int = 16
     lora_alpha: int = 1
@@ -62,14 +75,14 @@ class LoRAConfig(BaseConfig):
     head_module: str = "model.classifier"
 
 
-class CLoRAConfig(BaseConfig):
+class CLoRAConfig(PEFTConfig):
     type: Literal["CLoRA"] = "CLoRA"
     r: int = 4
     lambda_: float = 1.0
     head_module: str = "model.classifier"
 
 
-class InfLoRAConfig(BaseConfig):
+class InfLoRAConfig(PEFTConfig):
     """InfLoRA: Interference-Free Low-Rank Adaptation for Continual Learning
 
     Liang, Y.-S., & Li, W.-J. (2024). InfLoRA: Interference-Free Low-Rank Adaptation for
@@ -82,16 +95,14 @@ class InfLoRAConfig(BaseConfig):
     """Also called epsilon in the paper. Controls how accurate the k-rank approximation
     of the representation is. Default threshold is 0.95, see Table 1 in Liang & Li (2024).
     """
-    head_module: str = "model.classifier"
 
 
-class BLoB(BaseConfig):
+class BLoB(PEFTConfig):
     """BLoB: Bayesian low-rank adaptation by backpropagation for large language
     models
     """
 
     type: Literal["BLoB"] = "BLoB"
-    head_module: str = "model.classifier"
     #: strength of the kl divergence loss
     beta: float = 1.0
     #: number of samples to use for bayesian evaluation
