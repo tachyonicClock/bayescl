@@ -2,16 +2,13 @@ from typing import Any
 
 import torch
 from avalanche.training.plugins import SupervisedPlugin
-from claiutil.datasets import avalanche_class_schedule, class_schedule_to_task_mask
 from loguru import logger
 
 
 class TrainTaskMask(SupervisedPlugin):
-    def __init__(self, benchmark: Any):
+    def __init__(self, mask: torch.Tensor):
         super().__init__()
-        self.mask = class_schedule_to_task_mask(
-            avalanche_class_schedule(benchmark), benchmark.n_classes
-        )
+        self.mask = mask
 
     def before_training(self, strategy: Any, *args, **kwargs) -> Any:
         self.mask = self.mask.to(strategy.device)

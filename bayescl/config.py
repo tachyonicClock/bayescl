@@ -54,6 +54,9 @@ class HuggingFaceModelConfig(BaseConfig):
 
 # --- Plugin Configurations ---
 
+class OutlierExposureConfig(BaseModel):
+    strength: float = 1.0
+    batch_size: Optional[int] = None
 
 # --- PEFT Configurations ---
 
@@ -107,6 +110,10 @@ class BLoB(PEFTConfig):
     beta: float = 1.0
     #: number of samples to use for bayesian evaluation
     bayes_eval_samples: int = 0
+
+    #: Use a variational bayesian last layer?
+    vbll: bool = False
+
     config: BLoBConfig
 
 
@@ -149,6 +156,9 @@ class Config(BaseConfig):
     epochs: int = 1
     #: Number of epochs in the first experience
     first_exp_epochs: Optional[int] = None
+
+    #: Add the outlier exposure plugin
+    outlier_exposure: Optional[OutlierExposureConfig] = None
 
     #: Number of workers for data loading
     num_workers: int = 0

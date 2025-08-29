@@ -29,12 +29,16 @@ LUT_TRAIN_TRANSFORMS = {
         T.RandomResizedCrop(128),
         T.RandomHorizontalFlip(),
     ],
+    "TinyImageNet": [
+        T.RandomResizedCrop(64),
+        T.RandomHorizontalFlip(),
+    ],
 }
 
 
-def get_transforms(cfg: Config) -> Tuple[Transform, Transform]:
+def get_transforms(cfg: Config, dataset: str) -> Tuple[Transform, Transform]:
     train_transform: List[Callable[[Any], Any]] = [T.ToTensor()]
-    train_transform.extend(LUT_TRAIN_TRANSFORMS.get(cfg.scenario.dataset, []))
+    train_transform.extend(LUT_TRAIN_TRANSFORMS.get(dataset, []))
     eval_transform: List[Callable[[Any], Any]] = [T.ToTensor()]
 
     if cfg.model.type == "huggingface":
@@ -61,7 +65,7 @@ def get_transforms(cfg: Config) -> Tuple[Transform, Transform]:
 
 def get_benchmark(cfg: Config) -> NCScenario:
     logger.info(f"Setting up '{cfg.scenario.dataset}' benchmark")
-    train_transform, eval_transform = get_transforms(cfg)
+    train_transform, eval_transform = get_transforms(cfg, cfg.scenario.dataset)
     if cfg.scenario.dataset == "SplitMNIST":
         return SplitMNIST(
             dataset_root=cfg.dataset_root,

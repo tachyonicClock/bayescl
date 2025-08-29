@@ -40,6 +40,14 @@ class VBNNPlugin(SupervisedPlugin):
 
     def after_training_epoch(self, strategy: BaseSGDTemplate, *args, **kwargs) -> Any:
         assert self.writer is not None
+        fig = self.visualize_mu_sigma(strategy, strategy.model.model.vit) # type: ignore
+        self.writer.add_figure("VBNN/posterior_vit", fig, strategy.clock.train_iterations)
+        plt.close(fig)
+        # fig = self.visualize_mu_sigma(strategy, strategy.model.model.classifier) # type: ignore
+        # self.writer.add_figure("VBNN/posterior_classifier", fig, strategy.clock.train_iterations)
+        # plt.close(fig)
+
+    def visualize_mu_sigma(self, strategy, model):
         ax_mu: Axes
         ax_sigma: Axes
         fig: Figure
@@ -47,7 +55,7 @@ class VBNNPlugin(SupervisedPlugin):
 
         mu_list = []
         sigma_list = []
-        for name, param in iterate_variational_parameters(strategy.model):
+        for name, param in iterate_variational_parameters(model):
             mu_list.append(param.mu.detach().cpu().flatten())
             sigma_list.append(param.sigma().detach().cpu().flatten())
 
@@ -63,9 +71,7 @@ class VBNNPlugin(SupervisedPlugin):
         ax_sigma.set_xlabel(r"$\sigma$")
         ax_sigma.set_xlim(0.0, 1.5)
         ax_sigma.set_ylim(0, 15)
-
-        self.writer.add_figure("VBNN/posterior", fig, strategy.clock.train_iterations)
-        plt.close(fig)
+        return fig
 
     def after_training_exp(self, strategy: Any, *args, **kwargs) -> Any:
         logger.info("Setting prior to posterior after training experience.")

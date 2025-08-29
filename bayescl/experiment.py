@@ -2,6 +2,7 @@ import os
 
 import matplotlib
 
+from bayescl.datasets import TinyImageNet
 from bayescl.plugins.clora import CLoRAPlugin
 from bayescl.plugins.inflora import PluginInfLoRA
 
@@ -24,8 +25,13 @@ from avalanche.evaluation.metrics import (
 )
 from avalanche.logging import BaseLogger, InteractiveLogger, TensorboardLogger
 from avalanche.training import Naive, ReservoirSamplingBuffer
+from avalanche.evaluation.metrics.accuracy import AccuracyPerTaskPluginMetric
 from avalanche.training.plugins import EvaluationPlugin, ReplayPlugin, SupervisedPlugin
-from claiutil.avalanche import AvalancheResults
+from claiutil.avalanche import (
+    AvalancheResults,
+    OutlierExposure,
+    TaskIncrementalAccuracy,
+)
 from claiutil.peft import (
     BLoB,
     CLoRA,
@@ -36,15 +42,20 @@ from claiutil.peft import (
     iter_named_adapters,
     parameter_summary_str,
     iter_adapter_parameters,
+    set_module
 )
+from claiutil.vbnn import VBNNConfig, VariationalLinear
 from loguru import logger
 from setproctitle import setproctitle
 
 from bayescl import config
-from bayescl.benchmark import get_benchmark
+from bayescl.benchmark import get_benchmark, get_transforms
 from bayescl.model import get_model, get_peft_filter
 from bayescl.plugins.train_mask import TrainTaskMask
 from bayescl.plugins.vbnn import VBNNPlugin
+from claiutil.datasets import avalanche_class_schedule, class_schedule_to_task_mask
+from optuna import Trial
+from optuna.exceptions import TrialPruned
 
 
 class Experiment:
@@ -63,6 +74,7 @@ class Experiment:
             StreamConfusionMatrix(
                 num_classes=self.benchmark.n_classes, save_image=True
             ),
+            TaskIncrementalAccuracy(self.mask),
             loggers=self.loggers,
         )
 
@@ -133,7 +145,23 @@ class Experiment:
             # Add BLoB adapters
             factory = BLoB(peft.config)
             add_adapters(self.model, filter_regex, factory)
-            self.model.get_submodule(peft.head_module).requires_grad_(True)
+
+            if peft.vbll:
+                logger.info("Using variational bayesian last layer (VBLL)")
+                # Replace classifier with VBNN linear layer
+                linear = self.model.get_submodule(peft.head_module)
+                assert isinstance(linear, torch.nn.Linear)
+                new_linear = VariationalLinear(
+                    in_features=linear.in_features,
+                    out_features=linear.out_features,
+                    bias=False,
+                    config=VBNNConfig(prior_sigma=0.1, init_sigma=0.1, init_sigma_scale=0.01),
+                )  # type: ignore
+                set_module(self.model, peft.head_module, new_linear)
+            else:
+                logger.info("Using standard last layer")
+                self.model.get_submodule(peft.head_module).requires_grad_(True)
+
 
         # Optionally load adapter weights from checkpoint
         if peft.checkpoint is not None:
@@ -160,7 +188,29 @@ class Experiment:
     def _add_plugins(self):
         if self.cfg.use_local_ce:
             logger.info("Add 'TrainTaskMask' plugin")
-            self.plugins.append(TrainTaskMask(self.benchmark))
+            self.plugins.append(TrainTaskMask(self.mask))
+
+        if self.cfg.outlier_exposure:
+            logger.info("Add 'OutlierExposure' plugin")
+            config = self.cfg.outlier_exposure
+
+            transform, _ = get_transforms(self.cfg, "TinyImageNet")
+            outlier_dataset = TinyImageNet(
+                self.cfg.dataset_root, transform, split="train"
+            )
+            plugin = OutlierExposure(
+                torch.utils.data.DataLoader(
+                    outlier_dataset,
+                    batch_size=config.batch_size or self.cfg.train_mb_size,
+                    shuffle=True,
+                    num_workers=self.cfg.num_workers,
+                ),
+                strength=config.strength,
+                mask=self.mask if self.cfg.use_local_ce else None,
+                logger=self.tb_log,
+            )
+            self.plugins.append(plugin)
+
         self.plugins.append(self.capymoa_ocl_metrics)
 
     def _preflight(self):
@@ -174,6 +224,9 @@ class Experiment:
         self.loggers: List[BaseLogger] = []
 
         self.benchmark = get_benchmark(cfg)
+        self.mask = class_schedule_to_task_mask(
+            avalanche_class_schedule(self.benchmark), self.benchmark.n_classes
+        )
         self.num_tasks: int = len(self.benchmark.train_stream)
         self.num_classes: int = self.benchmark.n_classes
         self.log_dir: Path = self._new_log_dir()
@@ -185,7 +238,7 @@ class Experiment:
         self._add_replay_plugin()
         self._add_plugins()
 
-    def run(self) -> float:
+    def run(self, trial: Trial | None) -> float:
         setproctitle(f"bayescl.{self.cfg.label}")
         self._preflight()
         strategy = Naive(
@@ -226,6 +279,12 @@ class Experiment:
                     self.benchmark.test_stream, num_workers=self.cfg.num_workers
                 )
             )
+
+            if trial is not None:
+                trial.report(results[-1][f"Top1_Acc_Stream/eval_stream/Task{self.num_tasks:03d}/Top1_Acc"], t)
+            if trial is not None and trial.should_prune():
+                logger.warning("Trial was pruned")
+                raise TrialPruned()
 
             if self.cfg.max_tasks is not None and t + 1 >= self.cfg.max_tasks:
                 logger.info(f"Stopping after {self.cfg.max_tasks} tasks")

@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any, Callable, Literal
 
 import torch
 import yaml
@@ -60,6 +60,16 @@ class DomainNet(Dataset):
             target = self.target_transform(target)
 
         return image, int(target)
+
+
+class TinyImageNet(ImageFolder):
+    def __init__(
+        self,
+        root: str | Path,
+        transform: Callable[..., Any] | None = None,
+        split: Literal["train", "val", "test"] = "train",
+    ):
+        super().__init__(Path(root) / "tiny-imagenet-200" / split, transform)
 
 
 def SplitImageNetR(

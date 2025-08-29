@@ -3,27 +3,32 @@ include: [../base.yaml, 00_base.yaml]
 label: blob
 
 # From hyper-parameter search bayescl/SplitCIFAR100/blob/adb502b (id=5162) n=10
-lr: 0.0033118018204161864
+lr: 0.01
+first_exp_epochs: 20
+epochs: 10
+
+outlier_exposure:
+  strength: 1.0
 
 peft:
   type: BLoB
   # From hyper-parameter search bayescl/SplitCIFAR100/blob/adb502b (id=5162) n=10
-  beta: 0.9870219406091099
+  beta: 0.07
+  vbll: True
   # bayes_eval_samples: 10
   config:
     r: 10
     vbnn:
       prior_mu: 0.0
       prior_sigma: 0.5
-      init_sigma: 0.5
+      init_sigma: 0.1
       init_sigma_scale: 0.01
-      deterministic_eval: true
+      deterministic_eval: false
 hpsearch:
   params:
     "peft.beta": {type: float, low: 0.01, high: 2, log: True}
-    "peft.config.vbnn.prior_sigma": {type: categorical, choices: [0.1, 0.5, 1.0]}
-    "peft.config.vbnn.init_sigma": {type: categorical, choices: [0.1, 0.5, 1.0]}
-    "first_exp_epochs": {type: categorical, choices: [5, 10, 20]}
+    "peft.vbll": {type: categorical, choices: [True, False]}
+    "outlier_exposure.strength": {type: float, low: 0.1, high: 2, log: True}
 
   n_trials: 50
   optimizer: "TPE"
