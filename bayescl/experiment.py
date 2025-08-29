@@ -238,7 +238,7 @@ class Experiment:
         self._add_replay_plugin()
         self._add_plugins()
 
-    def run(self, trial: Trial | None) -> float:
+    def run(self, trial: Trial | None = None) -> float:
         setproctitle(f"bayescl.{self.cfg.label}")
         self._preflight()
         strategy = Naive(

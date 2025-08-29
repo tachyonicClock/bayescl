@@ -32,7 +32,7 @@ def run_study(config: Config):
         optuna_suggest(trial, config, config.hpsearch.params)
         torch.manual_seed(0)
         np.random.seed(0)
-        return Experiment(config).run()
+        return Experiment(config).run(trial)
 
     study = optuna.create_study(
         direction=config.hpsearch.direction,
