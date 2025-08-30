@@ -10,11 +10,11 @@ from claiutil.vbnn import (
     iterate_variational_parameters,
     set_prior_state,
 )
+from loguru import logger
 from matplotlib.axes import Axes
 from matplotlib.figure import Figure
 from seaborn import histplot
 from torch.utils.tensorboard import SummaryWriter
-from loguru import logger
 
 
 class VBNNPlugin(SupervisedPlugin):
@@ -40,8 +40,10 @@ class VBNNPlugin(SupervisedPlugin):
 
     def after_training_epoch(self, strategy: BaseSGDTemplate, *args, **kwargs) -> Any:
         assert self.writer is not None
-        fig = self.visualize_mu_sigma(strategy, strategy.model.model.vit) # type: ignore
-        self.writer.add_figure("VBNN/posterior_vit", fig, strategy.clock.train_iterations)
+        fig = self.visualize_mu_sigma(strategy, strategy.model.model.vit)  # type: ignore
+        self.writer.add_figure(
+            "VBNN/posterior_vit", fig, strategy.clock.train_iterations
+        )
         plt.close(fig)
         # fig = self.visualize_mu_sigma(strategy, strategy.model.model.classifier) # type: ignore
         # self.writer.add_figure("VBNN/posterior_classifier", fig, strategy.clock.train_iterations)

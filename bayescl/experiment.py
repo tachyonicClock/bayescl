@@ -25,27 +25,29 @@ from avalanche.evaluation.metrics import (
 )
 from avalanche.logging import BaseLogger, InteractiveLogger, TensorboardLogger
 from avalanche.training import Naive, ReservoirSamplingBuffer
-from avalanche.evaluation.metrics.accuracy import AccuracyPerTaskPluginMetric
 from avalanche.training.plugins import EvaluationPlugin, ReplayPlugin, SupervisedPlugin
 from claiutil.avalanche import (
     AvalancheResults,
     OutlierExposure,
     TaskIncrementalAccuracy,
 )
+from claiutil.datasets import avalanche_class_schedule, class_schedule_to_task_mask
 from claiutil.peft import (
     BLoB,
     CLoRA,
     CLoRAConfig,
     LoRA_Factory,
-    add_adapters,
     RegexFilter,
+    add_adapters,
+    iter_adapter_parameters,
     iter_named_adapters,
     parameter_summary_str,
-    iter_adapter_parameters,
-    set_module
+    set_module,
 )
-from claiutil.vbnn import VBNNConfig, VariationalLinear
+from claiutil.vbnn import VariationalLinear, VBNNConfig
 from loguru import logger
+from optuna import Trial
+from optuna.exceptions import TrialPruned
 from setproctitle import setproctitle
 
 from bayescl import config
@@ -53,9 +55,6 @@ from bayescl.benchmark import get_benchmark, get_transforms
 from bayescl.model import get_model, get_peft_filter
 from bayescl.plugins.train_mask import TrainTaskMask
 from bayescl.plugins.vbnn import VBNNPlugin
-from claiutil.datasets import avalanche_class_schedule, class_schedule_to_task_mask
-from optuna import Trial
-from optuna.exceptions import TrialPruned
 
 
 class Experiment:
@@ -155,13 +154,14 @@ class Experiment:
                     in_features=linear.in_features,
                     out_features=linear.out_features,
                     bias=False,
-                    config=VBNNConfig(prior_sigma=0.1, init_sigma=0.1, init_sigma_scale=0.01),
+                    config=VBNNConfig(
+                        prior_sigma=0.1, init_sigma=0.1, init_sigma_scale=0.01
+                    ),
                 )  # type: ignore
                 set_module(self.model, peft.head_module, new_linear)
             else:
                 logger.info("Using standard last layer")
                 self.model.get_submodule(peft.head_module).requires_grad_(True)
-
 
         # Optionally load adapter weights from checkpoint
         if peft.checkpoint is not None:
@@ -279,7 +279,9 @@ class Experiment:
                     self.benchmark.test_stream, num_workers=self.cfg.num_workers
                 )
             )
-            accuracy = results[-1][f"Top1_Acc_Stream/eval_phase/test_stream/Task{self.num_tasks-1:03d}"]
+            accuracy = results[-1][
+                f"Top1_Acc_Stream/eval_phase/test_stream/Task{self.num_tasks - 1:03d}"
+            ]
             if trial is not None:
                 trial.report(accuracy, t)
             if trial is not None and trial.should_prune():

@@ -1,20 +1,28 @@
+import os
+
 import numpy as np
+import optuna
 import torch
-from bnn.nn.modules import FFGLinear
 from capymoa.base import BatchClassifier
 from capymoa.ocl.base import TrainTaskAware
 from capymoa.ocl.datasets import SplitCIFAR100ViT
 from capymoa.ocl.evaluation import ocl_train_eval_loop
-from capymoa.ocl.util.data import class_schedule_to_task_mask
 from capymoa.stream import Schema
 from loguru import logger
-from matplotlib import pyplot as plt
+from torch.distributions import (
+    Distribution,
+    LowRankMultivariateNormal,
+    kl_divergence,
+    register_kl,
+)
 from torch.optim import Adam
-from vbll.layers.classification import DiscClassification, gaussian_kl, Normal, DenseNormal, LowRankNormal
-from torch.distributions import kl_divergence, Distribution, register_kl, LowRankMultivariateNormal
-from copy import deepcopy
-import optuna
-import os
+from vbll.layers.classification import (
+    DenseNormal,
+    DiscClassification,
+    LowRankNormal,
+    Normal,
+    gaussian_kl,
+)
 
 
 def flatten(list_of_lists):
@@ -34,11 +42,15 @@ def loss_fn(model: DiscClassification, prior: Distribution, x, y):
     # kl_term = gaussian_kl(model.W(), model.prior_scale)
     # assert torch.allclose(kl_term, kl_term_actual), f"{kl_term} != {kl_term_actual}"
 
-    wishart_term = (model.dof * noise.logdet_precision - 0.5 * model.wishart_scale * noise.trace_precision)
+    wishart_term = (
+        model.dof * noise.logdet_precision
+        - 0.5 * model.wishart_scale * noise.trace_precision
+    )
 
     total_elbo = torch.mean(model.softmax_bound(x, y))
     total_elbo += model.regularization_weight * (wishart_term - kl_term)
     return -total_elbo
+
 
 @torch.no_grad()
 def new_distribution(model) -> Distribution:
@@ -66,7 +78,6 @@ class VCLHead(BatchClassifier, TrainTaskAware):
         lr: float,
         reg_weight: float = 1.0,
         cov_rank=10,
-        
     ):
         super().__init__(schema)
         self.device = torch.device("cuda")
@@ -76,9 +87,11 @@ class VCLHead(BatchClassifier, TrainTaskAware):
             regularization_weight=reg_weight,
             # parameterization="diagonal",
             parameterization="lowrank" if cov_rank > 0 else "diagonal",
-            cov_rank=cov_rank
+            cov_rank=cov_rank,
         ).to(self.device)
-        self.prior = Normal(0, torch.tensor(self.model.prior_scale**0.5).to(self.device))
+        self.prior = Normal(
+            0, torch.tensor(self.model.prior_scale**0.5).to(self.device)
+        )
         self.optimizer = Adam(self.model.parameters(), lr=lr)
         self.log_loss = []
 
@@ -97,8 +110,6 @@ class VCLHead(BatchClassifier, TrainTaskAware):
         self.log_loss.append(loss.item())
         self.optimizer.step()
         self.optimizer.zero_grad()
-
-
 
     def on_train_task(self, task_id: int) -> None:
         if task_id > 0:
@@ -119,7 +130,8 @@ def objective(trial: optuna.Trial) -> float:
     learner = VCLHead(
         stream.schema,
         lr=trial.suggest_float("lr", 1e-4, 1e-2, log=True),
-        reg_weight=trial.suggest_float("beta", 0.1, 10.0, log=True)/len(stream.train_tasks[0]),
+        reg_weight=trial.suggest_float("beta", 0.1, 10.0, log=True)
+        / len(stream.train_tasks[0]),
         cov_rank=trial.suggest_categorical("cov_rank", [0, 5, 10, 20]),
     )
     # schedule = flatten(stream.task_schedule)
@@ -128,7 +140,7 @@ def objective(trial: optuna.Trial) -> float:
         stream.train_loaders(128, True),
         stream.test_loaders(128),
         progress_bar=True,
-        epochs=trial.suggest_categorical("epochs", [1, 5, 10])
+        epochs=trial.suggest_categorical("epochs", [1, 5, 10]),
     )
 
     print(f"accuracy_seen_avg {results.accuracy_seen_avg * 100:.2f}")
@@ -145,7 +157,7 @@ study = optuna.create_study(
     load_if_exists=True,
 )
 study.optimize(objective, n_trials=100)
-    
+
 
 # fig, ax = plt.subplots(1, 1, figsize=(4, 4))
 # ax.imshow(results.accuracy_matrix.T, origin="lower")

@@ -54,9 +54,11 @@ class HuggingFaceModelConfig(BaseConfig):
 
 # --- Plugin Configurations ---
 
+
 class OutlierExposureConfig(BaseModel):
     strength: float = 1.0
     batch_size: Optional[int] = None
+
 
 # --- PEFT Configurations ---
 
