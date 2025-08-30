@@ -1,3 +1,6 @@
 scenario:
   dataset: SplitCIFAR100
   n_tasks: 10
+
+epochs: 20
+first_exp_epochs: 40
