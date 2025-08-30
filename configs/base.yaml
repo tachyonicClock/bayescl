@@ -2,7 +2,8 @@ label: naive
 
 lr: 0.001
 
-epochs: 5
+epochs: 10
+first_exp_epochs: 20
 train_mb_size: 128
 eval_mb_size: 256
 num_workers: 4
