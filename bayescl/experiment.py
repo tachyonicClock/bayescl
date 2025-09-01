@@ -30,6 +30,7 @@ from claiutil.avalanche import (
     AvalancheResults,
     OutlierExposure,
     TaskIncrementalAccuracy,
+    ExpectedCalibrationError
 )
 from claiutil.datasets import avalanche_class_schedule, class_schedule_to_task_mask
 from claiutil.peft import (
@@ -73,6 +74,7 @@ class Experiment:
             StreamConfusionMatrix(
                 num_classes=self.benchmark.n_classes, save_image=True
             ),
+            ExpectedCalibrationError(self.num_classes),
             TaskIncrementalAccuracy(self.mask),
             loggers=self.loggers,
         )
@@ -153,10 +155,7 @@ class Experiment:
                 new_linear = VariationalLinear(
                     in_features=linear.in_features,
                     out_features=linear.out_features,
-                    bias=False,
-                    config=VBNNConfig(
-                        prior_sigma=0.1, init_sigma=0.1, init_sigma_scale=0.01
-                    ),
+                    config=peft.config.vbnn,
                 )  # type: ignore
                 set_module(self.model, peft.head_module, new_linear)
             else:
