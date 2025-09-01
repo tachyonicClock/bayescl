@@ -13,9 +13,8 @@ Transform = Callable[[Any], Any]
 
 LUT_TRAIN_TRANSFORMS = {
     "SplitCIFAR100": [
-        T.RandomCrop(32, 4),
+        T.RandomResizedCrop(224),
         T.RandomHorizontalFlip(),
-        T.RandomRotation(15),
     ],
     "SplitImageNetR": [
         T.RandomResizedCrop(224),
