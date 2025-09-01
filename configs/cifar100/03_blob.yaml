@@ -21,6 +21,7 @@ peft:
       init_sigma: 0.1
       init_sigma_scale: 0.01
       deterministic_eval: false
+  save: true
 hpsearch:
   params:
     "peft.beta": {type: float, low: 0.01, high: 2, log: True}
