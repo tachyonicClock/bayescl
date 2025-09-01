@@ -12,7 +12,7 @@ peft:
   # From hyper-parameter search bayescl/SplitCIFAR100/blob/adb502b (id=5162) n=10
   beta: 0.07
   vbll: False
-  # bayes_eval_samples: 10
+  bayes_eval_samples: 5
   config:
     r: 10
     vbnn:
@@ -20,7 +20,7 @@ peft:
       prior_sigma: 0.5
       init_sigma: 0.1
       init_sigma_scale: 0.01
-      deterministic_eval: true
+      deterministic_eval: false
 hpsearch:
   params:
     "peft.beta": {type: float, low: 0.01, high: 2, log: True}
