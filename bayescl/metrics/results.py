@@ -5,10 +5,10 @@ from typing import Any, BinaryIO, Dict, List
 
 import numpy as np
 import torch
+from sklearn.metrics import brier_score_loss
 from torch import Tensor
 
 from .callibration import calibration_curve, expected_calibration_error
-from sklearn.metrics import brier_score_loss
 
 N_BINS = 15
 
@@ -243,7 +243,7 @@ class ContinualLearningEvaluator:
             equal_size_bins=True,  # gives results for the Adaptive Calibration Error
         )
         return expected_calibration_error(bin_prob, bin_freq, bin_weights)
-    
+
     @staticmethod
     def brier(y_logit: Tensor, y_true: Tensor) -> float:
         """Brier score."""
