@@ -8,6 +8,7 @@ import torch
 from torch import Tensor
 
 from .callibration import calibration_curve, expected_calibration_error
+from sklearn.metrics import brier_score_loss
 
 N_BINS = 15
 
@@ -208,9 +209,8 @@ class ContinualLearningEvaluator:
         )
 
     @staticmethod
-    def expected_calibration_error(
-        y_logit: Tensor, y_true: Tensor, num_bins: int = N_BINS
-    ) -> float:
+    def ece(y_logit: Tensor, y_true: Tensor, num_bins: int = N_BINS) -> float:
+        """Expected Calibration Error. Use probabilities from the predicted class only."""
         y_prob = torch.softmax(y_logit, dim=-1)
         bin_prob, bin_freq, bin_weights = calibration_curve(
             y_prob.numpy(),
@@ -220,9 +220,8 @@ class ContinualLearningEvaluator:
         return expected_calibration_error(bin_prob, bin_freq, bin_weights)
 
     @staticmethod
-    def static_calibration_error(
-        y_logit: Tensor, y_true: Tensor, num_bins: int = N_BINS
-    ) -> float:
+    def sce(y_logit: Tensor, y_true: Tensor, num_bins: int = N_BINS) -> float:
+        """Static Calibration Error. Use probabilities from all classes."""
         y_prob = torch.softmax(y_logit, dim=-1)
         bin_prob, bin_freq, bin_weights = calibration_curve(
             y_prob.numpy(),
@@ -233,9 +232,8 @@ class ContinualLearningEvaluator:
         return expected_calibration_error(bin_prob, bin_freq, bin_weights)
 
     @staticmethod
-    def adaptive_calibration_error(
-        y_logit: Tensor, y_true: Tensor, num_bins: int = N_BINS
-    ) -> float:
+    def ace(y_logit: Tensor, y_true: Tensor, num_bins: int = N_BINS) -> float:
+        """Adaptive Calibration Error. Bins have equal number of samples."""
         y_prob = torch.softmax(y_logit, dim=-1)
         bin_prob, bin_freq, bin_weights = calibration_curve(
             y_prob.numpy(),
@@ -245,6 +243,12 @@ class ContinualLearningEvaluator:
             equal_size_bins=True,  # gives results for the Adaptive Calibration Error
         )
         return expected_calibration_error(bin_prob, bin_freq, bin_weights)
+    
+    @staticmethod
+    def brier(y_logit: Tensor, y_true: Tensor) -> float:
+        """Brier score."""
+        y_prob = torch.softmax(y_logit, dim=-1)
+        return float(brier_score_loss(y_true.numpy(), y_prob.numpy()))
 
     @torch.no_grad()
     def result(self) -> Dict[str, Any]:
@@ -283,17 +287,17 @@ class ContinualLearningEvaluator:
         ace_seen = np.zeros(self._task_count)
         sce_all = np.zeros(self._task_count)
         sce_seen = np.zeros(self._task_count)
+        # brier_seen = np.zeros(self._task_count)
+        brier_all = np.zeros(self._task_count)
         for t in range(self._task_count):
-            ece_all[t] = self.expected_calibration_error(y_logit_all[t], y_true_all[t])
-            ece_seen[t] = self.expected_calibration_error(
-                y_logit_seen[t], y_true_seen[t]
-            )
-            ace_all[t] = self.adaptive_calibration_error(y_logit_all[t], y_true_all[t])
-            ace_seen[t] = self.adaptive_calibration_error(
-                y_logit_seen[t], y_true_seen[t]
-            )
-            sce_all[t] = self.static_calibration_error(y_logit_all[t], y_true_all[t])
-            sce_seen[t] = self.static_calibration_error(y_logit_seen[t], y_true_seen[t])
+            ece_all[t] = self.ece(y_logit_all[t], y_true_all[t])
+            ece_seen[t] = self.ece(y_logit_seen[t], y_true_seen[t])
+            ace_all[t] = self.ace(y_logit_all[t], y_true_all[t])
+            ace_seen[t] = self.ace(y_logit_seen[t], y_true_seen[t])
+            sce_all[t] = self.sce(y_logit_all[t], y_true_all[t])
+            sce_seen[t] = self.sce(y_logit_seen[t], y_true_seen[t])
+            brier_all[t] = self.brier(y_logit_all[t], y_true_all[t])
+            # brier_seen[t] = self.brier(y_logit_seen[t], y_true_seen[t])
 
         correct = self._big_r.diagonal(dim1=2, dim2=3).sum(dim=-1)
         total = self._big_r.sum(dim=(2, 3))
@@ -317,4 +321,7 @@ class ContinualLearningEvaluator:
             "sce_seen": sce_seen,
             "sce_seen_avg": sce_seen.mean(),
             "sce_final": sce_all[-1],
+            "brier_all": brier_all,
+            "brier_all_avg": brier_all.mean(),
+            "brier_final": brier_all[-1],
         }
