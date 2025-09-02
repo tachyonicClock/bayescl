@@ -1,7 +1,4 @@
-import os
-
 import numpy as np
-import optuna
 import torch
 from capymoa.base import BatchClassifier
 from capymoa.ocl.base import TrainTaskAware
@@ -121,65 +118,50 @@ class VCLHead(BatchClassifier, TrainTaskAware):
         return self.model(x).predictive.probs
 
 
-def objective(trial: optuna.Trial) -> float:
-    torch.manual_seed(0)
-    np.random.seed(0)
+torch.manual_seed(0)
+np.random.seed(0)
 
-    stream = SplitCIFAR100ViT()
-    # task_mask = class_schedule_to_task_mask(stream.task_schedule, stream.num_classes)
-    learner = VCLHead(
-        stream.schema,
-        lr=trial.suggest_float("lr", 1e-4, 1e-2, log=True),
-        reg_weight=trial.suggest_float("beta", 0.1, 10.0, log=True)
-        / len(stream.train_tasks[0]),
-        cov_rank=trial.suggest_categorical("cov_rank", [0, 5, 10, 20]),
-    )
-    # schedule = flatten(stream.task_schedule)
-    results = ocl_train_eval_loop(
-        learner,
-        stream.train_loaders(128, True),
-        stream.test_loaders(128),
-        progress_bar=True,
-        epochs=trial.suggest_categorical("epochs", [1, 5, 10]),
-    )
-
-    print(f"accuracy_seen_avg {results.accuracy_seen_avg * 100:.2f}")
-    print(f"accuracy_final    {results.accuracy_final * 100:.2f}")
-    print("accuracy_seen    ", [f"{v * 100:.2f}" for v in results.accuracy_seen])
-
-    return results.accuracy_seen_avg
-
-
-study = optuna.create_study(
-    direction="maximize",
-    study_name="vbll",
-    storage=os.getenv("OPTUNA_STORAGE"),
-    load_if_exists=True,
+stream = SplitCIFAR100ViT()
+# task_mask = class_schedule_to_task_mask(stream.task_schedule, stream.num_classes)
+learner = VCLHead(
+    stream.schema,
+    lr=0.001,
+    reg_weight=0,
+    # reg_weight=2/ len(stream.train_tasks[0]),
+    cov_rank=20,
 )
-study.optimize(objective, n_trials=100)
+schedule = flatten(stream.task_schedule)
+results = ocl_train_eval_loop(
+    learner,
+    stream.train_loaders(128, True),
+    stream.test_loaders(128),
+    progress_bar=True,
+    epochs=5,
+)
 
+print(f"accuracy_seen_avg {results.accuracy_seen_avg * 100:.2f}")
+print(f"accuracy_final    {results.accuracy_final * 100:.2f}")
+print("accuracy_seen    ", [f"{v * 100:.2f}" for v in results.accuracy_seen])
 
-# fig, ax = plt.subplots(1, 1, figsize=(4, 4))
-# ax.imshow(results.accuracy_matrix.T, origin="lower")
-# ax.set_title("Accuracy Matrix")
-# ax.set_xlabel("Task")
-# ax.set_ylabel("Evaluated Task")
-# fig.savefig("vcl_accuracy_matrix.png")
+# from reliability_diagrams import reliability_diagram
 
-# fig, ax = plt.subplots(1, 1, figsize=(4, 4))
-# cm: np.ndarray = results.class_cm[-1][schedule][:, schedule]
-# print("above diagonal:", np.triu(cm, k=1).sum() / cm.sum())
-# print("below diagonal:", np.tril(cm, k=-1).sum() / cm.sum())
-# ax.imshow(cm)
-# ax.set_title("Class Confusion Matrix")
-# ax.set_xlabel("Predicted Label")
-# ax.set_ylabel("True Label")
-# fig.savefig("cm.png")
+with torch.no_grad():
+    true_labels = []
+    pred_labels = []
+    confidences = []
+    for task_id, task in enumerate(stream.test_loaders(128)):
+        for x, y in task:
+            x = x.to(learner.device)
+            y = y.to(learner.device)
+            y_confidence = learner.batch_predict_proba(x)
+            y_confidence, y_pred = torch.max(y_confidence, dim=1)
 
-# fig, ax = plt.subplots(1, 1, figsize=(6, 4))
-# ax.plot(learner.log_loss)
-# # ax.set_yscale("log")
-# ax.set_title("Training Loss")
-# ax.set_xlabel("Iteration")
-# ax.set_ylabel("Loss")
-# fig.savefig("vcl_training_loss.png")
+            true_labels.append(y.cpu())
+            pred_labels.append(y_pred.cpu())
+            confidences.append(y_confidence.cpu())
+
+    true_labels = torch.cat(true_labels)
+    pred_labels = torch.cat(pred_labels)
+    confidences = torch.cat(confidences)
+
+# reliability_diagram(true_labels.numpy(), pred_labels.numpy(), confidences.numpy())

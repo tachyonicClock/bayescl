@@ -27,10 +27,9 @@ from avalanche.logging import BaseLogger, InteractiveLogger, TensorboardLogger
 from avalanche.training import Naive, ReservoirSamplingBuffer
 from avalanche.training.plugins import EvaluationPlugin, ReplayPlugin, SupervisedPlugin
 from claiutil.avalanche import (
-    AvalancheResults,
+    ExpectedCalibrationError,
     OutlierExposure,
     TaskIncrementalAccuracy,
-    ExpectedCalibrationError
 )
 from claiutil.datasets import avalanche_class_schedule, class_schedule_to_task_mask
 from claiutil.peft import (
@@ -45,7 +44,7 @@ from claiutil.peft import (
     parameter_summary_str,
     set_module,
 )
-from claiutil.vbnn import VariationalLinear, VBNNConfig
+from claiutil.vbnn import VariationalLinear
 from loguru import logger
 from optuna import Trial
 from optuna.exceptions import TrialPruned
@@ -53,6 +52,7 @@ from setproctitle import setproctitle
 
 from bayescl import config
 from bayescl.benchmark import get_benchmark, get_transforms
+from bayescl.metrics.plugin import MetricsPlugin
 from bayescl.model import get_model, get_peft_filter
 from bayescl.plugins.train_mask import TrainTaskMask
 from bayescl.plugins.vbnn import VBNNPlugin
@@ -210,7 +210,7 @@ class Experiment:
             )
             self.plugins.append(plugin)
 
-        self.plugins.append(self.capymoa_ocl_metrics)
+        self.plugins.append(self.metrics_plugin)
 
     def _preflight(self):
         logger.info("Resolved Config:\n{}", pformat(self.cfg.model_dump(mode="python")))
@@ -231,7 +231,7 @@ class Experiment:
         self.log_dir: Path = self._new_log_dir()
         self.tb_log = self._new_logger()
         self.eval_plugin: EvaluationPlugin = self._new_eval_plugin()
-        self.capymoa_ocl_metrics = AvalancheResults(self.num_tasks, self.num_classes)
+        self.metrics_plugin = MetricsPlugin(self.num_tasks, self.num_classes)
         self.model = get_model(cfg, self.benchmark.n_classes)
         self._add_peft_adapters()
         self._add_replay_plugin()
@@ -295,8 +295,8 @@ class Experiment:
         with open(self.log_dir / "avalanche_results.pkl", "wb") as f:
             pickle.dump(results, f)
 
-        metrics = self.capymoa_ocl_metrics.build()
-        metrics.save(self.log_dir / "results")
+        metrics = self.metrics_plugin.evaluator.result()
+        pickle.dump(metrics, open(self.log_dir / "metrics.pkl", "wb"))
 
         # Optionally save adapter weights
         if self.cfg.peft and self.cfg.peft.save:
@@ -310,4 +310,4 @@ class Experiment:
                 )
                 torch.save(state, f)
 
-        return metrics.accuracy_seen_avg
+        return metrics["accuracy_seen_avg"]
