@@ -1,6 +1,7 @@
 scenario:
   dataset: SplitImageNetR
   n_tasks: 10
+  shuffle: false
 
-epochs: 20
-first_exp_epochs: 40
+epochs: 50
+first_exp_epochs: 50

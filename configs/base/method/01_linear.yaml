@@ -1,0 +1,4 @@
+label: linear
+
+model:
+  freeze_backbone: True

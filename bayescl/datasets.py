@@ -31,7 +31,7 @@ class DomainNet(Dataset):
         target_transform: Callable[..., Any] | None = None,
         train: bool = True,
     ):
-        self.root = Path(root) / "DomainNet"
+        self.root = Path(root) / "domainnet"
         self.transform = transform
         self.target_transform = target_transform
         super().__init__()

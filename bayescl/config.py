@@ -5,6 +5,7 @@ from typing import Literal, Optional
 import torch
 from claiutil.optuna import HyperparameterSearch
 from claiutil.peft import BLoBConfig
+from loguru import logger
 from omegaconf import DictConfig, OmegaConf
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -178,7 +179,10 @@ class Config(BaseConfig):
 
 def _resolve_includes(base: Path, filenames: list[str]) -> DictConfig:
     if filenames:
-        return OmegaConf.merge(*(OmegaConf.load(base / f) for f in filenames))  # type: ignore
+        logger.info(f"Including configs {filenames}")
+        config = OmegaConf.merge(*(OmegaConf.load(base / f) for f in filenames))
+        assert config.get("include") is None, "Nested includes are not supported"
+        return config  # type: ignore
     else:
         return DictConfig({})
 
@@ -189,10 +193,12 @@ def from_configs(
     config = DictConfig({})  # type: ignore
     for file in config_filenames:
         file = Path(file)
+        logger.info(f"Updating config from {file}")
         config = OmegaConf.merge(config, OmegaConf.load(file))  # type: ignore
         included = _resolve_includes(file.parent, config.get("include", []))  # type: ignore
         config = OmegaConf.merge(included, config)
     if dotlist is not None:
+        logger.info(f"Updating config from command line args: {dotlist}")
         config = OmegaConf.merge(config, OmegaConf.from_dotlist(dotlist))
 
     return Config.model_validate(OmegaConf.to_object(config))

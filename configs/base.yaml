@@ -6,18 +6,15 @@ train_mb_size: 128
 eval_mb_size: 256
 num_workers: 4
 
-# model:
-#   type: huggingface
-#   name: facebook/dinov2-small
-
 model:
   type: huggingface
   name: google/vit-base-patch16-224
   adapter_filter: ".*(key|query)"
 
-
 hpsearch:
   params:
     "lr": {type: float, low: 0.001, high: 0.01, log: True}
+
+  sampler: TPE
   n_trials: 10
   direction: maximize

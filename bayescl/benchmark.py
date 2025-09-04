@@ -4,14 +4,13 @@ from avalanche.benchmarks.classic import CORe50, SplitCIFAR10, SplitCIFAR100, Sp
 from avalanche.benchmarks.scenarios import NCScenario
 from loguru import logger
 from torchvision import transforms as T
-from transformers import AutoImageProcessor
 
 from bayescl.config import Config
 from bayescl.datasets import SplitDomainNet, SplitImageNetR
 
 Transform = Callable[[Any], Any]
 
-LUT_TRAIN_TRANSFORMS = {
+TRAIN_TRANSFORMS = {
     "SplitCIFAR100": [
         T.RandomResizedCrop(224),
         T.RandomHorizontalFlip(),
@@ -33,33 +32,32 @@ LUT_TRAIN_TRANSFORMS = {
         T.RandomHorizontalFlip(),
     ],
 }
+TEST_TRANSFORM = [
+    T.Resize(256),
+    T.CenterCrop(224),
+]
+COMMON_PRE_TRANSFORM = [
+    T.ToTensor(),
+]
+COMMON_POST_TRANSFORM = [
+    T.Normalize(mean=[0.0, 0.0, 0.0], std=[1.0, 1.0, 1.0]),
+]
 
 
 def get_transforms(cfg: Config, dataset: str) -> Tuple[Transform, Transform]:
-    train_transform: List[Callable[[Any], Any]] = [T.ToTensor()]
-    train_transform.extend(LUT_TRAIN_TRANSFORMS.get(dataset, []))
-    eval_transform: List[Callable[[Any], Any]] = [T.ToTensor()]
+    train_transform: List[Callable[[Any], Any]] = []
+    eval_transform: List[Callable[[Any], Any]] = []
 
-    if cfg.model.type == "huggingface":
-        logger.info(
-            "huggingface model uses AutoImageProcessor for pre-processing transforms."
-        )
-        pre_process = AutoImageProcessor.from_pretrained(cfg.model.name, use_fast=True)
-        normalize = T.Normalize(mean=pre_process.image_mean, std=pre_process.image_std)
-        size = (
-            (pre_process.size["shortest_edge"], pre_process.size["shortest_edge"])
-            if "shortest_edge" in pre_process.size
-            else (pre_process.size["height"], pre_process.size["width"])
-        )
-        resize = T.Resize(size[0])
-        crop = T.CenterCrop(size)
-        train_transform.extend([normalize, resize, crop])
-        eval_transform.extend([normalize, resize, crop])
+    train_transform.extend(COMMON_PRE_TRANSFORM)
+    eval_transform.extend(COMMON_PRE_TRANSFORM)
 
-    return (
-        T.Compose(train_transform),
-        T.Compose(eval_transform),
-    )
+    train_transform.extend(TRAIN_TRANSFORMS.get(dataset, []))
+    eval_transform.extend(TEST_TRANSFORM)
+
+    train_transform.extend(COMMON_POST_TRANSFORM)
+    eval_transform.extend(COMMON_POST_TRANSFORM)
+
+    return (T.Compose(train_transform), T.Compose(eval_transform))
 
 
 def get_benchmark(cfg: Config) -> NCScenario:

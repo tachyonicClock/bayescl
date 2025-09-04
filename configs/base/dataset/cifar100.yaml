@@ -1,6 +1,7 @@
 scenario:
   dataset: SplitCIFAR100
   n_tasks: 10
+  shuffle: false
 
 epochs: 20
-first_exp_epochs: 40
+first_exp_epochs: 20

@@ -1,5 +1,6 @@
 scenario:
   dataset: SplitDomainNet
   n_tasks: 5
+  shuffle: false
 
 epochs: 5
