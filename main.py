@@ -38,7 +38,7 @@ def run_study(config: Config):
         direction=config.hpsearch.direction,
         study_name=f"bayescl/{config.scenario.dataset}/{config.label}/{commit_short_hash()}",
         storage=environ.get("OPTUNA_STORAGE"),
-        sampler=get_sampler(config.hpsearch.optimizer),
+        sampler=get_sampler(config.hpsearch.sampler),
         load_if_exists=True,
     )
     config.study_name = "hpsearch"
