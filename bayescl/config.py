@@ -27,6 +27,8 @@ class Scenario(BaseConfig):
     ] = "SplitMNIST"
     n_tasks: int = 5
     shuffle: bool = True
+    #: Replace the test set with a validation set of this size (0.0 to 1.0)
+    validation_set: float = 0.0
 
 
 class ScenarioCORe50(BaseConfig):

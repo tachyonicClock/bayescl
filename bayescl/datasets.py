@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Any, Callable, Literal
+from typing import Any, Callable, Literal, Sequence
 
 import torch
 import yaml
@@ -8,9 +8,10 @@ from avalanche.benchmarks import (
     nc_benchmark,
 )
 from claiutil.env import datasets_path
+from loguru import logger
 from PIL import Image
 from torch.utils.data import Dataset, Subset
-from torchvision.datasets import ImageFolder
+from torchvision.datasets import CIFAR100, ImageFolder
 
 
 class ImageNetR(ImageFolder):
@@ -19,8 +20,10 @@ class ImageNetR(ImageFolder):
         root: str | Path,
         transform: Callable[..., Any] | None = None,
         target_transform: Callable[..., Any] | None = None,
+        train: bool = True,
     ):
-        super().__init__(Path(root) / "imagenet-r", transform, target_transform)
+        path = Path(root) / "imagenet-r" / ("train" if train else "test")
+        super().__init__(path, transform, target_transform)
 
 
 class DomainNet(Dataset):
@@ -28,12 +31,10 @@ class DomainNet(Dataset):
         self,
         root: str | Path,
         transform: Callable[..., Any] | None = None,
-        target_transform: Callable[..., Any] | None = None,
         train: bool = True,
     ):
         self.root = Path(root) / "domainnet"
         self.transform = transform
-        self.target_transform = target_transform
         super().__init__()
 
         if train:
@@ -44,7 +45,8 @@ class DomainNet(Dataset):
                 self._metadata = yaml.safe_load(f)
 
         self._data = self._metadata["data"]
-        self.targets = torch.tensor(self._metadata["targets"], dtype=torch.int32)
+        self.targets = self._metadata["targets"]
+        self.classes = list(range(345))
 
     def __len__(self) -> int:
         return len(self._data)
@@ -56,8 +58,6 @@ class DomainNet(Dataset):
 
         if self.transform is not None:
             image = self.transform(image)
-        if self.target_transform is not None:
-            target = self.target_transform(target)
 
         return image, int(target)
 
@@ -72,6 +72,19 @@ class TinyImageNet(ImageFolder):
         super().__init__(Path(root) / "tiny-imagenet-200" / split, transform)
 
 
+def valid_split_indices(
+    n: int, validation_set: float
+) -> tuple[Sequence[int], Sequence[int]]:
+    assert 0.0 < validation_set < 1.0
+    indices = torch.randperm(n, generator=torch.Generator().manual_seed(0)).int()
+    n_valid = int(n * validation_set)
+    train_indices, valid_indices = indices[n_valid:], indices[:n_valid]
+    logger.info(
+        f"Splitting {n} samples into {len(train_indices)} train and {len(valid_indices)} valid"
+    )
+    return train_indices, valid_indices  # type: ignore
+
+
 def SplitImageNetR(
     dataset_root: str | Path = datasets_path(),
     n_experiences: int = 20,
@@ -80,6 +93,7 @@ def SplitImageNetR(
     seed: int | None = None,
     return_task_id: bool = False,
     shuffle: bool = True,
+    validation_set: float = 0.0,
 ) -> CLScenario:
     """Create SplitImageNetR200 by splitting ImageNet-R(endition)[#f1].
 
@@ -99,15 +113,23 @@ def SplitImageNetR(
         of out-of-distribution generalization." Proceedings of the IEEE/CVF
         international conference on computer vision. 2021.
     """
-    # Create train/test splits
-    randperm = torch.randperm(30_000, generator=torch.Generator().manual_seed(0)).int()
-    test_perm, train_perm = randperm[:6_000], randperm[6_000:]
-    train_dataset = Subset(ImageNetR(dataset_root, train_transform), train_perm)  # type: ignore
-    test_dataset = Subset(ImageNetR(dataset_root, eval_transform), test_perm)  # type: ignore
+    n = 24000
+    if validation_set <= 0.0:
+        train_dataset = ImageNetR(dataset_root, train_transform, train=True)
+        test_dataset = ImageNetR(dataset_root, eval_transform, train=False)
+        assert len(train_dataset) == n
+    else:
+        train_perm, test_perm = valid_split_indices(n, validation_set)
+        train_dataset = Subset(
+            ImageNetR(dataset_root, train_transform, train=True), train_perm
+        )  # type: ignore
+        test_dataset = Subset(
+            ImageNetR(dataset_root, eval_transform, train=True), test_perm
+        )  # type: ignore
 
     return nc_benchmark(
-        train_dataset=train_dataset,
-        test_dataset=test_dataset,
+        train_dataset=train_dataset,  # type: ignore
+        test_dataset=test_dataset,  # type: ignore
         n_experiences=n_experiences,
         task_labels=return_task_id,
         seed=seed,
@@ -123,6 +145,7 @@ def SplitDomainNet(
     seed: int | None = None,
     return_task_id: bool = False,
     shuffle: bool = True,
+    validation_set: float = 0.0,
 ) -> CLScenario:
     """Create SplitDomainNet by splitting DomainNet[#f1].
 
@@ -139,9 +162,54 @@ def SplitDomainNet(
         adaptation." Proceedings of the IEEE/CVF International Conference on
         Computer Vision. 2019.
     """
+    n = 338804
+    if validation_set <= 0.0:
+        train_dataset = DomainNet(dataset_root, train=True, transform=train_transform)  # type: ignore
+        test_dataset = DomainNet(dataset_root, train=False, transform=eval_transform)  # type: ignore
+        assert len(train_dataset) == n
+    else:
+        train_perm, test_perm = valid_split_indices(n, validation_set)
+        train_dataset = Subset(
+            DomainNet(dataset_root, train=True, transform=train_transform), train_perm
+        )
+        test_dataset = Subset(
+            DomainNet(dataset_root, train=True, transform=eval_transform), test_perm
+        )
+
+    return nc_benchmark(
+        train_dataset=train_dataset,  # type: ignore
+        test_dataset=test_dataset,  # type: ignore
+        n_experiences=n_experiences,
+        task_labels=return_task_id,
+        seed=seed,
+        shuffle=shuffle,
+    )
+
+
+def SplitCIFAR100(
+    dataset_root: str | Path = datasets_path(),
+    n_experiences: int = 5,
+    train_transform: Callable[..., Any] | None = None,
+    eval_transform: Callable[..., Any] | None = None,
+    seed: int | None = None,
+    return_task_id: bool = False,
+    shuffle: bool = True,
+    validation_set: float = 0.0,
+) -> CLScenario:
     # Create train/test splits
-    train_dataset = DomainNet(dataset_root, train_transform, train=True)  # type: ignore
-    test_dataset = DomainNet(dataset_root, eval_transform, train=False)  # type: ignore
+    n = 50000
+    if validation_set <= 0.0:
+        train_dataset = CIFAR100(dataset_root, train=True, transform=train_transform)  # type: ignore
+        test_dataset = CIFAR100(dataset_root, train=False, transform=eval_transform)  # type: ignore
+        assert len(train_dataset) == n
+    else:
+        train_perm, test_perm = valid_split_indices(n, validation_set)
+        train_dataset = Subset(
+            CIFAR100(dataset_root, train=True, transform=train_transform), train_perm
+        )
+        test_dataset = Subset(
+            CIFAR100(dataset_root, train=True, transform=eval_transform), test_perm
+        )
 
     return nc_benchmark(
         train_dataset=train_dataset,  # type: ignore

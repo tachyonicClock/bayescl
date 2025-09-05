@@ -1,12 +1,12 @@
 from typing import Any, Callable, List, Tuple
 
-from avalanche.benchmarks.classic import CORe50, SplitCIFAR10, SplitCIFAR100, SplitMNIST
+from avalanche.benchmarks.classic import SplitMNIST
 from avalanche.benchmarks.scenarios import NCScenario
 from loguru import logger
 from torchvision import transforms as T
 
 from bayescl.config import Config
-from bayescl.datasets import SplitDomainNet, SplitImageNetR
+from bayescl.datasets import SplitCIFAR100, SplitDomainNet, SplitImageNetR
 
 Transform = Callable[[Any], Any]
 
@@ -72,23 +72,15 @@ def get_benchmark(cfg: Config) -> NCScenario:
             return_task_id=True,
             shuffle=cfg.scenario.shuffle,
         )
-    elif cfg.scenario.dataset == "SplitCIFAR10":
-        return SplitCIFAR10(
-            dataset_root=cfg.dataset_root,
-            n_experiences=cfg.scenario.n_tasks,
-            train_transform=train_transform,
-            eval_transform=eval_transform,
-            return_task_id=True,
-            shuffle=cfg.scenario.shuffle,
-        )
     elif cfg.scenario.dataset == "SplitCIFAR100":
-        return SplitCIFAR100(
+        return SplitCIFAR100(  # type: ignore
             dataset_root=cfg.dataset_root,
             n_experiences=cfg.scenario.n_tasks,
             train_transform=train_transform,
             eval_transform=eval_transform,
             return_task_id=True,
             shuffle=cfg.scenario.shuffle,
+            validation_set=cfg.scenario.validation_set,
         )
     elif cfg.scenario.dataset == "SplitImageNetR":
         return SplitImageNetR(  # type: ignore
@@ -98,6 +90,7 @@ def get_benchmark(cfg: Config) -> NCScenario:
             eval_transform=eval_transform,
             return_task_id=True,
             shuffle=cfg.scenario.shuffle,
+            validation_set=cfg.scenario.validation_set,
         )
     elif cfg.scenario.dataset == "SplitDomainNet":
         return SplitDomainNet(  # type: ignore
@@ -107,14 +100,7 @@ def get_benchmark(cfg: Config) -> NCScenario:
             eval_transform=eval_transform,
             return_task_id=True,
             shuffle=cfg.scenario.shuffle,
-        )
-    elif cfg.scenario.dataset == "CORe50":
-        return CORe50(  # type: ignore
-            dataset_root=cfg.dataset_root,
-            scenario=cfg.scenario.scenario,
-            run=cfg.scenario.run,
-            train_transform=train_transform,
-            eval_transform=eval_transform,
+            validation_set=cfg.scenario.validation_set,
         )
 
     raise ValueError(f"Unsupported scenario: {cfg.scenario}")

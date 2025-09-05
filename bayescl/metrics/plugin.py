@@ -22,7 +22,6 @@ class MetricsPlugin(SupervisedPlugin):
 
     def before_training_exp(self, strategy: Any, *args, **kwargs) -> Any:
         self._train_task += 1
-        logger.info(f"{self._eval_task}, {self._train_task}")
 
     def after_eval_iteration(self, strategy: Any, *args, **kwargs) -> Any:
         _, y_true, _ = strategy.mbatch
