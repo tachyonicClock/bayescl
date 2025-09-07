@@ -278,14 +278,6 @@ class Experiment:
                     self.benchmark.test_stream, num_workers=self.cfg.num_workers
                 )
             )
-            accuracy = results[-1][
-                f"Top1_Acc_Stream/eval_phase/test_stream/Task{self.num_tasks - 1:03d}"
-            ]
-            if trial is not None:
-                trial.report(accuracy, t)
-            if trial is not None and trial.should_prune():
-                logger.warning("Trial was pruned")
-                raise TrialPruned()
 
             if self.cfg.max_tasks is not None and t + 1 >= self.cfg.max_tasks:
                 logger.info(f"Stopping after {self.cfg.max_tasks} tasks")
