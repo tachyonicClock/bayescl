@@ -19,4 +19,4 @@ hpsearch:
 
   sampler: TPE
   n_trials: 10
-  direction: maximize
+  direction: [maximize, minimize]

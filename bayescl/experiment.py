@@ -237,7 +237,7 @@ class Experiment:
         self._add_replay_plugin()
         self._add_plugins()
 
-    def run(self, trial: Trial | None = None) -> float:
+    def run(self, trial: Trial | None = None) -> tuple[float, float]:
         setproctitle(f"bayescl.{self.cfg.label}")
         self._preflight()
         strategy = Naive(
@@ -310,4 +310,4 @@ class Experiment:
                 )
                 torch.save(state, f)
 
-        return metrics["accuracy_seen_avg"]
+        return metrics["accuracy_seen_avg"], metrics["ece_final"]

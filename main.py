@@ -27,7 +27,7 @@ def run_study(config: Config):
     assert config.hpsearch
     assert is_git_status_clean(), "Please ensure everything is committed"
 
-    def objective(trial: optuna.Trial) -> float:
+    def objective(trial: optuna.Trial) -> tuple[float, float]:
         assert config.hpsearch
         optuna_suggest(trial, config, config.hpsearch.params)
         torch.manual_seed(0)
@@ -35,7 +35,7 @@ def run_study(config: Config):
         return Experiment(config).run(trial)
 
     study = optuna.create_study(
-        direction=config.hpsearch.direction,
+        directions=config.hpsearch.direction,
         study_name=f"bayescl/{config.scenario.dataset}/{config.label}/{commit_short_hash()}",
         storage=environ.get("OPTUNA_STORAGE"),
         sampler=get_sampler(config.hpsearch.sampler),
