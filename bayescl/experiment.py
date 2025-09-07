@@ -85,6 +85,9 @@ class Experiment:
         if "SLURM_JOB_ID" in os.environ:
             id_ = f"{os.environ['SLURM_JOB_ID']}_{os.environ.get('SLURM_ARRAY_TASK_ID', 0)}"
 
+        if self.cfg.run_id is not None:
+            id_ += f"{self.cfg.run_id}"
+
         log_dir = (
             Path(self.cfg.log_root)
             / self.cfg.study_name

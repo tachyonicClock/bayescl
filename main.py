@@ -26,9 +26,12 @@ def get_sampler(sampler: str) -> optuna.samplers.BaseSampler:
 def run_study(config: Config):
     assert config.hpsearch
     assert is_git_status_clean(), "Please ensure everything is committed"
+    study_hash = commit_short_hash()
 
     def objective(trial: optuna.Trial) -> tuple[float, float]:
         assert config.hpsearch
+        config.study_name = f"hpsearch_{study_hash}"
+        config.run_id = f"{trial.number:03d}"
         optuna_suggest(trial, config, config.hpsearch.params)
         torch.manual_seed(0)
         np.random.seed(0)
@@ -36,7 +39,7 @@ def run_study(config: Config):
 
     study = optuna.create_study(
         directions=config.hpsearch.direction,
-        study_name=f"bayescl/{config.scenario.dataset}/{config.label}/{commit_short_hash()}",
+        study_name=f"bayescl/{config.scenario.dataset}/{config.label}/{study_hash}",
         storage=environ.get("OPTUNA_STORAGE"),
         sampler=get_sampler(config.hpsearch.sampler),
         load_if_exists=True,

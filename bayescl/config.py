@@ -178,6 +178,8 @@ class Config(BaseConfig):
 
     hpsearch: Optional[HyperparameterSearch] = None
 
+    run_id: Optional[str] = None
+
 
 def _resolve_includes(base: Path, filenames: list[str]) -> DictConfig:
     if filenames:
