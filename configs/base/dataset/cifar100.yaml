@@ -4,4 +4,3 @@ scenario:
   shuffle: false
 
 epochs: 20
-first_exp_epochs: 20
