@@ -51,7 +51,7 @@ def optimize_with_max_trials(
     if n_complete >= n_trials:
         return
 
-    callbacks.append(optuna.study.MaxTrialsCallback(n_trials))
+    callbacks.append(optuna.study.MaxTrialsCallback(n_trials, states=states))
 
     study.optimize(
         objective,
@@ -89,6 +89,7 @@ def run_study(config: Config):
         study,
         objective,
         n_trials=n_trials,
+        states=(optuna.trial.TrialState.COMPLETE, optuna.trial.TrialState.RUNNING),
     )
 
 
