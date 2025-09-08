@@ -18,4 +18,4 @@ peft:
 
 hpsearch:
   params:
-    "peft.beta": {type: float, low: 0.01, high: 1, log: True}
+    "peft.beta": {type: float, low: 0.01, high: 1, log: False}

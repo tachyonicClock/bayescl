@@ -13,6 +13,7 @@ from claiutil.optuna import optuna_suggest
 
 from bayescl.config import Config, from_configs
 from bayescl.experiment import Experiment
+from loguru import logger
 
 
 def get_sampler(sampler: str) -> optuna.samplers.BaseSampler:
@@ -22,9 +23,10 @@ def get_sampler(sampler: str) -> optuna.samplers.BaseSampler:
         return optuna.samplers.RandomSampler()
     raise ValueError(f"Unknown sampler: {sampler}")
 
-
 def run_study(config: Config):
     assert config.hpsearch
+    n_trials = config.hpsearch.n_trials
+    assert n_trials and n_trials >= 1
     assert is_git_status_clean(), "Please ensure everything is committed"
     study_hash = commit_short_hash()
 
@@ -45,7 +47,11 @@ def run_study(config: Config):
         load_if_exists=True,
     )
     config.study_name = "hpsearch"
-    study.optimize(objective, n_trials=config.hpsearch.n_trials)
+    study.optimize(
+        objective,
+        n_trials=n_trials,
+        callbacks=[optuna.study.MaxTrialsCallback(n_trials)],
+    )
 
 
 if __name__ == "__main__":
