@@ -1,3 +1,4 @@
+from typing import Callable
 import matplotlib
 
 matplotlib.use("Agg")
@@ -23,6 +24,43 @@ def get_sampler(sampler: str) -> optuna.samplers.BaseSampler:
         return optuna.samplers.RandomSampler()
     raise ValueError(f"Unknown sampler: {sampler}")
 
+def optimize_with_max_trials(
+    study: "optuna.study.Study",
+    objective: Callable[[optuna.trial.Trial], tuple[float, ...]],
+    n_trials: int,
+    states: tuple[optuna.trial.TrialState, ...] = (optuna.trial.TrialState.COMPLETE,),
+    callbacks=[],
+    # rest optuna options
+    **kwargs,
+):
+    """
+    By default the n_trials specifies trials count per worker.
+    So if you use multiple processes you will have some issues:
+    - you should know exactly how much workers will it be to pick correct value
+    - if some of workers will reach it's n_trials faster, you'll get an idle
+      worker which could do some work otherwise
+    - if you'll restart the process — trial count will start from scratch without
+      accounting for earlier finished trials
+
+    Source: https://github.com/optuna/optuna/issues/1883#issuecomment-702688136
+    """
+
+    trials = study.get_trials(deepcopy=False, states=states)
+    n_complete = len(trials)
+
+    if n_complete >= n_trials:
+        return
+
+    callbacks.append(optuna.study.MaxTrialsCallback(n_trials))
+
+    study.optimize(
+        objective,
+        n_trials=n_trials,
+        callbacks=callbacks,
+        **kwargs,
+    )
+
+
 def run_study(config: Config):
     assert config.hpsearch
     n_trials = config.hpsearch.n_trials
@@ -47,10 +85,10 @@ def run_study(config: Config):
         load_if_exists=True,
     )
     config.study_name = "hpsearch"
-    study.optimize(
+    optimize_with_max_trials(
+        study,
         objective,
         n_trials=n_trials,
-        callbacks=[optuna.study.MaxTrialsCallback(n_trials)],
     )
 
 
