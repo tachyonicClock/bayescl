@@ -16,3 +16,4 @@ torch
 torchvision
 matplotlib
 loguru
+seaborn
