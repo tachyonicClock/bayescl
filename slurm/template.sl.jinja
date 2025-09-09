@@ -4,7 +4,7 @@
 #SBATCH --mem={{memory}}
 #SBATCH --cpus-per-task=2
 #SBATCH --gpus-per-node=L4:1
-#SBATCH --output=logs/{{dataset}}_{{method}}_%a.log
+#SBATCH --output=log/{{dataset}}_{{method}}_%a.log
 #SBATCH --array=0
 
 export PATH=$NESI_PYVENV/bayescl/bin:$PATH
