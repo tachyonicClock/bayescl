@@ -1,5 +1,7 @@
-include: [../base.yaml, ../base/dataset/domainnet.yaml, ../base/method/03_blob.yaml]
-
-lr: 0.001
+include:
+- ../base.yaml
+- ../base/dataset/domainnet.yaml
+- ../base/method/03_blob.yaml
+lr: 0.0033422743666882736
 peft:
-  beta: 0.03
+  beta: 0.9187487441423878

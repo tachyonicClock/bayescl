@@ -1,1 +1,5 @@
-include: [../base.yaml, ../base/dataset/imagenetr.yaml, ../base/method/01_linear.yaml]
+include:
+- ../base.yaml
+- ../base/dataset/imagenetr.yaml
+- ../base/method/01_linear.yaml
+lr: 0.0034678767374851207

@@ -1,5 +1,7 @@
-include: [../base.yaml, ../base/dataset/imagenetr.yaml, ../base/method/03_blob.yaml]
-
-lr: 0.001
+include:
+- ../base.yaml
+- ../base/dataset/imagenetr.yaml
+- ../base/method/03_blob.yaml
+lr: 0.0017719303804471158
 peft:
-  beta: 0.04
+  beta: 0.4815269706487694

@@ -1,1 +1,5 @@
-include: [../base.yaml, ../base/dataset/domainnet.yaml, ../base/method/02_lora.yaml]
+include:
+- ../base.yaml
+- ../base/dataset/domainnet.yaml
+- ../base/method/02_lora.yaml
+lr: 0.0012413909330314672
