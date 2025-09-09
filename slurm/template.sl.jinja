@@ -1,0 +1,16 @@
+#!/bin/bash -e
+#SBATCH --job-name={{dataset}}_{{method}}
+#SBATCH --time={{duration}}
+#SBATCH --mem={{memory}}
+#SBATCH --cpus-per-task=2
+#SBATCH --gpus-per-node=L4:1
+#SBATCH --output=logs/{{dataset}}_{{method}}_%a.log
+#SBATCH --array=0
+
+export PATH=$NESI_PYVENV/bayescl/bin:$PATH
+
+set -x # Echo commands to stdout
+set -e # Exit on error
+
+python main.py --args label="run" --config configs/{{dataset}}/{{method}}.yaml --seed "$SLURM_ARRAY_TASK_ID"
+
