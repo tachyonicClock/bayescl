@@ -12,4 +12,4 @@ export PATH=$NESI_PYVENV/bayescl/bin:$PATH
 set -x # Echo commands to stdout
 set -e # Exit on error
 
-python main.py --args label="run" --config configs/cifar100/01_linear.yaml --seed "$SLURM_ARRAY_TASK_ID"
+python main.py --args study_name="run" --config configs/cifar100/01_linear.yaml --seed "$SLURM_ARRAY_TASK_ID"
