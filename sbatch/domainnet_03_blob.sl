@@ -5,7 +5,7 @@
 #SBATCH --cpus-per-task=2
 #SBATCH --gpus-per-node=L4:1
 #SBATCH --output=log/domainnet_03_blob_%a.log
-#SBATCH --array=1-4
+#SBATCH --array=0-4
 
 export PATH=$NESI_PYVENV/bayescl/bin:$PATH
 
