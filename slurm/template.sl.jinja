@@ -2,15 +2,15 @@
 #SBATCH --job-name={{dataset}}_{{method}}
 #SBATCH --time={{duration}}
 #SBATCH --mem={{memory}}
-#SBATCH --cpus-per-task=2
+#SBATCH --cpus-per-task=3
 #SBATCH --gpus-per-node=L4:1
 #SBATCH --output=log/{{dataset}}_{{method}}_%a.log
-#SBATCH --array=1-4
+#SBATCH --array=0-4
 
 export PATH=$NESI_PYVENV/bayescl/bin:$PATH
 
 set -x # Echo commands to stdout
 set -e # Exit on error
 
-python main.py --args study_name="run" --config configs/{{dataset}}/{{method}}.yaml --seed "$SLURM_ARRAY_TASK_ID"
+python main.py --args study_name="run" num_workers=5 --config configs/{{dataset}}/{{method}}.yaml --seed "$SLURM_ARRAY_TASK_ID"
 

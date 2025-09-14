@@ -8,7 +8,7 @@ class Job:
     dataset: str
     method: str
     duration: str = "6:00:00"
-    memory: str = "8G"
+    memory: str = "16G"
 
 
 def main():

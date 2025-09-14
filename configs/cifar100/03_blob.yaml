@@ -4,4 +4,4 @@ include:
 - ../base/method/03_blob.yaml
 lr: 0.0013
 peft:
-  beta: 0.088
+  beta: 0.04
