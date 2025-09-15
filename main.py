@@ -1,4 +1,5 @@
 from typing import Callable
+
 import matplotlib
 
 matplotlib.use("Agg")
@@ -11,10 +12,10 @@ import optuna
 import torch
 from claiutil.git import commit_short_hash, is_git_status_clean
 from claiutil.optuna import optuna_suggest
+from loguru import logger
 
 from bayescl.config import Config, from_configs
 from bayescl.experiment import Experiment
-from loguru import logger
 
 
 def get_sampler(sampler: str) -> optuna.samplers.BaseSampler:
@@ -23,6 +24,7 @@ def get_sampler(sampler: str) -> optuna.samplers.BaseSampler:
     elif sampler == "random":
         return optuna.samplers.RandomSampler()
     raise ValueError(f"Unknown sampler: {sampler}")
+
 
 def optimize_with_max_trials(
     study: "optuna.study.Study",
@@ -67,6 +69,7 @@ def run_study(config: Config):
     assert n_trials and n_trials >= 1
     assert is_git_status_clean(), "Please ensure everything is committed"
     study_hash = commit_short_hash()
+    epochs = config.epochs
 
     def objective(trial: optuna.Trial) -> tuple[float, float]:
         assert config.hpsearch
@@ -75,6 +78,12 @@ def run_study(config: Config):
         optuna_suggest(trial, config, config.hpsearch.params)
         torch.manual_seed(0)
         np.random.seed(0)
+
+        if config.hpsearch_epoch_scale and config.hpsearch_epoch_scale > 0:
+            config.epochs = int(epochs * config.hpsearch_epoch_scale)
+            logger.info(
+                f"Using {config.epochs} instead of {epochs} because of `hpsearch_epoch_scale={config.hpsearch_epoch_scale}`"
+            )
         return Experiment(config).run(trial)
 
     study = optuna.create_study(

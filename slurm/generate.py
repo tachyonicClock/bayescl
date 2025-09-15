@@ -1,4 +1,4 @@
-from dataclasses import dataclass, asdict
+from dataclasses import asdict, dataclass
 
 from jinja2 import Environment, FileSystemLoader
 

@@ -12,5 +12,7 @@ export PATH=$NESI_PYVENV/bayescl/bin:$PATH
 set -x # Echo commands to stdout
 set -e # Exit on error
 
-python main.py --args study_name="run" num_workers=5 --config configs/{{dataset}}/{{method}}.yaml --seed "$SLURM_ARRAY_TASK_ID"
-
+python main.py \
+    --args study_name="run" num_workers=5 peft.save=True \
+    --config configs/{{dataset}}/{{method}}.yaml \
+    --seed "$SLURM_ARRAY_TASK_ID"

@@ -178,6 +178,9 @@ class Config(BaseConfig):
 
     hpsearch: Optional[HyperparameterSearch] = None
 
+    #: When using hyperparameter search, scale the number of epochs by this factor
+    hpsearch_epoch_scale: Optional[float] = None
+
     run_id: Optional[str] = None
 
 

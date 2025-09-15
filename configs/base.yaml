@@ -16,7 +16,9 @@ hpsearch:
     "lr": {type: float, low: 0.001, high: 0.01, log: True}
     # When hyper-parameter searching use a validation set in place of the test set
     "scenario.validation_set": {type: constant, value: 0.1}
+    # When using hyperparameter search, scale the number of epochs by this factor
+    "hpsearch_epoch_scale": {type: constant, value: 0.5}
 
   sampler: TPE
-  n_trials: 20
+  n_trials: 15
   direction: [maximize, minimize]

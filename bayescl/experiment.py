@@ -47,7 +47,6 @@ from claiutil.peft import (
 from claiutil.vbnn import VariationalLinear
 from loguru import logger
 from optuna import Trial
-from optuna.exceptions import TrialPruned
 from setproctitle import setproctitle
 
 from bayescl import config
