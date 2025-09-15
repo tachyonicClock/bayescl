@@ -60,6 +60,15 @@ ts -G 1 -m -L domai_repla python main.py --hpsearch -c configs/domainnet/04_repl
 ts -G 1 -m -L cifar_gdumb python main.py --hpsearch -c configs/cifar100/05_gdumb.yaml
 ts -G 1 -m -L image_gdumb python main.py --hpsearch -c configs/imagenetr/05_gdumb.yaml
 ts -G 1 -m -L domai_gdumb python main.py --hpsearch -c configs/domainnet/05_gdumb.yaml
+ts -G 1 -m -L cifar_der   python main.py --hpsearch -c configs/cifar100/06_der.yaml
+ts -G 1 -m -L image_der   python main.py --hpsearch -c configs/imagenetr/06_der.yaml
+ts -G 1 -m -L domai_der   python main.py --hpsearch -c configs/domainnet/06_der.yaml
+ts -G 1 -m -L cifar_joint python main.py --hpsearch -c configs/cifar100/07_joint.yaml
+ts -G 1 -m -L image_joint python main.py --hpsearch -c configs/imagenetr/07_joint.yaml
+ts -G 1 -m -L domai_joint python main.py --hpsearch -c configs/domainnet/07_joint.yaml
+
+# Notify me when all jobs are completed
+ts_notify 
 ```
 
 
