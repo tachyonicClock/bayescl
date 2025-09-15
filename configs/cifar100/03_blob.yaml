@@ -2,6 +2,6 @@ include:
 - ../base.yaml
 - ../base/dataset/cifar100.yaml
 - ../base/method/03_blob.yaml
-lr: 0.0013
+lr: 0.002
 peft:
-  beta: 0.04
+  beta: 0.011

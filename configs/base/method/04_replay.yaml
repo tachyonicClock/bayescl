@@ -1,0 +1,8 @@
+label: replay
+
+peft:
+  type: LoRA
+  r: 10
+
+replay: 2000
+use_local_ce: false

@@ -24,8 +24,9 @@ from avalanche.evaluation.metrics import (
     timing_metrics,
 )
 from avalanche.logging import BaseLogger, InteractiveLogger, TensorboardLogger
-from avalanche.training import Naive, ReservoirSamplingBuffer
+from avalanche.training import DER, GDumb, Naive, ReservoirSamplingBuffer
 from avalanche.training.plugins import EvaluationPlugin, ReplayPlugin, SupervisedPlugin
+from avalanche.training.templates import SupervisedTemplate
 from claiutil.avalanche import (
     ExpectedCalibrationError,
     OutlierExposure,
@@ -176,15 +177,14 @@ class Experiment:
             logger.info(f"{name}")
 
     def _add_replay_plugin(self):
-        if self.cfg.replay <= 0:
-            return
-        logger.info(f"Add replay plugin with memory size: {self.cfg.replay}")
-        self.plugins.append(
-            ReplayPlugin(
-                mem_size=self.cfg.replay,
-                storage_policy=ReservoirSamplingBuffer(self.cfg.replay),
+        if self.cfg.replay > 0:
+            logger.info(f"Add replay plugin with memory size: {self.cfg.replay}")
+            self.plugins.append(
+                ReplayPlugin(
+                    mem_size=self.cfg.replay,
+                    storage_policy=ReservoirSamplingBuffer(self.cfg.replay),
+                )
             )
-        )
 
     def _add_plugins(self):
         if self.cfg.use_local_ce:
@@ -239,10 +239,8 @@ class Experiment:
         self._add_replay_plugin()
         self._add_plugins()
 
-    def run(self, trial: Trial | None = None) -> tuple[float, float]:
-        setproctitle(f"bayescl.{self.cfg.label}")
-        self._preflight()
-        strategy = Naive(
+    def get_strategy(self) -> SupervisedTemplate:
+        base_kwargs = dict(
             model=self.model,
             optimizer=torch.optim.Adam(self.model.parameters(), lr=self.cfg.lr),
             criterion=torch.nn.CrossEntropyLoss(),
@@ -253,6 +251,32 @@ class Experiment:
             device=self.cfg.device,
             plugins=self.plugins,
         )
+
+        strategy = self.cfg.strategy
+        if strategy is None:
+            return Naive(**base_kwargs)
+        elif isinstance(strategy, config.DERConfig):
+            logger.info(
+                f"DER(mem_size={strategy.mem_size}, alpha={strategy.alpha}, beta={strategy.beta})"
+            )
+            return DER(
+                mem_size=strategy.mem_size,
+                alpha=strategy.alpha,
+                beta=strategy.beta,
+                **base_kwargs,
+            )
+        elif isinstance(strategy, config.GDumbConfig):
+            logger.info(f"GDumb(mem_size={strategy.mem_size})")
+            return GDumb(
+                mem_size=strategy.mem_size,
+                **base_kwargs,
+            )
+        raise ValueError(f"Unknown strategy: {strategy}")
+
+    def run(self, trial: Trial | None = None) -> tuple[float, float]:
+        setproctitle(f"bayescl.{self.cfg.label}")
+        self._preflight()
+        strategy = self.get_strategy()
 
         # TRAINING LOOP
         logger.info("Starting experiment...")

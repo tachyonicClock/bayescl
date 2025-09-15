@@ -2,6 +2,6 @@ include:
 - ../base.yaml
 - ../base/dataset/imagenetr.yaml
 - ../base/method/03_blob.yaml
-lr: 0.0013
+lr: 0.0027
 peft:
-  beta: 0.047
+  beta: 0.63

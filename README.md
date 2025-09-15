@@ -5,6 +5,9 @@ python main.py -c configs/${dataset}/${method}.yaml
 ```
 
 ## Methodology
+```
+cuda9, cuda10, cuda16
+```
 
 ```
 mkdir -p /local/scratch/antonlee/log/bayescl
@@ -18,6 +21,10 @@ conda create -n bayescl python==3.12
 # Copy conda env from lagerfield to local scratch
 rsync -a --info=progress2 lagerfield.ecs.vuw.ac.nz:$ECS_SCRATCH/miniconda3/envs/bayescl $ECS_SCRATCH/miniconda3/envs
 rsync -a --info=progress2 lagerfield.ecs.vuw.ac.nz:$DATASETS/cifar-100-python $DATASETS
+rsync -a --info=progress2 lagerfield.ecs.vuw.ac.nz:$DATASETS/imagenet-r       $DATASETS
+rsync -a --info=progress2 lagerfield.ecs.vuw.ac.nz:$DATASETS/domainnet        $DATASETS
+```
+
 conda activate bayescl
 ```
 
@@ -37,56 +44,36 @@ ts -S 3 #get/set the number of max simultaneous jobs of the server.
 
 ### 3. Hyperparameter Search
 
-#### iCIFAR100/10
 ```bash
-ts -G 1 -m -L 01_linear  python main.py --hpsearch --configs configs/cifar100/01_linear.yaml
-ts -G 1 -m -L 02_lora    python main.py --hpsearch --configs configs/cifar100/02_lora.yaml
-ts -G 1 -m -L 03_blob    python main.py --hpsearch --configs configs/cifar100/03_blob.yaml
-ts -G 1 -m -L 04_clora   python main.py --hpsearch --configs configs/cifar100/04_clora.yaml
-ts -G 1 -m -L 05_inflora python main.py --hpsearch --configs configs/cifar100/05_inflora.yaml
+ts -G 1 -m -L cifar_linea python main.py --hpsearch -c configs/cifar100/01_linear.yaml
+ts -G 1 -m -L image_linea python main.py --hpsearch -c configs/imagenetr/01_linear.yaml
+ts -G 1 -m -L domai_linea python main.py --hpsearch -c configs/domainnet/01_linear.yaml
+ts -G 1 -m -L cifar_lora  python main.py --hpsearch -c configs/cifar100/02_lora.yaml
+ts -G 1 -m -L image_lora  python main.py --hpsearch -c configs/imagenetr/02_lora.yaml
+ts -G 1 -m -L domai_lora  python main.py --hpsearch -c configs/domainnet/02_lora.yaml
+ts -G 1 -m -L cifar_blob  python main.py --hpsearch -c configs/cifar100/03_blob.yaml
+ts -G 1 -m -L image_blob  python main.py --hpsearch -c configs/imagenetr/03_blob.yaml
+ts -G 1 -m -L domai_blob  python main.py --hpsearch -c configs/domainnet/03_blob.yaml
+ts -G 1 -m -L cifar_repla python main.py --hpsearch -c configs/cifar100/04_replay.yaml
+ts -G 1 -m -L image_repla python main.py --hpsearch -c configs/imagenetr/04_replay.yaml
+ts -G 1 -m -L domai_repla python main.py --hpsearch -c configs/domainnet/04_replay.yaml
+ts -G 1 -m -L cifar_gdumb python main.py --hpsearch -c configs/cifar100/05_gdumb.yaml
+ts -G 1 -m -L image_gdumb python main.py --hpsearch -c configs/imagenetr/05_gdumb.yaml
+ts -G 1 -m -L domai_gdumb python main.py --hpsearch -c configs/domainnet/05_gdumb.yaml
 ```
 
-#### iImageNet-R200/10
 
-```bash
-ts -G 1 -m -L 01_linear  python main.py --hpsearch --configs configs/imagenetr/01_linear.yaml
-ts -G 1 -m -L 02_lora    python main.py --hpsearch --configs configs/imagenetr/02_lora.yaml
-ts -G 1 -m -L 03_blob    python main.py --hpsearch --configs configs/imagenetr/03_blob.yaml
-ts -G 1 -m -L 04_clora   python main.py --hpsearch --configs configs/imagenetr/04_clora.yaml
-ts -G 1 -m -L 05_inflora python main.py --hpsearch --configs configs/imagenetr/05_inflora.yaml
 ```
+sbatch sbatch/cifar100_01_linear.sl
+sbatch sbatch/cifar100_02_lora.sl
+sbatch sbatch/domainnet_01_linear.sl
+sbatch sbatch/domainnet_02_lora.sl
+sbatch sbatch/imagenetr_01_linear.sl
+sbatch sbatch/imagenetr_02_lora.sl
 
-#### iDomainNet345/5
-```bash
-ts -G 1 -m -L 01_linear  python main.py --hpsearch --configs configs/imagenetr/01_linear.yaml
-ts -G 1 -m -L 02_lora    python main.py --hpsearch --configs configs/imagenetr/02_lora.yaml
-ts -G 1 -m -L 03_blob    python main.py --hpsearch --configs configs/imagenetr/03_blob.yaml
-ts -G 1 -m -L 04_clora   python main.py --hpsearch --configs configs/imagenetr/04_clora.yaml
-ts -G 1 -m -L 05_inflora python main.py --hpsearch --configs configs/imagenetr/05_inflora.yaml
+sbatch sbatch/cifar100_03_blob.sl
+sbatch sbatch/domainnet_03_blob.sl
+sbatch sbatch/imagenetr_03_blob.sl
+
+for f in sbatch/*.sl; do echo sbatch $f; done
 ```
-
-### 5. Update Configs with Best Hyperparameters
-You should update `configs/*/*.yaml` to reflect the best hyperparameters found.
-
-### 6. Run Experiments with Best Hyperparameters
-
-#### iCIFAR100/10
-```bash
-ts -G 1 -m -L 01_linear  python main.py --repeat=5 --configs configs/cifar100/01_linear.yaml
-ts -G 1 -m -L 02_lora    python main.py --repeat=5 --configs configs/cifar100/02_lora.yaml
-ts -G 1 -m -L 03_blob    python main.py --repeat=5 --configs configs/cifar100/03_blob.yaml
-ts -G 1 -m -L 04_clora   python main.py --repeat=5 --configs configs/cifar100/04_clora.yaml
-ts -G 1 -m -L 05_inflora python main.py --repeat=5 --configs configs/cifar100/05_inflora.yaml
-```
-
-#### iImageNet-R200/10
-```bash
-ts -G 1 -m -L 01_linear  python main.py --repeat=5 --configs configs/imagenetr/01_linear.yaml
-ts -G 1 -m -L 02_lora    python main.py --repeat=5 --configs configs/imagenetr/02_lora.yaml
-ts -G 1 -m -L 03_blob    python main.py --repeat=5 --configs configs/imagenetr/03_blob.yaml
-ts -G 1 -m -L 04_clora   python main.py --repeat=5 --configs configs/imagenetr/04_clora.yaml
-ts -G 1 -m -L 05_inflora python main.py --repeat=5 --configs configs/imagenetr/05_inflora.yaml
-```
-
-#### iDomainNet345/5
-TODO

@@ -122,6 +122,25 @@ class BLoB(PEFTConfig):
     config: BLoBConfig
 
 
+# --- Strategy Configurations ---
+
+
+class DERConfig(PEFTConfig):
+    type: Literal["DER"] = "DER"
+    #: Number of samples in the replay memory
+    mem_size: int
+    #: Hyperparameter weighting the MSE loss
+    alpha: float
+    #: Hyperparameter weighting the CE loss, when more than 0, DER++ is used instead of DER
+    beta: float
+
+
+class GDumbConfig(PEFTConfig):
+    type: Literal["GDumb"] = "GDumb"
+    #: Number of samples in the replay memory
+    mem_size: int
+
+
 class Config(BaseConfig):
     include: list[Path] = []
     label: str = "default"
@@ -167,6 +186,12 @@ class Config(BaseConfig):
 
     #: Number of workers for data loading
     num_workers: int = 0
+
+    strategy: Optional[DERConfig | GDumbConfig] = Field(None, discriminator="type")
+    """If None use naive strategy with configured plugins. If specified, use the given
+    strategy with the configured plugins.
+    """
+
     #: Number of samples in the replay memory
     replay: int = 0
 

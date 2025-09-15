@@ -5,7 +5,7 @@ peft:
   type: BLoB
   beta: 0.0
   vbll: False
-  bayes_eval_samples: 10
+  bayes_eval_samples: 5
   config:
     r: 10
     vbnn:

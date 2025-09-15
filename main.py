@@ -82,7 +82,7 @@ def run_study(config: Config):
         if config.hpsearch_epoch_scale and config.hpsearch_epoch_scale > 0:
             config.epochs = int(epochs * config.hpsearch_epoch_scale)
             logger.info(
-                f"Using {config.epochs} instead of {epochs} because of `hpsearch_epoch_scale={config.hpsearch_epoch_scale}`"
+                f"Using {config.epochs} epochs instead of {epochs} because of `hpsearch_epoch_scale={config.hpsearch_epoch_scale}`"
             )
         return Experiment(config).run(trial)
 

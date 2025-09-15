@@ -6,7 +6,7 @@ import optuna
 import yaml
 
 STORAGE = environ.get("OPTUNA_STORAGE")
-study_hash = "1f8ff35"
+study_hash = "870a71c"
 
 DATASETS = {
     "cifar100": "SplitCIFAR100",
