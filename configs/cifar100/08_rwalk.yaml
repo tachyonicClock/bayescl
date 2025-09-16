@@ -1,5 +1,5 @@
 include:
 - ../base.yaml
 - ../base/dataset/cifar100.yaml
-- ../base/method/01_linear.yaml
-lr: 0.0025
+- ../base/method/08_rwalk.yaml
+

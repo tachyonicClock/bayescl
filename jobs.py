@@ -10,17 +10,16 @@ METHODS = [
     "01_linear",
     "02_lora",
     "03_blob",
-    "04_clora",
-    "05_inflora",
+    "04_replay",
+    "05_gdumb",
+    "06_der",
+    "07_joint",
+    "08_rwalk",
 ]
 
-for dataset, method in product(DATASETS, METHODS):
+# for dataset, method in product(DATASETS, METHODS):
+for method, dataset in product(METHODS, DATASETS):
+    label = f"{dataset[:5]}_{method[3 : 5 + 3]}"
     print(
-        f"ts -G 1 -m -L {method:<10} python main.py --hpsearch --configs configs/{dataset}/{method}.yaml"
-    )
-
-
-for dataset, method in product(DATASETS, METHODS):
-    print(
-        f"ts -G 1 -m -L {method:<10} python main.py --repeat={N} --configs configs/{dataset}/{method}.yaml"
+        f"ts -G 1 -m -L {label:<11} python main.py --hpsearch -c configs/{dataset}/{method}.yaml"
     )

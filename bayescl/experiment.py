@@ -25,7 +25,12 @@ from avalanche.evaluation.metrics import (
 )
 from avalanche.logging import BaseLogger, InteractiveLogger, TensorboardLogger
 from avalanche.training import DER, GDumb, Naive, ReservoirSamplingBuffer
-from avalanche.training.plugins import EvaluationPlugin, ReplayPlugin, SupervisedPlugin
+from avalanche.training.plugins import (
+    EvaluationPlugin,
+    ReplayPlugin,
+    RWalkPlugin,
+    SupervisedPlugin,
+)
 from avalanche.training.templates import SupervisedTemplate
 from claiutil.avalanche import (
     ExpectedCalibrationError,
@@ -211,6 +216,17 @@ class Experiment:
                 logger=self.tb_log,
             )
             self.plugins.append(plugin)
+
+        if self.cfg.rwalk:
+            logger.info("Add 'RWalk' plugin")
+            config = self.cfg.rwalk
+            self.plugins.append(
+                RWalkPlugin(
+                    ewc_lambda=config.ewc_lambda,
+                    ewc_alpha=config.ewc_alpha,
+                    delta_t=config.delta_t,
+                )
+            )
 
         self.plugins.append(self.metrics_plugin)
 

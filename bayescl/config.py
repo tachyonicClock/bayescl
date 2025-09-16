@@ -63,6 +63,19 @@ class OutlierExposureConfig(BaseModel):
     batch_size: Optional[int] = None
 
 
+class RWalkConfig(BaseModel):
+    ewc_lambda: float
+    """hyperparameter to weigh the penalty inside the total loss. The larger the lambda,
+    the larger the regularization."""
+    ewc_alpha: float
+    """Specify the moving average factor for the importance matrix, as defined RWalk
+    paper (a.k.a. EWC++). Higher values lead to higher weight to newly computed
+    importances. Must be in [0, 1]. Defaults to 0.9.
+    """
+    delta_t: int
+    """Specify the iterations interval in which the parameter scores are updated."""
+
+
 # --- PEFT Configurations ---
 
 
@@ -183,6 +196,9 @@ class Config(BaseConfig):
 
     #: Add the outlier exposure plugin
     outlier_exposure: Optional[OutlierExposureConfig] = None
+
+    #: Add the RWalk plugin
+    rwalk: Optional[RWalkConfig] = None
 
     #: Number of workers for data loading
     num_workers: int = 0

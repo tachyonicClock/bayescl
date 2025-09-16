@@ -2,4 +2,4 @@ include:
 - ../base.yaml
 - ../base/dataset/cifar100.yaml
 - ../base/method/02_lora.yaml
-lr: 0.0011671483903803782
+lr: 0.003
