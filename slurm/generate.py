@@ -16,9 +16,9 @@ def main():
         Job("cifar100", "01_linear"),
         Job("cifar100", "02_lora"),
         Job("cifar100", "03_blob"),
-        Job("domainnet", "01_linear", duration="12:00:00", memory="16G"),
-        Job("domainnet", "02_lora", duration="12:00:00", memory="16G"),
-        Job("domainnet", "03_blob", duration="12:00:00", memory="16G"),
+        Job("domainnet", "01_linear", duration="12:00:00"),
+        Job("domainnet", "02_lora", duration="12:00:00"),
+        Job("domainnet", "03_blob", duration="12:00:00"),
         Job("imagenetr", "01_linear"),
         Job("imagenetr", "02_lora"),
         Job("imagenetr", "03_blob"),
@@ -27,7 +27,7 @@ def main():
     template = env.get_template("template.sl.jinja")
     for job in jobs:
         script_content = template.render(asdict(job))
-        script_filename = f"sbatch/{job.dataset}_{job.method}.sl"
+        script_filename = f"sbatch/{job.dataset}_{job.method[len("00_"):]}.sl"
         with open(script_filename, "w") as f:
             f.write(script_content)
         print(f"+ {script_filename}")

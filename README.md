@@ -66,6 +66,9 @@ ts -G 1 -m -L domai_der   python main.py --hpsearch -c configs/domainnet/06_der.
 ts -G 1 -m -L cifar_joint python main.py --hpsearch -c configs/cifar100/07_joint.yaml
 ts -G 1 -m -L image_joint python main.py --hpsearch -c configs/imagenetr/07_joint.yaml
 ts -G 1 -m -L domai_joint python main.py --hpsearch -c configs/domainnet/07_joint.yaml
+ts -G 1 -m -L cifar_rwalk python main.py --hpsearch -c configs/cifar100/08_rwalk.yaml
+ts -G 1 -m -L image_rwalk python main.py --hpsearch -c configs/imagenetr/08_rwalk.yaml
+ts -G 1 -m -L domai_rwalk python main.py --hpsearch -c configs/domainnet/08_rwalk.yaml
 
 # Notify me when all jobs are completed
 ts_notify 

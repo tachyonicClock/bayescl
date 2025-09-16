@@ -15,7 +15,7 @@ DATASETS = {
 }
 
 METHODS = {
-    # "01_linear": "linear",
+    "01_linear": "linear",
     # "02_lora": "lora",
     "03_blob": "blob",
 }
@@ -35,7 +35,11 @@ for (f_dataset, o_dataset), (f_method, o_method) in product(
 ):
     filename = Path(f"configs/{f_dataset}/{f_method}.yaml")
     study_name = f"bayescl/{o_dataset}/{o_method}/{study_hash}"
-    study = optuna.load_study(study_name=study_name, storage=STORAGE)
+    try:
+        study = optuna.load_study(study_name=study_name, storage=STORAGE)
+    except KeyError:
+        print(f"Study '{study_name}' not found, skipping...")
+        continue
 
     best_trials = study.best_trials
     # select the trial with the best ECE (second value in the values tuple)
@@ -45,6 +49,7 @@ for (f_dataset, o_dataset), (f_method, o_method) in product(
     print(f"Dataset {o_dataset}, Method: {o_method}")
     print(f"Avg. Acc. {best_trial.values[0] * 100:.2f}")
     print(f"ECE       {best_trial.values[1] * 100:.2f}")
+    print(f"N Trials  {len(study.trials)}")
 
     with open(filename, "r") as f:
         config = yaml.safe_load(f)
