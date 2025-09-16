@@ -1,5 +1,4 @@
 include:
 - ../base.yaml
-- ../base/dataset/cifar100.yaml
-- ../base/method/imagenetr.yaml
-
+- ../base/dataset/imagenetr.yaml
+- ../base/method/08_rwalk.yaml
