@@ -2,6 +2,6 @@ include:
 - ../base.yaml
 - ../base/dataset/domainnet.yaml
 - ../base/method/03_blob.yaml
-lr: 0.0013
+lr: 0.001
 peft:
-  beta: 0.052
+  beta: 0.24
