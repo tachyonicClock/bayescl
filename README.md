@@ -3,10 +3,23 @@
 
 ## Algorithm
 
-The BALL algorithm is implemented using PyTorch and Avalanche.
+The BALL algorithm is implemented using [PyTorch](https://pytorch.org) and [Avalanche](https://avalanche.continualai.org/) (continual learning library).
+The main components are:
 
- * `bayescl/plugins/ball.py`: High level avalanche plugin orchestrating the BALL algorithm.
- * `bayescl/peft/ball.py`: Implementation of the Blob PEFT method.
+ * `bayescl/plugins/ball.py`: High level Avalanche plugin orchestrating the BALL
+   algorithm.
+    * Add KL divergence loss to the training loss.
+    * Sets the prior of the new task to the posterior of the previous task.
+ * `bayescl/peft/_ball/layer.py`: Implementation of the Bayesian Adaptor for Lifelong
+   Learning (BALL) layer.
+ * `bayescl/peft/_ball/factory.py`: Factory to create BALL layers and replace linear
+   layers in a model.
+ * `bayescl/vbnn.py`: Implementation of variational Bayesian neural networks.
+    * `get_model_kl_loss`: Compute the KL divergence of a model with Bayesian layers.
+ * `bayescl/experiment.py`: Is a big constructor that assembles an Avalanche strategy
+   with the appropriate plugins, loggers, evaluators, and model.
+    * `_add_peft_adapters`: Function that adds BALL(/PEFT) layers to a model and setups
+      the plugin.
 
 
 ## Datasets

@@ -2,7 +2,6 @@ import os
 
 import matplotlib
 
-from bayescl.datasets import TinyImageNet
 from bayescl.plugins.clora import CLoRAPlugin
 from bayescl.plugins.inflora import PluginInfLoRA
 
