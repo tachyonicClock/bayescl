@@ -1,9 +1,10 @@
 from typing import Any
 
 from avalanche.training.plugins import SupervisedPlugin
-from claiutil.peft import CLoRA
 from loguru import logger
 from torch.utils.tensorboard import SummaryWriter
+
+from bayescl.peft import CLoRA
 
 
 class CLoRAPlugin(SupervisedPlugin):

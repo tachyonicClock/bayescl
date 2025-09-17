@@ -1,9 +1,9 @@
 from avalanche.models import SimpleMLP
-from claiutil.peft import RegexFilter
 from torch import Tensor, nn
 from transformers import AutoModelForImageClassification
 
 from bayescl.config import BasicModelConfig, Config, HuggingFaceModelConfig
+from bayescl.peft import RegexFilter
 
 _PEFT_MODEL_REGEX = {
     "facebook/dinov2-small": ".*(dense|fc1|fc2|key|query|value)",

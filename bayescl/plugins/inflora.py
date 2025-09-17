@@ -8,16 +8,17 @@ from typing import Any, Dict, Optional, Sequence
 
 from avalanche.training.plugins import SupervisedPlugin
 from avalanche.training.templates import BaseSGDTemplate
-from claiutil.peft import CLoRA, iter_named_adapters
-from claiutil.peft._clora.layer import CLoRALayer
-from claiutil.peft.inflora import (
+from loguru import logger
+from torch import Tensor
+
+from bayescl.peft import CLoRA, iter_named_adapters
+from bayescl.peft._clora.layer import CLoRALayer
+from bayescl.peft.inflora import (
     create_gpm,
     orthogonal_projection_matrix,
     sample_module_inputs,
     update_gpm,
 )
-from loguru import logger
-from torch import Tensor
 
 
 def threshold_schedule(task: int, total_tasks: int, initial_threshold: float) -> float:

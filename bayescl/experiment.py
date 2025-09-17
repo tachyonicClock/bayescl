@@ -38,8 +38,16 @@ from claiutil.avalanche import (
     TaskIncrementalAccuracy,
 )
 from claiutil.datasets import avalanche_class_schedule, class_schedule_to_task_mask
-from claiutil.peft import (
-    BLoB,
+from loguru import logger
+from optuna import Trial
+from setproctitle import setproctitle
+
+from bayescl import config
+from bayescl.benchmark import get_benchmark, get_transforms
+from bayescl.metrics.plugin import MetricsPlugin
+from bayescl.model import get_model, get_peft_filter
+from bayescl.peft import (
+    BALL,
     CLoRA,
     CLoRAConfig,
     LoRA_Factory,
@@ -50,17 +58,9 @@ from claiutil.peft import (
     parameter_summary_str,
     set_module,
 )
-from claiutil.vbnn import VariationalLinear
-from loguru import logger
-from optuna import Trial
-from setproctitle import setproctitle
-
-from bayescl import config
-from bayescl.benchmark import get_benchmark, get_transforms
-from bayescl.metrics.plugin import MetricsPlugin
-from bayescl.model import get_model, get_peft_filter
+from bayescl.plugins.ball import BALLPlugin
 from bayescl.plugins.train_mask import TrainTaskMask
-from bayescl.plugins.vbnn import VBNNPlugin
+from bayescl.vbnn import VariationalLinear
 
 
 class Experiment:
@@ -141,18 +141,18 @@ class Experiment:
             elif peft.type == "CLoRA":
                 self.plugins.append(CLoRAPlugin(peft.lambda_, self.tb_log.writer))
             self.model.get_submodule(peft.head_module).requires_grad_(True)
-        elif peft.type == "BLoB":
+        elif peft.type == "BALL":
             # Add plugin that contributes kl divergence loss
             self.plugins += [
-                VBNNPlugin(
+                BALLPlugin(
                     beta=peft.beta,
                     bayes_eval_samples=peft.bayes_eval_samples,
                     writer=self.tb_log.writer,
                 )
             ]
 
-            # Add BLoB adapters
-            factory = BLoB(peft.config)
+            # Add BALL adapters
+            factory = BALL(peft.config)
             add_adapters(self.model, filter_regex, factory)
 
             if peft.vbll:

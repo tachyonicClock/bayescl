@@ -4,20 +4,21 @@ import matplotlib.pyplot as plt
 import torch
 from avalanche.training.plugins import SupervisedPlugin
 from avalanche.training.templates import BaseSGDTemplate
-from claiutil.vbnn import (
-    get_model_kl_loss,
-    get_posterior_state,
-    iterate_variational_parameters,
-    set_prior_state,
-)
 from loguru import logger
 from matplotlib.axes import Axes
 from matplotlib.figure import Figure
 from seaborn import histplot
 from torch.utils.tensorboard import SummaryWriter
 
+from bayescl.vbnn import (
+    get_model_kl_loss,
+    get_posterior_state,
+    iterate_variational_parameters,
+    set_prior_state,
+)
 
-class VBNNPlugin(SupervisedPlugin):
+
+class BALLPlugin(SupervisedPlugin):
     def __init__(
         self, beta: float, bayes_eval_samples: int, writer: SummaryWriter | None = None
     ):

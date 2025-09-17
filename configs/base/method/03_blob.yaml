@@ -2,7 +2,7 @@ label: blob
 
 
 peft:
-  type: BLoB
+  type: BALL
   beta: 0.0
   vbll: False
   bayes_eval_samples: 5

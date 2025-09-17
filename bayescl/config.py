@@ -4,10 +4,11 @@ from typing import Literal, Optional
 
 import torch
 from claiutil.optuna import HyperparameterSearch
-from claiutil.peft import BLoBConfig
 from loguru import logger
 from omegaconf import DictConfig, OmegaConf
 from pydantic import BaseModel, ConfigDict, Field
+
+from bayescl.peft import BALLConfig
 
 
 class BaseConfig(BaseModel):
@@ -118,12 +119,12 @@ class InfLoRAConfig(PEFTConfig):
     """
 
 
-class BLoB(PEFTConfig):
-    """BLoB: Bayesian low-rank adaptation by backpropagation for large language
+class BALL(PEFTConfig):
+    """BALL: Bayesian low-rank adaptation by backpropagation for large language
     models
     """
 
-    type: Literal["BLoB"] = "BLoB"
+    type: Literal["BALL"] = "BALL"
     #: strength of the kl divergence loss
     beta: float = 1.0
     #: number of samples to use for bayesian evaluation
@@ -132,7 +133,7 @@ class BLoB(PEFTConfig):
     #: Use a variational bayesian last layer?
     vbll: bool = False
 
-    config: BLoBConfig
+    config: BALLConfig
 
 
 # --- Strategy Configurations ---
@@ -169,7 +170,7 @@ class Config(BaseConfig):
         discriminator="type",
     )
 
-    peft: Optional[LoRAConfig | BLoB | CLoRAConfig | InfLoRAConfig] = Field(
+    peft: Optional[LoRAConfig | BALL | CLoRAConfig | InfLoRAConfig] = Field(
         None,
         discriminator="type",
     )
