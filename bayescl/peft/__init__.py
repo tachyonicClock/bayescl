@@ -2,8 +2,8 @@
 
 from . import inflora
 from ._base import AdapterBase, AdapterFactory
-from ._blob.config import BALLConfig
-from ._blob.factory import BALL
+from ._ball.config import BALLConfig
+from ._ball.factory import BALL
 from ._clora.config import CLoRAConfig
 from ._clora.factory import CLoRA
 from ._create import (

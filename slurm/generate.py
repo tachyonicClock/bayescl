@@ -16,13 +16,13 @@ def main():
     jobs = [
         Job("cifar100", "01_linear"),
         Job("cifar100", "02_lora"),
-        Job("cifar100", "03_blob", args="peft.save=True"),
+        Job("cifar100", "03_ball", args="peft.save=True"),
         Job("domainnet", "01_linear", duration="12:00:00"),
         Job("domainnet", "02_lora", duration="12:00:00"),
-        Job("domainnet", "03_blob", duration="12:00:00", args="peft.save=True"),
+        Job("domainnet", "03_ball", duration="12:00:00", args="peft.save=True"),
         Job("imagenetr", "01_linear"),
         Job("imagenetr", "02_lora"),
-        Job("imagenetr", "03_blob", args="peft.save=True"),
+        Job("imagenetr", "03_ball", args="peft.save=True"),
     ]
     env = Environment(loader=FileSystemLoader("slurm"))
     template = env.get_template("template.sl.jinja")

@@ -1,5 +1,4 @@
-label: blob
-
+label: ball
 
 peft:
   type: BALL

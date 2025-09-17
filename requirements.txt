@@ -3,8 +3,6 @@ omegaconf
 pydantic
 transformers
 
-claiutil @ git+ssh://git@github.com/tachyonicClock/clai-util.git
-
 mypy
 ruff
 setproctitle

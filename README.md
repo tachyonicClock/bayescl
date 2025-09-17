@@ -6,7 +6,7 @@
 The BALL algorithm is implemented using PyTorch and Avalanche.
 
  * `bayescl/plugins/ball.py`: High level avalanche plugin orchestrating the BALL algorithm.
- * `bayescl/peft/blob.py`: Implementation of the Blob PEFT method.
+ * `bayescl/peft/ball.py`: Implementation of the Blob PEFT method.
 
 
 ## Datasets
@@ -106,9 +106,9 @@ ts -G 1 -m -L domai_linea python main.py --hpsearch -c configs/domainnet/01_line
 ts -G 1 -m -L cifar_lora  python main.py --hpsearch -c configs/cifar100/02_lora.yaml
 ts -G 1 -m -L image_lora  python main.py --hpsearch -c configs/imagenetr/02_lora.yaml
 ts -G 1 -m -L domai_lora  python main.py --hpsearch -c configs/domainnet/02_lora.yaml
-ts -G 1 -m -L cifar_blob  python main.py --hpsearch -c configs/cifar100/03_blob.yaml
-ts -G 1 -m -L image_blob  python main.py --hpsearch -c configs/imagenetr/03_blob.yaml
-ts -G 1 -m -L domai_blob  python main.py --hpsearch -c configs/domainnet/03_blob.yaml
+ts -G 1 -m -L cifar_ball  python main.py --hpsearch -c configs/cifar100/03_ball.yaml
+ts -G 1 -m -L image_ball  python main.py --hpsearch -c configs/imagenetr/03_ball.yaml
+ts -G 1 -m -L domai_ball  python main.py --hpsearch -c configs/domainnet/03_ball.yaml
 ts -G 1 -m -L cifar_repla python main.py --hpsearch -c configs/cifar100/04_replay.yaml
 ts -G 1 -m -L image_repla python main.py --hpsearch -c configs/imagenetr/04_replay.yaml
 ts -G 1 -m -L domai_repla python main.py --hpsearch -c configs/domainnet/04_replay.yaml
@@ -136,4 +136,5 @@ rsync -a --info=progress2 lagerfield.ecs.vuw.ac.nz:$ECS_SCRATCH/miniconda3/envs/
 rsync -a --info=progress2 lagerfield.ecs.vuw.ac.nz:$DATASETS/cifar-100-python $DATASETS
 rsync -a --info=progress2 lagerfield.ecs.vuw.ac.nz:$DATASETS/imagenet-r       $DATASETS
 rsync -a --info=progress2 lagerfield.ecs.vuw.ac.nz:$DATASETS/domainnet        $DATASETS
+pip install -r requirements.txt
 ```

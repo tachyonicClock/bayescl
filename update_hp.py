@@ -17,7 +17,7 @@ DATASETS = {
 METHODS = {
     "01_linear": "linear",
     # "02_lora": "lora",
-    "03_blob": "blob",
+    "03_ball": "ball",
 }
 
 

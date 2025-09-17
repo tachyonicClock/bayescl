@@ -2,8 +2,8 @@ from torch import nn
 from typeguard import typechecked
 
 from bayescl.peft._base import AdapterBase, AdapterFactory
-from bayescl.peft._blob import layer
-from bayescl.peft._blob.config import BALLConfig
+from bayescl.peft._ball import layer
+from bayescl.peft._ball.config import BALLConfig
 from bayescl.vbnn import VBNNConfig as VBNNConfig
 
 

@@ -12,10 +12,11 @@ import pickle
 import time
 from pathlib import Path
 from pprint import pformat
-from typing import Dict, List, Sequence
+from typing import Any, Dict, List, Sequence
 
 import torch
 import yaml
+from torch import BoolTensor
 from avalanche.evaluation.metrics import (
     StreamConfusionMatrix,
     accuracy_metrics,
@@ -32,18 +33,15 @@ from avalanche.training.plugins import (
     SupervisedPlugin,
 )
 from avalanche.training.templates import SupervisedTemplate
-from claiutil.avalanche import (
+from bayescl.metrics.ece import (
     ExpectedCalibrationError,
-    OutlierExposure,
-    TaskIncrementalAccuracy,
 )
-from claiutil.datasets import avalanche_class_schedule, class_schedule_to_task_mask
 from loguru import logger
 from optuna import Trial
 from setproctitle import setproctitle
 
 from bayescl import config
-from bayescl.benchmark import get_benchmark, get_transforms
+from bayescl.benchmark import get_benchmark
 from bayescl.metrics.plugin import MetricsPlugin
 from bayescl.model import get_model, get_peft_filter
 from bayescl.peft import (
@@ -62,6 +60,42 @@ from bayescl.plugins.ball import BALLPlugin
 from bayescl.plugins.train_mask import TrainTaskMask
 from bayescl.vbnn import VariationalLinear
 
+def avalanche_class_schedule(
+    benchmark: Any,
+) -> Sequence[set[int]]:
+    schedule = []
+    for task in benchmark.train_stream:
+        schedule.append(set(task.classes_in_this_experience))
+    return schedule
+
+def class_schedule_to_task_mask(
+    class_schedule: Sequence[set[int]], num_classes: int
+) -> BoolTensor:
+    """Convert a class schedule to a list of boolean masks.
+
+    This is useful when implementing multi-headed neural networks for task
+    incremental learning.
+
+    >>> class_schedule_to_task_mask([{0, 1}, {2, 3}], 4)
+    tensor([[ True,  True, False, False],
+            [False, False,  True,  True]])
+
+    :param num_classes: The total number of classes.
+    :param class_schedule: A sequence of sets containing class indices defining
+        task order and composition.
+    :return: A boolean mask of shape (num_tasks, num_classes)
+    """
+    min_class = min(map(min, class_schedule), default=-1)
+    max_class = max(map(max, class_schedule), default=-1)
+    if not 0 <= min_class < num_classes or not 0 <= max_class < num_classes:
+        raise ValueError(
+            "Classes in the schedule should be within the range of num_classes"
+        )
+
+    task_mask = torch.zeros(len(class_schedule), num_classes, dtype=torch.bool)
+    for i, classes in enumerate(class_schedule):
+        task_mask[i, list(classes)] = True
+    return BoolTensor(task_mask)
 
 class Experiment:
     def _new_eval_plugin(self) -> EvaluationPlugin:
@@ -80,7 +114,6 @@ class Experiment:
                 num_classes=self.benchmark.n_classes, save_image=True
             ),
             ExpectedCalibrationError(self.num_classes),
-            TaskIncrementalAccuracy(self.mask),
             loggers=self.loggers,
         )
 
@@ -195,28 +228,6 @@ class Experiment:
         if self.cfg.use_local_ce:
             logger.info("Add 'TrainTaskMask' plugin")
             self.plugins.append(TrainTaskMask(self.mask))
-
-        if self.cfg.outlier_exposure:
-            logger.info("Add 'OutlierExposure' plugin")
-            config = self.cfg.outlier_exposure
-
-            transform, _ = get_transforms(self.cfg, "TinyImageNet")
-            outlier_dataset = TinyImageNet(
-                self.cfg.dataset_root, transform, split="train"
-            )
-            plugin = OutlierExposure(
-                torch.utils.data.DataLoader(
-                    outlier_dataset,
-                    batch_size=config.batch_size or self.cfg.train_mb_size,
-                    shuffle=True,
-                    num_workers=self.cfg.num_workers,
-                ),
-                strength=config.strength,
-                mask=self.mask if self.cfg.use_local_ce else None,
-                logger=self.tb_log,
-            )
-            self.plugins.append(plugin)
-
         if self.cfg.rwalk:
             logger.info("Add 'RWalk' plugin")
             config = self.cfg.rwalk

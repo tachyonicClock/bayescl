@@ -10,12 +10,12 @@ from os import environ
 import numpy as np
 import optuna
 import torch
-from claiutil.git import commit_short_hash, is_git_status_clean
-from claiutil.optuna import optuna_suggest
 from loguru import logger
 
 from bayescl.config import Config, from_configs
 from bayescl.experiment import Experiment
+from bayescl.util.git import commit_short_hash, is_git_status_clean
+from bayescl.util.optuna import optuna_suggest
 
 
 def get_sampler(sampler: str) -> optuna.samplers.BaseSampler:

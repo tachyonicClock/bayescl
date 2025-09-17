@@ -1,3 +1,4 @@
+import os
 from pathlib import Path
 from typing import Any, Callable, Literal, Sequence
 
@@ -7,11 +8,20 @@ from avalanche.benchmarks import (
     CLScenario,
     nc_benchmark,
 )
-from claiutil.env import datasets_path
 from loguru import logger
 from PIL import Image
 from torch.utils.data import Dataset, Subset
 from torchvision.datasets import CIFAR100, ImageFolder
+
+
+def datasets_path() -> str:
+    """Get the root directory for PyTorch."""
+    torch_data_dir_ = os.environ.get("DATASETS")
+    if not torch_data_dir_:
+        raise RuntimeError("The ``DATASETS`` environment variable should be set.")
+    torch_data_dir_path = Path(torch_data_dir_).expanduser().resolve()
+    torch_data_dir_path.mkdir(exist_ok=True)
+    return str(torch_data_dir_path)
 
 
 class ImageNetR(ImageFolder):

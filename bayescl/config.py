@@ -3,12 +3,12 @@ from pathlib import Path
 from typing import Literal, Optional
 
 import torch
-from claiutil.optuna import HyperparameterSearch
 from loguru import logger
 from omegaconf import DictConfig, OmegaConf
 from pydantic import BaseModel, ConfigDict, Field
 
 from bayescl.peft import BALLConfig
+from bayescl.util.optuna import HyperparameterSearch
 
 
 class BaseConfig(BaseModel):

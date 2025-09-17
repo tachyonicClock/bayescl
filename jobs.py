@@ -9,7 +9,7 @@ DATASETS = [
 METHODS = [
     "01_linear",
     "02_lora",
-    "03_blob",
+    "03_ball",
     "04_replay",
     "05_gdumb",
     "06_der",
