@@ -1,6 +1,16 @@
 # BALL
 
 
+
+
+## Overview
+
+* `bayescl`: Source code implementing BALL and other experiments.
+* `metadata`: Datasplits for DomainNet dataset.
+* `configs`: Configuration files defining hyperparameters search spaces and final
+  configurations for each dataset and method.
+* `main.py`: Main entry point to run experiments.
+
 ## Algorithm
 
 The BALL algorithm is implemented using [PyTorch](https://pytorch.org) and [Avalanche](https://avalanche.continualai.org/) (continual learning library).
@@ -65,8 +75,8 @@ gzip -d < metadata/domainnet_test.yaml.gz  > $DATASETS/domainnet/domainnet_test.
 ## Virtual Environment
 
 ```bash
-conda create -n ball python==3.12
-conda activate ball
+conda create -n bayescl python==3.12
+conda activate bayescl
 pip install -r requirements.txt
 ```
 
@@ -109,6 +119,15 @@ MySQL or PostgreSQL. For example:
 export OPTUNA_STORAGE="sqlite:///optuna.db"
 python main.py --hpsearch -c configs/cifar100/01_linear.yaml --args epochs=1
 ```
+
+### Hardware
+
+* The code has been with CUDA 12.9 on Experiments were conducted on various GPUs with CUDA
+12.9: Quadro RTX 6000, L4, RTX A5000, and  RTX A6000.
+* A GPU with at least 20GB of memory is needed for the default batch sizes.
+* 16GB of RAM.
+* 6 core CPU for data loading.
+* Linux.
 
 ### 3. Hyperparameter Search
 

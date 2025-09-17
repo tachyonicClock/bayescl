@@ -15,7 +15,6 @@ from typing import Any, Dict, List, Sequence
 
 import torch
 import yaml
-from torch import BoolTensor
 from avalanche.evaluation.metrics import (
     StreamConfusionMatrix,
     accuracy_metrics,
@@ -32,15 +31,16 @@ from avalanche.training.plugins import (
     SupervisedPlugin,
 )
 from avalanche.training.templates import SupervisedTemplate
-from bayescl.metrics.ece import (
-    ExpectedCalibrationError,
-)
 from loguru import logger
 from optuna import Trial
 from setproctitle import setproctitle
+from torch import BoolTensor
 
 from bayescl import config
 from bayescl.benchmark import get_benchmark
+from bayescl.metrics.ece import (
+    ExpectedCalibrationError,
+)
 from bayescl.metrics.plugin import MetricsPlugin
 from bayescl.model import get_model, get_peft_filter
 from bayescl.peft import (
@@ -59,6 +59,7 @@ from bayescl.plugins.ball import BALLPlugin
 from bayescl.plugins.train_mask import TrainTaskMask
 from bayescl.vbnn import VariationalLinear
 
+
 def avalanche_class_schedule(
     benchmark: Any,
 ) -> Sequence[set[int]]:
@@ -66,6 +67,7 @@ def avalanche_class_schedule(
     for task in benchmark.train_stream:
         schedule.append(set(task.classes_in_this_experience))
     return schedule
+
 
 def class_schedule_to_task_mask(
     class_schedule: Sequence[set[int]], num_classes: int
@@ -95,6 +97,7 @@ def class_schedule_to_task_mask(
     for i, classes in enumerate(class_schedule):
         task_mask[i, list(classes)] = True
     return BoolTensor(task_mask)
+
 
 class Experiment:
     def _new_eval_plugin(self) -> EvaluationPlugin:

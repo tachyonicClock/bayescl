@@ -5,8 +5,8 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 from bayescl import vbnn
-from bayescl.peft._base import AdapterBase
 from bayescl.peft._ball.config import BALLConfig
+from bayescl.peft._base import AdapterBase
 
 
 class BALLLayer(AdapterBase):
