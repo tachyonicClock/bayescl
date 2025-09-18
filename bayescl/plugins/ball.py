@@ -109,6 +109,6 @@ class BALLPlugin(SupervisedPlugin):
     def after_eval_forward(self, strategy: Any, *args, **kwargs) -> Any:
         x, _, _ = strategy.mbatch
         y_logit = strategy.mb_output
-        for _ in range(self.bayes_eval_samples):
+        for _ in range(self.bayes_eval_samples - 1):
             y_logit += strategy.model(x)
         strategy.mb_output = y_logit / self.bayes_eval_samples
