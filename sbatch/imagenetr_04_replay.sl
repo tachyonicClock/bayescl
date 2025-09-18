@@ -1,6 +1,6 @@
 #!/bin/bash -e
 #SBATCH --job-name=imagenetr_04_replay
-#SBATCH --time=6:00:00
+#SBATCH --time=8:00:00
 #SBATCH --mem=16G
 #SBATCH --cpus-per-task=3
 #SBATCH --gpus-per-node=L4:1
