@@ -2,4 +2,4 @@ include:
 - ../base.yaml
 - ../base/dataset/domainnet.yaml
 - ../base/method/02_lora.yaml
-lr: 0.0012413909330314672
+lr: 0.0011

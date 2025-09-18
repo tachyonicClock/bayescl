@@ -2,3 +2,4 @@ include:
 - ../base.yaml
 - ../base/dataset/domainnet.yaml
 - ../base/method/04_replay.yaml
+lr: 0.001

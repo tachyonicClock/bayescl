@@ -2,4 +2,4 @@ include:
 - ../base.yaml
 - ../base/dataset/imagenetr.yaml
 - ../base/method/02_lora.yaml
-lr: 0.0011832446432467844
+lr: 0.0019
