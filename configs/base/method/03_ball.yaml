@@ -5,7 +5,7 @@ peft:
   beta: 1.0
   first_task_beta: 0.01
 
-  vbll: True
+  vbll: False
   bayes_eval_samples: 5
   config:
     r: 10
