@@ -2,3 +2,7 @@ include:
 - ../base.yaml
 - ../base/dataset/imagenetr.yaml
 - ../base/method/08_rwalk.yaml
+lr: 0.002
+rwalk:
+  ewc_alpha: 0.38
+  ewc_lambda: 0.94
