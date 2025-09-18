@@ -183,6 +183,7 @@ class Experiment:
                     beta=peft.beta,
                     bayes_eval_samples=peft.bayes_eval_samples,
                     writer=self.tb_log.writer,
+                    first_task_beta=peft.first_task_beta,
                 )
             ]
 
@@ -306,6 +307,7 @@ class Experiment:
         setproctitle(f"bayescl.{self.cfg.label}")
         self._preflight()
         strategy = self.get_strategy()
+        strategy.mask = self.mask.to(self.cfg.device)  # type: ignore
 
         # TRAINING LOOP
         logger.info("Starting experiment...")

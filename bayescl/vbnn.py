@@ -122,7 +122,7 @@ class VariationalParameter(nn.Module):
         """Calculates the KL divergence loss between the posterior and prior distributions."""
         return self.kl_divergences().sum()
 
-    def kl_divergences(self):
+    def kl_divergences(self) -> Tensor:
         return univariate_gaussian_kl_divergence(
             self.mu, self.sigma(), self.prior_mu, self.prior_sigma
         )

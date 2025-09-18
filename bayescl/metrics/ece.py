@@ -1,5 +1,6 @@
 import torch
 from avalanche.evaluation.metric_definitions import PluginMetric
+from avalanche.evaluation.metric_results import MetricResult, MetricValue
 from avalanche.training.templates import SupervisedTemplate
 from torchmetrics.classification import (
     MulticlassCalibrationError as TorchMulticlassCalibrationError,
@@ -31,6 +32,12 @@ class ExpectedCalibrationError(PluginMetric[float]):
             self.y_true.append(strategy.mb_y.cpu())
             self.y_pred.append(y_pred.cpu())
             self.y_conf.append(y_conf.cpu())
+
+    def after_eval(self, strategy) -> MetricResult:
+        i = strategy.clock.train_iterations
+        metric_value = MetricValue(self, str(self), self.result(), i)
+        self.reset()
+        return [metric_value]
 
     def result(self) -> float:
         return self.metric.compute().item()
