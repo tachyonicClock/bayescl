@@ -132,30 +132,30 @@ python main.py --hpsearch -c configs/cifar100/01_linear.yaml --args epochs=1
 ### 3. Hyperparameter Search
 
 ```bash
-ts -G 1 -m -L cifar_linea python main.py --hpsearch -c configs/cifar100/01_linear.yaml
-ts -G 1 -m -L image_linea python main.py --hpsearch -c configs/imagenetr/01_linear.yaml
-ts -G 1 -m -L domai_linea python main.py --hpsearch -c configs/domainnet/01_linear.yaml
-ts -G 1 -m -L cifar_lora  python main.py --hpsearch -c configs/cifar100/02_lora.yaml
-ts -G 1 -m -L image_lora  python main.py --hpsearch -c configs/imagenetr/02_lora.yaml
-ts -G 1 -m -L domai_lora  python main.py --hpsearch -c configs/domainnet/02_lora.yaml
-ts -G 1 -m -L cifar_ball  python main.py --hpsearch -c configs/cifar100/03_ball.yaml
-ts -G 1 -m -L image_ball  python main.py --hpsearch -c configs/imagenetr/03_ball.yaml
-ts -G 1 -m -L domai_ball  python main.py --hpsearch -c configs/domainnet/03_ball.yaml
-ts -G 1 -m -L cifar_repla python main.py --hpsearch -c configs/cifar100/04_replay.yaml
-ts -G 1 -m -L image_repla python main.py --hpsearch -c configs/imagenetr/04_replay.yaml
-ts -G 1 -m -L domai_repla python main.py --hpsearch -c configs/domainnet/04_replay.yaml
-ts -G 1 -m -L cifar_gdumb python main.py --hpsearch -c configs/cifar100/05_gdumb.yaml
-ts -G 1 -m -L image_gdumb python main.py --hpsearch -c configs/imagenetr/05_gdumb.yaml
-ts -G 1 -m -L domai_gdumb python main.py --hpsearch -c configs/domainnet/05_gdumb.yaml
-ts -G 1 -m -L cifar_der   python main.py --hpsearch -c configs/cifar100/06_der.yaml
-ts -G 1 -m -L image_der   python main.py --hpsearch -c configs/imagenetr/06_der.yaml
-ts -G 1 -m -L domai_der   python main.py --hpsearch -c configs/domainnet/06_der.yaml
-ts -G 1 -m -L cifar_joint python main.py --hpsearch -c configs/cifar100/07_joint.yaml
-ts -G 1 -m -L image_joint python main.py --hpsearch -c configs/imagenetr/07_joint.yaml
-ts -G 1 -m -L domai_joint python main.py --hpsearch -c configs/domainnet/07_joint.yaml
-ts -G 1 -m -L cifar_rwalk python main.py --hpsearch -c configs/cifar100/08_rwalk.yaml
-ts -G 1 -m -L image_rwalk python main.py --hpsearch -c configs/imagenetr/08_rwalk.yaml
-ts -G 1 -m -L domai_rwalk python main.py --hpsearch -c configs/domainnet/08_rwalk.yaml
+ts -G 1 -L cifar_linea python main.py --hpsearch -c configs/cifar100/01_linear.yaml
+ts -G 1 -L image_linea python main.py --hpsearch -c configs/imagenetr/01_linear.yaml
+ts -G 1 -L domai_linea python main.py --hpsearch -c configs/domainnet/01_linear.yaml
+ts -G 1 -L cifar_lora  python main.py --hpsearch -c configs/cifar100/02_lora.yaml
+ts -G 1 -L image_lora  python main.py --hpsearch -c configs/imagenetr/02_lora.yaml
+ts -G 1 -L domai_lora  python main.py --hpsearch -c configs/domainnet/02_lora.yaml
+ts -G 1 -L cifar_ball  python main.py --hpsearch -c configs/cifar100/03_ball.yaml
+ts -G 1 -L image_ball  python main.py --hpsearch -c configs/imagenetr/03_ball.yaml
+ts -G 1 -L domai_ball  python main.py --hpsearch -c configs/domainnet/03_ball.yaml
+ts -G 1 -L cifar_repla python main.py --hpsearch -c configs/cifar100/04_replay.yaml
+ts -G 1 -L image_repla python main.py --hpsearch -c configs/imagenetr/04_replay.yaml
+ts -G 1 -L domai_repla python main.py --hpsearch -c configs/domainnet/04_replay.yaml
+ts -G 1 -L cifar_gdumb python main.py --hpsearch -c configs/cifar100/05_gdumb.yaml
+ts -G 1 -L image_gdumb python main.py --hpsearch -c configs/imagenetr/05_gdumb.yaml
+ts -G 1 -L domai_gdumb python main.py --hpsearch -c configs/domainnet/05_gdumb.yaml
+ts -G 1 -L cifar_der   python main.py --hpsearch -c configs/cifar100/06_der.yaml
+ts -G 1 -L image_der   python main.py --hpsearch -c configs/imagenetr/06_der.yaml
+ts -G 1 -L domai_der   python main.py --hpsearch -c configs/domainnet/06_der.yaml
+ts -G 1 -L cifar_joint python main.py --hpsearch -c configs/cifar100/07_joint.yaml
+ts -G 1 -L image_joint python main.py --hpsearch -c configs/imagenetr/07_joint.yaml
+ts -G 1 -L domai_joint python main.py --hpsearch -c configs/domainnet/07_joint.yaml
+ts -G 1 -L cifar_rwalk python main.py --hpsearch -c configs/cifar100/08_rwalk.yaml
+ts -G 1 -L image_rwalk python main.py --hpsearch -c configs/imagenetr/08_rwalk.yaml
+ts -G 1 -L domai_rwalk python main.py --hpsearch -c configs/domainnet/08_rwalk.yaml
 
 # Notify me when all jobs are completed
 ts_notify 

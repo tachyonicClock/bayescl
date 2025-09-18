@@ -1,0 +1,18 @@
+#!/bin/bash -e
+#SBATCH --job-name=domainnet_04_replay
+#SBATCH --time=12:00:00
+#SBATCH --mem=16G
+#SBATCH --cpus-per-task=3
+#SBATCH --gpus-per-node=L4:1
+#SBATCH --output=log/domainnet_04_replay_%a.log
+#SBATCH --array=0-4
+
+export PATH=$NESI_PYVENV/bayescl/bin:$PATH
+
+set -x # Echo commands to stdout
+set -e # Exit on error
+
+python main.py \
+    --args study_name="run" num_workers=5  \
+    --config configs/domainnet/04_replay.yaml \
+    --seed "$SLURM_ARRAY_TASK_ID"
