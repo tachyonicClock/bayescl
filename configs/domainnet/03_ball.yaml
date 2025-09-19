@@ -4,4 +4,5 @@ include:
 - ../base/method/03_ball.yaml
 lr: 0.001
 peft:
-  beta: 0.24
+  beta: 0.082
+  first_task_beta: 0.011
