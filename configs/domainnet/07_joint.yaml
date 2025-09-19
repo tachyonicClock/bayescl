@@ -2,3 +2,4 @@ include:
 - ../base.yaml
 - ../base/dataset/domainnet.yaml
 - ../base/method/07_joint.yaml
+lr: 0.0023

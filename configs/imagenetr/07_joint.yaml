@@ -2,3 +2,4 @@ include:
 - ../base.yaml
 - ../base/dataset/imagenetr.yaml
 - ../base/method/07_joint.yaml
+lr: 0.001
