@@ -21,5 +21,5 @@ METHODS = [
 for method, dataset in product(METHODS, DATASETS):
     label = f"{dataset[:5]}_{method[3 : 5 + 3]}"
     print(
-        f"ts -G 1 -m -L {label:<11} python main.py --hpsearch -c configs/{dataset}/{method}.yaml"
+        f"ts -G 1 -L {label:<11} python main.py --hpsearch -c configs/{dataset}/{method}.yaml"
     )

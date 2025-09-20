@@ -6,7 +6,7 @@ import optuna
 import yaml
 
 STORAGE = environ.get("OPTUNA_STORAGE")
-study_hash = "870a71c"
+study_hash = "3bb542b"
 
 DATASETS = {
     "cifar100": "SplitCIFAR100",
@@ -15,9 +15,12 @@ DATASETS = {
 }
 
 METHODS = {
-    "01_linear": "linear",
+    # "01_linear": "linear",
     # "02_lora": "lora",
-    "03_ball": "ball",
+    # "03_ball": "ball",
+    # "04_replay": "replay",
+    # "08_rwalk": "rwalk",
+    "07_joint": "joint",
 }
 
 
@@ -58,7 +61,7 @@ for (f_dataset, o_dataset), (f_method, o_method) in product(
         keys = param.split(".")
         sub_config = config
         for key in keys[:-1]:
-            sub_config = sub_config[key]
+            sub_config = sub_config.setdefault(key, {})
         sub_config[keys[-1]] = best_trial.params[param]
 
     with open(filename, "w") as f:

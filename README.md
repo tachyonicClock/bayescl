@@ -170,3 +170,19 @@ rsync -a --info=progress2 lagerfield.ecs.vuw.ac.nz:$DATASETS/imagenet-r       $D
 rsync -a --info=progress2 lagerfield.ecs.vuw.ac.nz:$DATASETS/domainnet        $DATASETS
 pip install -r requirements.txt
 ```
+
+
+```bash
+# sbatch sbatch/cifar100_01_linear.sl
+sbatch sbatch/cifar100_02_lora.sl
+# sbatch sbatch/cifar100_03_ball.sl
+sbatch sbatch/cifar100_04_replay.sl
+# sbatch sbatch/domainnet_01_linear.sl
+sbatch sbatch/domainnet_02_lora.sl
+# sbatch sbatch/domainnet_03_ball.sl
+sbatch sbatch/domainnet_04_replay.sl
+# sbatch sbatch/imagenetr_01_linear.sl
+sbatch sbatch/imagenetr_02_lora.sl
+# sbatch sbatch/imagenetr_03_ball.sl
+sbatch sbatch/imagenetr_04_replay.sl
+```
