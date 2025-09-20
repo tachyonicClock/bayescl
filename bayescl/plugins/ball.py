@@ -51,7 +51,7 @@ class BALLPlugin(SupervisedPlugin):
         # Scale the KL divergence by the number of samples in the dataset so that
         # it is in the same scale as the cross-entropy loss.
         # The raw kl divergence is independent of the data batch size.
-        kl /= len(strategy.adapted_dataset)
+        kl /= len(strategy.experience.dataset)
 
         # sometimes we want to use a smaller beta in the first task to avoid
         # under regularization in subsequent tasks
