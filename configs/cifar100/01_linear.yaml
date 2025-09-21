@@ -2,4 +2,4 @@ include:
 - ../base.yaml
 - ../base/dataset/cifar100.yaml
 - ../base/method/01_linear.yaml
-lr: 0.0025
+lr: 0.0021

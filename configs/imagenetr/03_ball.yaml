@@ -2,7 +2,7 @@ include:
 - ../base.yaml
 - ../base/dataset/imagenetr.yaml
 - ../base/method/03_ball.yaml
-lr: 0.0024
+lr: 0.0016
 peft:
-  beta: 0.27
-  first_task_beta: 0.051
+  beta: 0.063
+  first_task_beta: 0.038

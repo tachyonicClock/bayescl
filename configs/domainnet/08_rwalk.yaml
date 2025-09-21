@@ -2,7 +2,7 @@ include:
 - ../base.yaml
 - ../base/dataset/domainnet.yaml
 - ../base/method/08_rwalk.yaml
-lr: 0.0013
+lr: 0.0017
 rwalk:
-  ewc_alpha: 0.32
-  ewc_lambda: 0.061
+  ewc_alpha: 0.33
+  ewc_lambda: 0.0038

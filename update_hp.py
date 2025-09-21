@@ -1,4 +1,3 @@
-from itertools import product
 from os import environ
 from pathlib import Path
 
@@ -6,22 +5,42 @@ import optuna
 import yaml
 
 STORAGE = environ.get("OPTUNA_STORAGE")
-study_hash = "3bb542b"
+study_hash = "34ed8bb"
 
 DATASETS = {
-    "cifar100": "SplitCIFAR100",
-    "domainnet": "SplitDomainNet",
-    "imagenetr": "SplitImageNetR",
+    "SplitCIFAR100": "cifar100",
+    "SplitDomainNet": "domainnet",
+    "SplitImageNetR": "imagenetr",
 }
 
 METHODS = {
-    # "01_linear": "linear",
-    # "02_lora": "lora",
-    # "03_ball": "ball",
-    # "04_replay": "replay",
-    # "08_rwalk": "rwalk",
-    "07_joint": "joint",
+    "linear": "01_linear",
+    "lora": "02_lora",
+    "ball": "03_ball",
+    "replay": "04_replay",
+    "gdumb": "05_gdumb",
+    "der": "06_der",
+    "joint": "07_joint",
+    "rwalk": "08_rwalk",
 }
+
+STUDIES = [
+    "bayescl/SplitCIFAR100/linear/870a71c",
+    "bayescl/SplitCIFAR100/lora/870a71c",
+    "bayescl/SplitCIFAR100/ball/34ed8bb",
+    "bayescl/SplitCIFAR100/joint/3bb542b",
+    "bayescl/SplitCIFAR100/rwalk/3bb542b",
+    "bayescl/SplitDomainNet/linear/870a71c",
+    "bayescl/SplitDomainNet/lora/b05d2af",
+    "bayescl/SplitDomainNet/ball/34ed8bb",
+    "bayescl/SplitDomainNet/joint/3bb542b",
+    "bayescl/SplitDomainNet/rwalk/3bb542b",
+    "bayescl/SplitImageNetR/linear/870a71c",
+    "bayescl/SplitImageNetR/lora/b05d2af",
+    "bayescl/SplitImageNetR/ball/34ed8bb",
+    "bayescl/SplitImageNetR/joint/3bb542b",
+    "bayescl/SplitImageNetR/rwalk/3bb542b",
+]
 
 
 # Set the precision of the float numbers in the YAML file to two significant figures
@@ -33,11 +52,12 @@ def float_representer(dumper, value):
 yaml.add_representer(float, float_representer)
 
 
-for (f_dataset, o_dataset), (f_method, o_method) in product(
-    DATASETS.items(), METHODS.items()
-):
+for study_name in STUDIES:
+    _, o_dataset, o_method, _ = study_name.split("/")
+    f_dataset = DATASETS[o_dataset]
+    f_method = METHODS[o_method]
     filename = Path(f"configs/{f_dataset}/{f_method}.yaml")
-    study_name = f"bayescl/{o_dataset}/{o_method}/{study_hash}"
+
     try:
         study = optuna.load_study(study_name=study_name, storage=STORAGE)
     except KeyError:
@@ -46,7 +66,7 @@ for (f_dataset, o_dataset), (f_method, o_method) in product(
 
     best_trials = study.best_trials
     # select the trial with the best ECE (second value in the values tuple)
-    best_trial = min(best_trials, key=lambda t: t.values[1])
+    best_trial = max(best_trials, key=lambda t: t.values[0])
 
     print("========================================")
     print(f"Dataset {o_dataset}, Method: {o_method}")
@@ -54,8 +74,13 @@ for (f_dataset, o_dataset), (f_method, o_method) in product(
     print(f"ECE       {best_trial.values[1] * 100:.2f}")
     print(f"N Trials  {len(study.trials)}")
 
-    with open(filename, "r") as f:
-        config = yaml.safe_load(f)
+    config = {
+        "include": [
+            "../base.yaml",
+            f"../base/dataset/{f_dataset}.yaml",
+            f"../base/method/{f_method}.yaml",
+        ]
+    }
 
     for param in best_trial.params:
         keys = param.split(".")

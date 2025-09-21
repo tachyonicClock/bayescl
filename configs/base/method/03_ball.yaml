@@ -3,7 +3,6 @@ label: ball
 peft:
   type: BALL
   beta: 1.0
-  first_task_beta: 0.01
 
   vbll: False
   bayes_eval_samples: 5

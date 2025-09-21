@@ -2,4 +2,4 @@ include:
 - ../base.yaml
 - ../base/dataset/domainnet.yaml
 - ../base/method/01_linear.yaml
-lr: 0.0014
+lr: 0.0011
