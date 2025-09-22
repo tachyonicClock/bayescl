@@ -15,4 +15,4 @@ set -e # Exit on error
 python main.py \
     --args study_name="run" num_workers=5  \
     --config configs/cifar100/07_joint.yaml \
-    --seed "$SLURM_ARRAY_TASK_ID"
+    --args seed="$SLURM_ARRAY_TASK_ID"

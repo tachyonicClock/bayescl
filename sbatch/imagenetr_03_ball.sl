@@ -15,4 +15,4 @@ set -e # Exit on error
 python main.py \
     --args study_name="run" num_workers=5 peft.save=True \
     --config configs/imagenetr/03_ball.yaml \
-    --seed "$SLURM_ARRAY_TASK_ID"
+    --args seed="$SLURM_ARRAY_TASK_ID"
