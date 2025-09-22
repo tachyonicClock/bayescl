@@ -371,4 +371,4 @@ class Experiment:
                 )
                 torch.save(state, f)
 
-        return metrics["accuracy_seen_avg"], metrics["ece_final"]
+        return metrics["accuracy_seen_avg"], metrics["ece_seen_avg"]
