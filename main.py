@@ -13,6 +13,7 @@ from bayescl.config import Config, from_configs
 from bayescl.experiment import Experiment
 from bayescl.util.git import commit_message, commit_short_hash, is_git_status_clean
 from bayescl.util.optuna import optuna_suggest
+from loguru import logger
 
 
 def get_sampler(sampler: str) -> optuna.samplers.BaseSampler:
@@ -81,6 +82,17 @@ def run_study(config: Config):
         sampler=get_sampler(config.hpsearch.sampler),
         load_if_exists=True,
     )
+    short_hash = commit_short_hash()
+    if (
+        study.user_attrs.get("git_commit", None) is not None
+        and study.user_attrs["git_commit"] != short_hash
+    ):
+        logger.error(
+            f"Current git commit {short_hash} does not match the study's original git "
+            f"commit {study.user_attrs['git_commit']}"
+        )
+        raise SystemExit(1)
+
     study.set_user_attr("git_commit", commit_short_hash())
     study.set_user_attr("git_message", commit_message())
 
