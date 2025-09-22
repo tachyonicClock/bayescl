@@ -26,7 +26,7 @@ def main(prefix: str | None = None):
     rows = []
 
     for study_name in study_names:
-        if not study.study_name.startswith(prefix):
+        if not study_name.startswith(prefix):
             continue
         study = optuna.load_study(study_name=study_name, storage=OPTUNA_STORAGE)
         trials_complete = [

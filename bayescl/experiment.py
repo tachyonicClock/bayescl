@@ -8,11 +8,13 @@ from bayescl.plugins.inflora import PluginInfLoRA
 matplotlib.use("Agg")
 
 import pickle
+import random
 import time
 from pathlib import Path
 from pprint import pformat
 from typing import Any, Dict, List, Sequence
 
+import numpy as np
 import torch
 import yaml
 from avalanche.evaluation.metrics import (
@@ -125,21 +127,24 @@ class Experiment:
         if "SLURM_JOB_ID" in os.environ:
             id_ = f"{os.environ['SLURM_JOB_ID']}_{os.environ.get('SLURM_ARRAY_TASK_ID', 0)}"
 
-        if self.cfg.run_id is not None:
-            id_ = f"{self.cfg.run_id}"
-
         log_dir = (
             Path(self.cfg.log_root)
-            / self.cfg.study_name
-            / f"{self.cfg.scenario.dataset}"
-            / self.cfg.label
-            / id_
+            / self.cfg.label.study
+            / self.cfg.label.scenario
+            / self.cfg.label.method
+            / (self.cfg.label.run or id_)
         )
         log_dir.mkdir(parents=True, exist_ok=False)
-
+        setproctitle(
+            "bayescl"
+            f".{self.cfg.label.study}"
+            f".{self.cfg.label.scenario}"
+            f".{self.cfg.label.method}"
+        )
         with open(log_dir / "config.yaml", "w") as f:
             yaml.dump(self.cfg.model_dump(mode="json"), f)
 
+        logger.info(f"Logging to '{log_dir}'")
         return log_dir
 
     def _new_logger(self) -> TensorboardLogger:
@@ -249,8 +254,16 @@ class Experiment:
         logger.info("Parameter Counts:\n{}", parameter_summary_str(self.model))
         logger.info("Plugins:\n{}", [type(p).__name__ for p in self.plugins])
 
+    def _seed_everything(self):
+        if self.cfg.seed is not None:
+            logger.info(f"Set random seed to {self.cfg.seed}")
+            torch.manual_seed(self.cfg.seed)
+            np.random.seed(self.cfg.seed)
+            random.seed(self.cfg.seed)
+
     def __init__(self, cfg: config.Config) -> None:
         self.cfg = cfg
+        self._seed_everything()
         self.plugins: List[SupervisedPlugin] = []
         self.loggers: List[BaseLogger] = []
 
@@ -304,7 +317,6 @@ class Experiment:
         raise ValueError(f"Unknown strategy: {strategy}")
 
     def run(self, trial: Trial | None = None) -> tuple[float, float]:
-        setproctitle(f"bayescl.{self.cfg.label}")
         self._preflight()
         strategy = self.get_strategy()
         strategy.mask = self.mask.to(self.cfg.device)  # type: ignore

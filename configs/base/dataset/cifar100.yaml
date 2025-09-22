@@ -1,6 +1,8 @@
 scenario:
-  dataset: SplitCIFAR100
+  dataset: CIFAR100
   n_tasks: 10
   shuffle: false
+label:
+  scenario: cifar100
 
 epochs: 20

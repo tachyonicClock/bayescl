@@ -1,6 +1,8 @@
 scenario:
-  dataset: SplitImageNetR
+  dataset: ImageNetR
   n_tasks: 10
   shuffle: false
+label:
+  scenario: imagenetr
 
 epochs: 50

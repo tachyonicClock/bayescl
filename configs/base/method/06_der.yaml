@@ -1,4 +1,5 @@
-label: der
+label:
+  method: der
 
 peft:
   type: LoRA

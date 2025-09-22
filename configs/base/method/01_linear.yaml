@@ -1,4 +1,5 @@
-label: linear
+label:
+  method: linear
 
 model:
   freeze_backbone: True

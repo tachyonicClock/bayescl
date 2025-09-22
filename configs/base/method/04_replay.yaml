@@ -1,4 +1,5 @@
-label: replay
+label:
+  method: replay
 
 peft:
   type: LoRA

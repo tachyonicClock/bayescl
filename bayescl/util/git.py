@@ -9,3 +9,8 @@ def is_git_status_clean() -> bool:
 def commit_short_hash() -> str:
     output = check_output(["git", "rev-parse", "--short", "HEAD"]).decode()
     return output.strip()
+
+
+def commit_message() -> str:
+    output = check_output(["git", "log", "-1", "--pretty=%B"]).decode()
+    return output.strip()

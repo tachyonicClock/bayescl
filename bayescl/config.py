@@ -20,22 +20,16 @@ class BaseConfig(BaseModel):
 
 class Scenario(BaseConfig):
     dataset: Literal[
-        "SplitMNIST",
-        "SplitCIFAR10",
-        "SplitCIFAR100",
-        "SplitImageNetR",
-        "SplitDomainNet",
-    ] = "SplitMNIST"
+        "MNIST",
+        "CIFAR10",
+        "CIFAR100",
+        "ImageNetR",
+        "DomainNet",
+    ] = "MNIST"
     n_tasks: int = 5
     shuffle: bool = True
     #: Replace the test set with a validation set of this size (0.0 to 1.0)
     validation_set: float = 0.0
-
-
-class ScenarioCORe50(BaseConfig):
-    dataset: Literal["CORe50"] = "CORe50"
-    scenario: Literal["nc", "ni", "nicv2_79"] = "nc"
-    run: int = 0
 
 
 # --- Model Configurations ---
@@ -158,15 +152,27 @@ class GDumbConfig(PEFTConfig):
     mem_size: int
 
 
+class Label(BaseConfig):
+    """Label given to the experiment: ``{study}/{scenario}/{method}/{run}``"""
+
+    study: str = "manual"
+    """Top level label for a group of related experiments."""
+    scenario: str = "unlabeled_scenario"
+    """Label for the scenario or dataset used."""
+    method: str = "unlabeled_method"
+    """Label for the method or strategy used."""
+    run: Optional[str] = None
+    """Label for the individual run, e.g. 0001 for hyperparameter search trials."""
+
+
 class Config(BaseConfig):
     include: list[Path] = []
-    label: str = "default"
+
+    label: Label = Field(Label())
 
     #: Scenario configuration.
-    scenario: Scenario | ScenarioCORe50 = Field(
-        Scenario(),
-        discriminator="dataset",
-    )
+    scenario: Scenario = Field(Scenario())
+
     #: Model configuration.
     model: BasicModelConfig | HuggingFaceModelConfig = Field(
         BasicModelConfig(),
@@ -182,7 +188,6 @@ class Config(BaseConfig):
     dataset_root: str = environ.get("DATASETS", "./datasets")
     #: Parent directory containing run logs.
     log_root: str = "./log"
-    study_name: str = "manual"
 
     # Strategy
     #: Device to use for training (cuda or cpu)
@@ -226,7 +231,8 @@ class Config(BaseConfig):
     #: When using hyperparameter search, scale the number of epochs by this factor
     hpsearch_epoch_scale: Optional[float] = None
 
-    run_id: Optional[str] = None
+    #: Random seed for reproducibility
+    seed: Optional[int] = None
 
 
 def _resolve_includes(base: Path, filenames: list[str]) -> DictConfig:

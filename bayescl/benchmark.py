@@ -11,15 +11,15 @@ from bayescl.datasets import SplitCIFAR100, SplitDomainNet, SplitImageNetR
 Transform = Callable[[Any], Any]
 
 TRAIN_TRANSFORMS = {
-    "SplitCIFAR100": [
+    "CIFAR100": [
         T.RandomResizedCrop(224),
         T.RandomHorizontalFlip(),
     ],
-    "SplitImageNetR": [
+    "ImageNetR": [
         T.RandomResizedCrop(224),
         T.RandomHorizontalFlip(),
     ],
-    "SplitDomainNet": [
+    "DomainNet": [
         T.RandomResizedCrop(224),
         T.RandomHorizontalFlip(),
     ],
@@ -63,7 +63,7 @@ def get_transforms(cfg: Config, dataset: str) -> Tuple[Transform, Transform]:
 def get_benchmark(cfg: Config) -> NCScenario:
     logger.info(f"Setting up '{cfg.scenario.dataset}' benchmark")
     train_transform, eval_transform = get_transforms(cfg, cfg.scenario.dataset)
-    if cfg.scenario.dataset == "SplitMNIST":
+    if cfg.scenario.dataset == "MNIST":
         return SplitMNIST(
             dataset_root=cfg.dataset_root,
             n_experiences=cfg.scenario.n_tasks,
@@ -72,7 +72,7 @@ def get_benchmark(cfg: Config) -> NCScenario:
             return_task_id=True,
             shuffle=cfg.scenario.shuffle,
         )
-    elif cfg.scenario.dataset == "SplitCIFAR100":
+    elif cfg.scenario.dataset == "CIFAR100":
         return SplitCIFAR100(  # type: ignore
             dataset_root=cfg.dataset_root,
             n_experiences=cfg.scenario.n_tasks,
@@ -82,7 +82,7 @@ def get_benchmark(cfg: Config) -> NCScenario:
             shuffle=cfg.scenario.shuffle,
             validation_set=cfg.scenario.validation_set,
         )
-    elif cfg.scenario.dataset == "SplitImageNetR":
+    elif cfg.scenario.dataset == "ImageNetR":
         return SplitImageNetR(  # type: ignore
             dataset_root=cfg.dataset_root,
             n_experiences=cfg.scenario.n_tasks,
@@ -92,7 +92,7 @@ def get_benchmark(cfg: Config) -> NCScenario:
             shuffle=cfg.scenario.shuffle,
             validation_set=cfg.scenario.validation_set,
         )
-    elif cfg.scenario.dataset == "SplitDomainNet":
+    elif cfg.scenario.dataset == "DomainNet":
         return SplitDomainNet(  # type: ignore
             dataset_root=cfg.dataset_root,
             n_experiences=cfg.scenario.n_tasks,

@@ -1,4 +1,5 @@
-label: lora
+label:
+  method: lora
 
 peft:
   type: LoRA

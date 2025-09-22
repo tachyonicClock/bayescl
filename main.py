@@ -7,14 +7,11 @@ matplotlib.use("Agg")
 import argparse
 from os import environ
 
-import numpy as np
 import optuna
-import torch
-from loguru import logger
 
 from bayescl.config import Config, from_configs
 from bayescl.experiment import Experiment
-from bayescl.util.git import commit_short_hash, is_git_status_clean
+from bayescl.util.git import commit_message, commit_short_hash, is_git_status_clean
 from bayescl.util.optuna import optuna_suggest
 
 
@@ -68,32 +65,25 @@ def run_study(config: Config):
     n_trials = config.hpsearch.n_trials
     assert n_trials and n_trials >= 1
     assert is_git_status_clean(), "Please ensure everything is committed"
-    study_hash = commit_short_hash()
-    epochs = config.epochs
 
     def objective(trial: optuna.Trial) -> tuple[float, float]:
         assert config.hpsearch
-        config.study_name = f"hpsearch_{study_hash}"
-        config.run_id = f"{trial.number:03d}"
-        optuna_suggest(trial, config, config.hpsearch.params)
-        torch.manual_seed(0)
-        np.random.seed(0)
 
-        if config.hpsearch_epoch_scale and config.hpsearch_epoch_scale > 0:
-            config.epochs = int(epochs * config.hpsearch_epoch_scale)
-            logger.info(
-                f"Using {config.epochs} epochs instead of {epochs} because of `hpsearch_epoch_scale={config.hpsearch_epoch_scale}`"
-            )
+        config.label.run = f"{trial.number:04d}"
+        config.seed = trial.number
+        optuna_suggest(trial, config, config.hpsearch.params)
         return Experiment(config).run(trial)
 
     study = optuna.create_study(
         directions=config.hpsearch.direction,
-        study_name=f"bayescl/{config.scenario.dataset}/{config.label}/{study_hash}",
+        study_name=f"bayescl/{config.label.study}/{config.scenario.dataset}/{config.label.method}",
         storage=environ.get("OPTUNA_STORAGE"),
         sampler=get_sampler(config.hpsearch.sampler),
         load_if_exists=True,
     )
-    config.study_name = "hpsearch"
+    study.set_user_attr("git_commit", commit_short_hash())
+    study.set_user_attr("git_message", commit_message())
+
     optimize_with_max_trials(
         study,
         objective,
@@ -121,11 +111,6 @@ if __name__ == "__main__":
         help="Enable hyperparameter search.",
     )
     parser.add_argument(
-        "--seed",
-        type=int,
-        default=0,
-    )
-    parser.add_argument(
         "--repeat",
         type=int,
         default=1,
@@ -137,7 +122,7 @@ if __name__ == "__main__":
     if args.hpsearch:
         run_study(config)
     else:
+        seed = config.seed or 0
         for i in range(args.repeat):
-            torch.manual_seed(args.seed + i)
-            np.random.seed(args.seed + i)
+            config.seed = i + seed
             Experiment(config).run()  # type: ignore

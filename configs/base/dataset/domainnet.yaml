@@ -1,6 +1,8 @@
 scenario:
-  dataset: SplitDomainNet
+  dataset: DomainNet
   n_tasks: 5
   shuffle: false
+label:
+  scenario: domainnet
 
 epochs: 5

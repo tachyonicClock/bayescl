@@ -1,4 +1,5 @@
-label: gdumb
+label:
+  method: gdumb
 
 peft:
   type: LoRA

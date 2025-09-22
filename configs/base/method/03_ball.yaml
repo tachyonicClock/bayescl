@@ -1,4 +1,5 @@
-label: ball
+label:
+  method: ball
 
 peft:
   type: BALL

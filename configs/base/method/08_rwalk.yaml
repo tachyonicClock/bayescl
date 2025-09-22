@@ -1,4 +1,5 @@
-label: rwalk
+label:
+  method: rwalk
 
 peft:
   type: LoRA
