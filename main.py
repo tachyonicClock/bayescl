@@ -70,14 +70,16 @@ def run_study(config: Config):
     def objective(trial: optuna.Trial) -> tuple[float, float]:
         assert config.hpsearch
 
-        config.label.run = f"{trial.number:04d}"
+        config.label.run = f"trial_{trial.number:04d}"
         config.seed = trial.number
         optuna_suggest(trial, config, config.hpsearch.params)
         return Experiment(config).run(trial)
+    
+    config.label.study = f"hp_{config.hpsearch_study_version:04d}"
 
     study = optuna.create_study(
         directions=config.hpsearch.direction,
-        study_name=f"bayescl/{config.label.study}/{config.scenario.dataset}/{config.label.method}",
+        study_name=f"bayescl/{config.label.study}/{config.label.scenario}/{config.label.method}",
         storage=environ.get("OPTUNA_STORAGE"),
         sampler=get_sampler(config.hpsearch.sampler),
         load_if_exists=True,

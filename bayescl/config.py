@@ -227,9 +227,7 @@ class Config(BaseConfig):
     use_local_ce: bool = True
 
     hpsearch: Optional[HyperparameterSearch] = None
-
-    #: When using hyperparameter search, scale the number of epochs by this factor
-    hpsearch_epoch_scale: Optional[float] = None
+    hpsearch_study_version: int = 0
 
     #: Random seed for reproducibility
     seed: Optional[int] = None
