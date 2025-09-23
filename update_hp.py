@@ -25,21 +25,22 @@ METHODS = {
 }
 
 STUDIES = [
-    "bayescl/SplitCIFAR100/linear/870a71c",
-    "bayescl/SplitCIFAR100/lora/870a71c",
-    "bayescl/SplitCIFAR100/ball/34ed8bb",
-    "bayescl/SplitCIFAR100/joint/3bb542b",
-    "bayescl/SplitCIFAR100/rwalk/3bb542b",
-    "bayescl/SplitDomainNet/linear/870a71c",
-    "bayescl/SplitDomainNet/lora/b05d2af",
+    # "bayescl/SplitCIFAR100/linear/870a71c",
+    # "bayescl/SplitCIFAR100/lora/870a71c",
+    # "bayescl/SplitCIFAR100/ball/34ed8bb",
+    # "bayescl/SplitCIFAR100/joint/3bb542b",
+    # "bayescl/SplitCIFAR100/rwalk/3bb542b",
+    # "bayescl/SplitDomainNet/linear/870a71c",
+    # "bayescl/SplitDomainNet/lora/b05d2af",
+    # "bayescl/SplitDomainNet/ball/34ed8bb",
+    # "bayescl/SplitDomainNet/joint/3bb542b",
+    # "bayescl/SplitDomainNet/rwalk/3bb542b",
+    # "bayescl/SplitImageNetR/linear/870a71c",
+    # "bayescl/SplitImageNetR/lora/b05d2af",
+    # "bayescl/SplitImageNetR/ball/34ed8bb",
+    # "bayescl/SplitImageNetR/joint/3bb542b",
+    # "bayescl/SplitImageNetR/rwalk/3bb542b",
     "bayescl/SplitDomainNet/ball/34ed8bb",
-    "bayescl/SplitDomainNet/joint/3bb542b",
-    "bayescl/SplitDomainNet/rwalk/3bb542b",
-    "bayescl/SplitImageNetR/linear/870a71c",
-    "bayescl/SplitImageNetR/lora/b05d2af",
-    "bayescl/SplitImageNetR/ball/34ed8bb",
-    "bayescl/SplitImageNetR/joint/3bb542b",
-    "bayescl/SplitImageNetR/rwalk/3bb542b",
 ]
 
 
@@ -66,7 +67,7 @@ for study_name in STUDIES:
 
     best_trials = study.best_trials
     # select the trial with the best ECE (second value in the values tuple)
-    best_trial = max(best_trials, key=lambda t: t.values[0])
+    best_trial = min(best_trials, key=lambda t: t.values[1])
 
     print("========================================")
     print(f"Dataset {o_dataset}, Method: {o_method}")

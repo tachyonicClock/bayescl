@@ -7,7 +7,7 @@ import tabulate
 
 n = 100
 
-target_trial_count = 15
+target_trial_count = 20
 
 
 def sec_to_hh_mm_ss(seconds):
@@ -17,7 +17,7 @@ def sec_to_hh_mm_ss(seconds):
     return f"{hours:02}:{minutes:02}:{secs:02}"
 
 
-def main(prefix: str | None = None):
+def main(prefix: str | None = None, sort_on_ece: bool = False):
     OPTUNA_STORAGE = environ.get("OPTUNA_STORAGE")
 
     study_names = optuna.get_all_study_names(storage=OPTUNA_STORAGE)[-100:]
@@ -40,7 +40,10 @@ def main(prefix: str | None = None):
             continue
 
         try:
-            best_trial = max(study.best_trials, key=lambda t: t.values[0])
+            if sort_on_ece:
+                best_trial = min(study.best_trials, key=lambda t: t.values[1])
+            else:
+                best_trial = max(study.best_trials, key=lambda t: t.values[0])
         except IndexError:
             continue
 
@@ -65,9 +68,9 @@ def main(prefix: str | None = None):
             {
                 # "Study ID": study._study_id,
                 "Study Name": study.study_name[len(prefix) + 1 :],
-                "N": len(trials_complete),
+                "done/total (running)": f"{n_complete}/{target_trial_count} ({n_running})",
                 "N best": len(study.best_trials),
-                # "N Running": len(trials_running),
+                # "N Running": ,
                 # "N Total": len(study.trials),
                 # "Mean Duration": sec_to_hh_mm_ss(avg_duration_s),
                 # "Remaining": sec_to_hh_mm_ss(complete_in),
@@ -75,8 +78,6 @@ def main(prefix: str | None = None):
                 "ECE": f"{best_trial.values[1] * 100:.2f}",
             }
         )
-
-    rows = sorted(rows, key=lambda r: float(r["ECE"]))
 
     print(tabulate.tabulate(rows, headers="keys"))
 
@@ -89,5 +90,12 @@ if __name__ == "__main__":
         default="bayescl",
         help="Prefix of the study names to filter",
     )
+    # sort on ece instead of accuracy
+    parser.add_argument(
+        "--ece",
+        action="store_true",
+        help="Sort the output based on ECE instead of accuracy",
+    )
+
     args = parser.parse_args()
-    main(args.prefix)
+    main(args.prefix, args.ece)

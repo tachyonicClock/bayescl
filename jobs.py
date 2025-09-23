@@ -10,9 +10,9 @@ METHODS = [
     "01_linear",
     "02_lora",
     "03_ball",
-    # "04_replay",
-    # "05_gdumb",
-    # "06_der",
+    "04_replay",
+    "05_gdumb",
+    "06_der",
     "07_joint",
     "08_rwalk",
 ]

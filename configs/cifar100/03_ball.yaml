@@ -5,4 +5,3 @@ include:
 lr: 0.0023
 peft:
   beta: 0.13
-  first_task_beta: 0.056

@@ -17,7 +17,7 @@ hpsearch:
     # When hyper-parameter searching use a validation set in place of the test set
     "scenario.validation_set": {type: constant, value: 0.1}
 
-  sampler: TPE
+  sampler: QMC
   n_trials: 15
   direction: [maximize, minimize]
 

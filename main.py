@@ -8,12 +8,12 @@ import argparse
 from os import environ
 
 import optuna
+from loguru import logger
 
 from bayescl.config import Config, from_configs
 from bayescl.experiment import Experiment
 from bayescl.util.git import commit_message, commit_short_hash, is_git_status_clean
 from bayescl.util.optuna import optuna_suggest
-from loguru import logger
 
 
 def get_sampler(sampler: str) -> optuna.samplers.BaseSampler:
@@ -21,6 +21,8 @@ def get_sampler(sampler: str) -> optuna.samplers.BaseSampler:
         return optuna.samplers.TPESampler()
     elif sampler == "random":
         return optuna.samplers.RandomSampler()
+    elif sampler == "QMC":
+        return optuna.samplers.QMCSampler()
     raise ValueError(f"Unknown sampler: {sampler}")
 
 
@@ -74,7 +76,7 @@ def run_study(config: Config):
         config.seed = trial.number
         optuna_suggest(trial, config, config.hpsearch.params)
         return Experiment(config).run(trial)
-    
+
     config.label.study = f"hp_{config.hpsearch_study_version:04d}"
 
     study = optuna.create_study(
