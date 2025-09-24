@@ -28,8 +28,8 @@ class Scenario(BaseConfig):
     ] = "MNIST"
     n_tasks: int = 5
     shuffle: bool = True
-    #: Replace the test set with a validation set of this size (0.0 to 1.0)
-    validation_set: float = 0.0
+    #: Replace the test set with a validation set
+    validation: bool = False
 
 
 # --- Model Configurations ---
@@ -230,7 +230,7 @@ class Config(BaseConfig):
     hpsearch_study_version: int = 0
 
     #: Random seed for reproducibility
-    seed: Optional[int] = None
+    seed: int = 0
 
 
 def _resolve_includes(base: Path, filenames: list[str]) -> DictConfig:

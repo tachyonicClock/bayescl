@@ -1,0 +1,17 @@
+label:
+  study: manual
+  scenario: mnist
+  method: naive
+
+epochs: 2
+
+hpsearch:
+  params:
+    "lr": {type: float, low: 0.001, high: 0.01, log: True}
+    "scenario.validation": {type: constant, value: True}
+
+  sampler: QMC
+  n_trials: 3
+  direction: [maximize, minimize]
+
+hpsearch_study_version: 1

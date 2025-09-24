@@ -1,19 +1,23 @@
-from typing import Callable
+from typing import Callable, List
 
 import matplotlib
 
 matplotlib.use("Agg")
 
-import argparse
+import csv
 from os import environ
 
+import click
+import numpy as np
 import optuna
 from loguru import logger
 
 from bayescl.config import Config, from_configs
 from bayescl.experiment import Experiment
-from bayescl.util.git import commit_message, commit_short_hash, is_git_status_clean
-from bayescl.util.optuna import optuna_suggest
+from bayescl.util.git import commit_message, commit_short_hash
+from bayescl.util.optuna import obj_dot_notation_set, optuna_suggest
+
+OPTUNA_PROJECT_PREFIX = "bayescl"
 
 
 def get_sampler(sampler: str) -> optuna.samplers.BaseSampler:
@@ -63,11 +67,17 @@ def optimize_with_max_trials(
     )
 
 
+def get_optuna_study_name(config: Config) -> str:
+    study = f"hp_{config.hpsearch_study_version:04d}"
+    return (
+        f"{OPTUNA_PROJECT_PREFIX}/{study}/{config.label.scenario}/{config.label.method}"
+    )
+
+
 def run_study(config: Config):
     assert config.hpsearch
     n_trials = config.hpsearch.n_trials
     assert n_trials and n_trials >= 1
-    assert is_git_status_clean(), "Please ensure everything is committed"
 
     def objective(trial: optuna.Trial) -> tuple[float, float]:
         assert config.hpsearch
@@ -81,7 +91,7 @@ def run_study(config: Config):
 
     study = optuna.create_study(
         directions=config.hpsearch.direction,
-        study_name=f"bayescl/{config.label.study}/{config.label.scenario}/{config.label.method}",
+        study_name=get_optuna_study_name(config),
         storage=environ.get("OPTUNA_STORAGE"),
         sampler=get_sampler(config.hpsearch.sampler),
         load_if_exists=True,
@@ -108,37 +118,137 @@ def run_study(config: Config):
     )
 
 
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
-    # Accept any number of key value pairs as dotlist arguments
-    parser.add_argument("--args", type=str, nargs="*", default=None)
-    parser.add_argument(
-        "--configs",
-        "-c",
-        type=str,
-        nargs="+",
-        default=[],
-        help="Path to config files to load. Can be specified multiple times.",
-    )
-    parser.add_argument(
-        "--hpsearch",
-        action="store_true",
-        default=False,
-        help="Enable hyperparameter search.",
-    )
-    parser.add_argument(
-        "--repeat",
-        type=int,
-        default=1,
-        help="Number of times to repeat the experiment with different seeds.",
-    )
-    args = parser.parse_args()
-    config = from_configs(args.configs, args.args)
+@click.group()
+@click.option(
+    "--configs",
+    "-c",
+    multiple=True,
+    type=click.Path(exists=True, dir_okay=False),
+    help="Path to config files to load. Can be specified multiple times. The order determines precedence.",
+)
+@click.option(
+    "--args",
+    type=str,
+    multiple=True,
+    help="Override config options using dotlist notation.",
+)
+@click.option(
+    "--epochs-scale",
+    help="Coefficient to scale number of epochs by.",
+    default=1.0,
+)
+@click.pass_context
+def cli(ctx: click.Context, configs: List[str], args: List[str], epochs_scale: float):
+    # if not is_git_status_clean():
+    #     raise SystemExit("Please ensure everything is committed")
 
-    if args.hpsearch:
-        run_study(config)
-    else:
-        seed = config.seed or 0
-        for i in range(args.repeat):
-            config.seed = i + seed
-            Experiment(config).run()  # type: ignore
+    cfg = from_configs(configs, args)
+    if epochs_scale != 1.0:
+        epochs = int(epochs_scale * cfg.epochs)
+        logger.info(f"Scaling epochs {cfg.epochs} -> {epochs}")
+        cfg.epochs = epochs
+
+    ctx.obj = cfg
+
+
+@cli.command()
+@click.option(
+    "--validate",
+    is_flag=True,
+    default=False,
+    help="Run in validation mode",
+)
+@click.option(
+    "--from-study",
+    is_flag=True,
+    default=False,
+    help="Use the best configuration found by optuna.",
+)
+@click.option(
+    "--n-trials",
+    "-n",
+    type=int,
+    default=1,
+    help="Repeat with different seeds.",
+)
+@click.pass_obj
+def run(
+    cfg: Config,
+    validate: bool,
+    from_study: bool,
+    n_trials: int = 1,
+):
+    cfg.scenario.validation = validate
+
+    if from_study:
+        cfg.label.study = f"hp_{cfg.hpsearch_study_version:04d}"
+        study = optuna.load_study(
+            study_name=get_optuna_study_name(cfg),
+            storage=environ["OPTUNA_STORAGE"],
+        )
+        best_trial = min(study.best_trials, key=lambda t: t.values[1])
+
+        logger.info(f"Using best configuration from study {study.study_name}")
+        logger.info(f"Using best trial #{best_trial.number} from study '{study}'")
+        logger.info(f"  Values: {best_trial.values}")
+        for key, value in best_trial.params.items():
+            logger.info(f"  {key}: {value}")
+            obj_dot_notation_set(key, cfg, value)
+
+    accuracy_seen_avgs, ece_seen_avgs = [], []
+    for i in range(n_trials):
+        cfg.seed = i
+        if n_trials > 1:
+            cfg.label.run = f"run_{i:04d}"
+
+        accuracy_seen_avg, ece_seen_avg = Experiment(cfg).run()
+        accuracy_seen_avgs.append(accuracy_seen_avg)
+        ece_seen_avgs.append(ece_seen_avg)
+
+    if from_study:
+        log_to_logbook(cfg, accuracy_seen_avgs, ece_seen_avgs)
+
+
+def log_to_logbook(cfg, accuracy_seen_avgs, ece_seen_avgs):
+    with open(f"logbook/{cfg.label.scenario}_{cfg.label.method}.csv", "a") as f:
+        writer = csv.writer(
+            f,
+            strict=True,
+        )
+        # if empty file, write header
+        if f.tell() == 0:
+            writer.writerow(
+                [
+                    "study",
+                    "commit",
+                    "n_runs",
+                    "accuracy_mean",
+                    "accuracy_std",
+                    "ece_mean",
+                    "ece_std",
+                    "git_message",
+                ]
+            )
+        writer.writerow(
+            [
+                cfg.label.study,
+                commit_short_hash(),
+                len(accuracy_seen_avgs),
+                f"{np.mean(accuracy_seen_avgs) * 100:0.2f}",
+                f"{np.std(accuracy_seen_avgs) * 100:0.2f}",
+                f"{np.mean(ece_seen_avgs) * 100:0.2f}",
+                f"{np.std(ece_seen_avgs) * 100:0.2f}",
+                commit_message(),
+            ]
+        )
+
+
+@cli.command()
+@click.pass_obj
+def hpsearch(cfg: Config):
+    cfg.scenario.validation = True
+    run_study(cfg)
+
+
+if __name__ == "__main__":
+    cli()

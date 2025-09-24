@@ -80,7 +80,7 @@ def get_benchmark(cfg: Config) -> NCScenario:
             eval_transform=eval_transform,
             return_task_id=True,
             shuffle=cfg.scenario.shuffle,
-            validation_set=cfg.scenario.validation_set,
+            validation_set=0.1 if cfg.scenario.validation else 0,
         )
     elif cfg.scenario.dataset == "ImageNetR":
         return SplitImageNetR(  # type: ignore
@@ -90,7 +90,7 @@ def get_benchmark(cfg: Config) -> NCScenario:
             eval_transform=eval_transform,
             return_task_id=True,
             shuffle=cfg.scenario.shuffle,
-            validation_set=cfg.scenario.validation_set,
+            validation_set=0.1 if cfg.scenario.validation else 0,
         )
     elif cfg.scenario.dataset == "DomainNet":
         return SplitDomainNet(  # type: ignore
@@ -100,7 +100,7 @@ def get_benchmark(cfg: Config) -> NCScenario:
             eval_transform=eval_transform,
             return_task_id=True,
             shuffle=cfg.scenario.shuffle,
-            validation_set=cfg.scenario.validation_set,
+            validation_set=0.1 if cfg.scenario.validation else 0,
         )
 
     raise ValueError(f"Unsupported scenario: {cfg.scenario}")

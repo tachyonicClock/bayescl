@@ -1,5 +1,3 @@
-label: naive
-
 lr: 0.001
 
 train_mb_size: 128
@@ -15,7 +13,7 @@ hpsearch:
   params:
     "lr": {type: float, low: 0.001, high: 0.01, log: True}
     # When hyper-parameter searching use a validation set in place of the test set
-    "scenario.validation_set": {type: constant, value: 0.1}
+    "scenario.validation": {type: constant, value: True}
 
   sampler: QMC
   n_trials: 15
