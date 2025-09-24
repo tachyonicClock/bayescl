@@ -2,7 +2,6 @@
 
 set -e
 
-check if git status is clean
 if [ -n "$(git status --porcelain)" ]; then
     echo "Please ensure everything is committed."
     exit 1
@@ -29,24 +28,25 @@ enqueue_adoption_hpsearch () {
         python main.py -c "${config}" --epochs-scale=0.5 hpsearch
 }
 
+# Run many trials with the best hyperparameters found in the study (`--from-study`).
+# This is used to make final decisions about which procedure to adopt.
+# Usage: adoption_trials <id,...> (where id,... is a comma-separated list of ts IDs)
+adoption_trials () {
+    ts -G 1 -L "trial ${scenario} ${method}" -W "${1}" \
+        notirun.sh adoption-trials\
+        python main.py -c "${config}" --epochs-scale=0.5 \
+            run --from-study --validate --n-trials="${n_trials}"
+}
+
 # Enqueue many jobs to fill all GPUs.
 # Usage: enqueue_many <command>
+# Returns a comma-separated list of ts IDs.
 enqueue_many () {
     ts_task_ids=()
     for _ in $(seq 1 "${n_gpu}"); do
         ts_task_ids+=("$(eval "$1")")
     done
     printf '%s,' "${ts_task_ids[@]}"
-}
-
-# Run many trials with the best hyperparameters found in the study (`--from-study`).
-# This is used to make final decisions about which procedure to adopt.
-# Usage: adoption_trials <after ts jobs>
-adoption_trials () {
-    ts -G 1 -L "trial ${scenario} ${method}" -W "${1}" \
-        notirun.sh adoption-trials\
-        python main.py -c "${config}" --epochs-scale=0.5 \
-            run --from-study --validate --n-trials="${n_trials}"
 }
 
 echo "Enqueuing hyperparameter search jobs..."
