@@ -2,20 +2,8 @@
 
 set -e
 
-if [ -n "$(git status --porcelain)" ]; then
-    echo "Please ensure everything is committed."
-    exit 1
-fi
-
-if [ -z "$DISCORD_WEBHOOK" ]; then
-    echo "Please set DISCORD_WEBHOOK environment variable."
-    exit 1
-fi
-
-
 scenario=${1:-"mnist"}
 method=${2:-"naive"}
-
 n_trials=5
 config="configs/${scenario}/${method}.yaml"
 n_gpu=$(nvidia-smi --list-gpus | wc -l)
@@ -48,6 +36,24 @@ enqueue_many () {
     done
     printf '%s,' "${ts_task_ids[@]}"
 }
+
+# Ensure a clean git state. This is important for reproducibility.
+if [ -n "$(git status --porcelain)" ]; then
+    echo "Please ensure everything is committed."
+    exit 1
+fi
+
+# Ensure DISCORD_WEBHOOK is set for notifications.
+if [ -z "$DISCORD_WEBHOOK" ]; then
+    echo "Please set DISCORD_WEBHOOK environment variable."
+    exit 1
+fi
+
+# Ensure the config file exists.
+if [ ! -f "$config" ]; then
+    echo "Config file $config does not exist."
+    exit 1
+fi
 
 echo "Enqueuing hyperparameter search jobs..."
 hp_jobs=$(enqueue_many enqueue_adoption_hpsearch)

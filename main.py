@@ -210,7 +210,7 @@ def run(
 
 
 def log_to_logbook(cfg, accuracy_seen_avgs, ece_seen_avgs):
-    with open(f"logbook/{cfg.label.scenario}_{cfg.label.method}.csv", "a") as f:
+    with open(f"~/logbooks/{cfg.label.scenario}_{cfg.label.method}.csv", "a") as f:
         writer = csv.writer(
             f,
             strict=True,
