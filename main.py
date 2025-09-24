@@ -1,4 +1,5 @@
-from typing import Callable, List
+from pathlib import Path
+from typing import Callable, List, Sequence
 
 import matplotlib
 
@@ -14,7 +15,7 @@ from loguru import logger
 
 from bayescl.config import Config, from_configs
 from bayescl.experiment import Experiment
-from bayescl.util.git import commit_message, commit_short_hash
+from bayescl.util.git import commit_message, commit_short_hash, is_git_status_clean
 from bayescl.util.optuna import obj_dot_notation_set, optuna_suggest
 
 OPTUNA_PROJECT_PREFIX = "bayescl"
@@ -139,8 +140,8 @@ def run_study(config: Config):
 )
 @click.pass_context
 def cli(ctx: click.Context, configs: List[str], args: List[str], epochs_scale: float):
-    # if not is_git_status_clean():
-    #     raise SystemExit("Please ensure everything is committed")
+    if not is_git_status_clean():
+        raise SystemExit("Please ensure everything is committed")
 
     cfg = from_configs(configs, args)
     if epochs_scale != 1.0:
@@ -180,6 +181,7 @@ def run(
 ):
     cfg.scenario.validation = validate
 
+    study = None
     if from_study:
         cfg.label.study = f"hp_{cfg.hpsearch_study_version:04d}"
         study = optuna.load_study(
@@ -205,12 +207,15 @@ def run(
         accuracy_seen_avgs.append(accuracy_seen_avg)
         ece_seen_avgs.append(ece_seen_avg)
 
-    if from_study:
-        log_to_logbook(cfg, accuracy_seen_avgs, ece_seen_avgs)
+    if from_study and study is not None:
+        log_to_logbook(cfg, study._study_id, accuracy_seen_avgs, ece_seen_avgs)
 
 
-def log_to_logbook(cfg, accuracy_seen_avgs, ece_seen_avgs):
-    with open(f"~/logbooks/{cfg.label.scenario}_{cfg.label.method}.csv", "a") as f:
+def log_to_logbook(cfg: Config, optuna_id: int, accuracy_seen_avgs: Sequence[float], ece_seen_avgs: Sequence[float]):
+    filename = Path(f"~/logbooks/{cfg.label.scenario}_{cfg.label.method}.csv").expanduser()
+    filename.parent.mkdir(parents=True, exist_ok=True)
+
+    with open(filename, "a") as f:
         writer = csv.writer(
             f,
             strict=True,
@@ -219,6 +224,8 @@ def log_to_logbook(cfg, accuracy_seen_avgs, ece_seen_avgs):
         if f.tell() == 0:
             writer.writerow(
                 [
+                    "scenario",
+                    "method",
                     "study",
                     "commit",
                     "n_runs",
@@ -227,11 +234,15 @@ def log_to_logbook(cfg, accuracy_seen_avgs, ece_seen_avgs):
                     "ece_mean",
                     "ece_std",
                     "git_message",
+                    "optuna_id"
                 ]
             )
         writer.writerow(
             [
+                cfg.label.scenario,
+                cfg.label.method,
                 cfg.label.study,
+                f"{optuna_id:06d}",
                 commit_short_hash(),
                 len(accuracy_seen_avgs),
                 f"{np.mean(accuracy_seen_avgs) * 100:0.2f}",

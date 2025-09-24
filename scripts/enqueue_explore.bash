@@ -2,8 +2,8 @@
 
 set -e
 
-scenario=${1:-"mnist"}
-method=${2:-"naive"}
+scenario=${1:-'mnist'}
+method=${2:-'00_naive'}
 n_trials=5
 config="configs/${scenario}/${method}.yaml"
 n_gpu=$(nvidia-smi --list-gpus | wc -l)
