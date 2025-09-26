@@ -129,6 +129,7 @@ def run_study(config: Config):
 )
 @click.option(
     "--args",
+    "-a",
     type=str,
     multiple=True,
     help="Override config options using dotlist notation.",
@@ -138,9 +139,22 @@ def run_study(config: Config):
     help="Coefficient to scale number of epochs by.",
     default=1.0,
 )
+@click.option(
+    "--force",
+    "-f",
+    is_flag=True,
+    default=False,
+    help="Skip checking if repo is clean.",
+)
 @click.pass_context
-def cli(ctx: click.Context, configs: List[str], args: List[str], epochs_scale: float):
-    if not is_git_status_clean():
+def cli(
+    ctx: click.Context,
+    configs: List[str],
+    args: List[str],
+    epochs_scale: float,
+    force: bool,
+):
+    if not force and not is_git_status_clean():
         raise SystemExit("Please ensure everything is committed")
 
     cfg = from_configs(configs, args)
@@ -211,8 +225,15 @@ def run(
         log_to_logbook(cfg, study._study_id, accuracy_seen_avgs, ece_seen_avgs)
 
 
-def log_to_logbook(cfg: Config, optuna_id: int, accuracy_seen_avgs: Sequence[float], ece_seen_avgs: Sequence[float]):
-    filename = Path(f"~/logbooks/{cfg.label.scenario}_{cfg.label.method}.csv").expanduser()
+def log_to_logbook(
+    cfg: Config,
+    optuna_id: int,
+    accuracy_seen_avgs: Sequence[float],
+    ece_seen_avgs: Sequence[float],
+):
+    filename = Path(
+        f"~/logbooks/{cfg.label.scenario}_{cfg.label.method}.csv"
+    ).expanduser()
     filename.parent.mkdir(parents=True, exist_ok=True)
 
     with open(filename, "a") as f:
@@ -227,14 +248,13 @@ def log_to_logbook(cfg: Config, optuna_id: int, accuracy_seen_avgs: Sequence[flo
                     "scenario",
                     "method",
                     "study",
-                    "commit",
+                    "optuna_idcommit",
                     "n_runs",
                     "accuracy_mean",
                     "accuracy_std",
                     "ece_mean",
                     "ece_std",
                     "git_message",
-                    "optuna_id"
                 ]
             )
         writer.writerow(

@@ -1,20 +1,19 @@
 label:
   method: ball
 
+# BALL uses local CE but it is implemented internally so we turn this off here
+use_local_ce: False
+
 peft:
   type: BALL
   beta: 1.0
 
   vbll: False
-  bayes_eval_samples: 5
+  train_samples: 1
+  test_samples: 5
+
   config:
     r: 10
-    vbnn:
-      prior_loc: 0.0
-      prior_std: 0.5
-      init_sigma_loc: 0.1
-      init_sigma_std: 0.01
-      deterministic_eval: false
 
 hpsearch:
   params:

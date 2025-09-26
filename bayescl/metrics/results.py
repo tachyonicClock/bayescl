@@ -304,8 +304,8 @@ class ContinualLearningEvaluator:
         accuracy = correct / total
         return {
             **asdict(Result.from_accuracy_matrix(accuracy)),
-            "y_true": {k: v.numpy() for k, v in y_true.items()},
-            "y_logit": {k: v.numpy() for k, v in y_logit.items()},
+            # "y_true": {k: v.numpy() for k, v in y_true.items()},
+            # "y_logit": {k: v.numpy() for k, v in y_logit.items()},
             "ece_all": ece_all,
             "ece_all_avg": ece_all.mean(),
             "ece_seen": ece_seen,
