@@ -282,7 +282,7 @@ class Experiment:
         )
 
         strategy = self.cfg.strategy
-        if self.cfg.peft.type == "BALL":
+        if self.cfg.peft and self.cfg.peft.type == "BALL":
             assert strategy is None, "BALL sets its own strategy"
             return BALLStrategy(
                 beta=self.cfg.peft.beta,
@@ -368,4 +368,8 @@ class Experiment:
                 )
                 torch.save(state, f)
 
+        logger.info(
+            f"accuracy_seen_avg: {metrics['accuracy_seen_avg'] * 100:.2f},"
+            f" ece_seen_avg: {metrics['ece_seen_avg'] * 100:.2f}"
+        )
         return metrics["accuracy_seen_avg"], metrics["ece_seen_avg"]

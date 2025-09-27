@@ -7,6 +7,7 @@ import numpy as np
 import torch
 from sklearn.metrics import brier_score_loss
 from torch import Tensor
+from torchmetrics.utilities.compute import normalize_logits_if_needed
 
 from .callibration import calibration_curve, expected_calibration_error
 
@@ -211,7 +212,7 @@ class ContinualLearningEvaluator:
     @staticmethod
     def ece(y_logit: Tensor, y_true: Tensor, num_bins: int = N_BINS) -> float:
         """Expected Calibration Error. Use probabilities from the predicted class only."""
-        y_prob = torch.softmax(y_logit, dim=-1)
+        y_prob = normalize_logits_if_needed(y_logit, "softmax")
         bin_prob, bin_freq, bin_weights = calibration_curve(
             y_prob.numpy(),
             y_true.numpy(),
@@ -222,7 +223,7 @@ class ContinualLearningEvaluator:
     @staticmethod
     def sce(y_logit: Tensor, y_true: Tensor, num_bins: int = N_BINS) -> float:
         """Static Calibration Error. Use probabilities from all classes."""
-        y_prob = torch.softmax(y_logit, dim=-1)
+        y_prob = normalize_logits_if_needed(y_logit, "softmax")
         bin_prob, bin_freq, bin_weights = calibration_curve(
             y_prob.numpy(),
             y_true.numpy(),
@@ -234,7 +235,7 @@ class ContinualLearningEvaluator:
     @staticmethod
     def ace(y_logit: Tensor, y_true: Tensor, num_bins: int = N_BINS) -> float:
         """Adaptive Calibration Error. Bins have equal number of samples."""
-        y_prob = torch.softmax(y_logit, dim=-1)
+        y_prob = normalize_logits_if_needed(y_logit, "softmax")
         bin_prob, bin_freq, bin_weights = calibration_curve(
             y_prob.numpy(),
             y_true.numpy(),
@@ -247,7 +248,7 @@ class ContinualLearningEvaluator:
     @staticmethod
     def brier(y_logit: Tensor, y_true: Tensor) -> float:
         """Brier score."""
-        y_prob = torch.softmax(y_logit, dim=-1)
+        y_prob = normalize_logits_if_needed(y_logit, "softmax")
         return float(brier_score_loss(y_true.numpy(), y_prob.numpy()))
 
     @torch.no_grad()
