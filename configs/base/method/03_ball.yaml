@@ -17,4 +17,6 @@ peft:
 
 hpsearch:
   params:
-    "peft.beta": {type: float, low: 1.0, high: 100.0, log: True}
+    "peft.beta": {type: float, low: 1e-2, high: 1.0, log: True}
+    "peft.config.max_sd": {type: float, low: 1e-2, high: 1.0, log: True}
+    "peft.config.init_sd": {type: float, low: 1e-5, high: 1e-2, log: True}

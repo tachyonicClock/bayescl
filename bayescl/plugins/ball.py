@@ -6,6 +6,7 @@ from bnn.nn.mixins.variational.base import VariationalMixin
 from loguru import logger
 from torch import BoolTensor, Tensor
 from torch.utils.tensorboard import SummaryWriter
+from torch.nn.functional import cross_entropy, nll_loss
 
 from bayescl.peft._ball.layer import posterior_to_prior
 
@@ -53,24 +54,20 @@ class BALLStrategy(Naive):
     ) -> Tuple[Tensor, Tensor]:
         assert not self.is_eval
 
-        n = self.train_samples
         t = self.clock.train_exp_counter
         x, y, _ = batch
-
-        def get_nll(y_hat: Tensor) -> Tensor:
-            return -dist.Categorical(logits=y_hat).log_prob(y).mean()
 
         kl = self.kl_loss()
         pred_probs = 0
         nll = 0
-        for k in range(n):
+        for k in range(self.train_samples):
             y_hat = self.mask[t] * self.model(x)
             pred_probs += y_hat.softmax(dim=-1)
-            nll += get_nll(y_hat)
+            nll += cross_entropy(y_hat, y)
 
         # Average over samples
-        pred_probs /= n
-        nll /= n
+        pred_probs /= self.train_samples
+        nll /= self.train_samples
         kl /= self.train_data_size
 
         beta_kl = self.beta * kl
@@ -92,8 +89,8 @@ class BALLStrategy(Naive):
         x, y, _ = batch
         # Bayesian Posterior Predictive Distribution (marginalize over the model posterior)
         # Like ensembling, but each ensemble member is a sample from the model posterior.
-        pred_probs = sum(self.model(x).softmax(dim=-1) for _ in range(n)) / n
-        loss = -dist.Categorical(probs=pred_probs).log_prob(y).mean()
+        pred_probs: Tensor = sum(self.model(x).softmax(dim=-1) for _ in range(n)) / n # type: ignore
+        loss = nll_loss(pred_probs.log(), y)
         return loss, pred_probs
 
     def training_epoch(self, **kwargs):
