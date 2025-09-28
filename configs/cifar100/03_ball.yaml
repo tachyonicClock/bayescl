@@ -2,6 +2,3 @@ include:
 - ../base.yaml
 - ../base/dataset/cifar100.yaml
 - ../base/method/03_ball.yaml
-lr: 0.0023
-peft:
-  beta: 0.13
