@@ -1,12 +1,12 @@
-from typing import Tuple
+from typing import Callable, Tuple
 
-import torch.distributions as dist
+import torch
 from avalanche.training.supervised import Naive
 from bnn.nn.mixins.variational.base import VariationalMixin
 from loguru import logger
 from torch import BoolTensor, Tensor
-from torch.utils.tensorboard import SummaryWriter
 from torch.nn.functional import cross_entropy, nll_loss
+from torch.utils.tensorboard import SummaryWriter
 
 from bayescl.peft._ball.layer import posterior_to_prior
 
@@ -19,6 +19,7 @@ class BALLStrategy(Naive):
         test_samples: int,
         mask: BoolTensor,
         train_data_size: int,
+        optimizer_fn: Callable[[], torch.optim.Optimizer],
         writer: SummaryWriter | None = None,
         **kwargs,
     ):
@@ -29,6 +30,7 @@ class BALLStrategy(Naive):
         if test_samples < 1:
             raise ValueError("test_samples must be at least 1")
 
+        self.optimizer_fn = optimizer_fn
         self.beta = beta
         self.train_samples = train_samples
         self.test_samples = test_samples
@@ -89,9 +91,15 @@ class BALLStrategy(Naive):
         x, y, _ = batch
         # Bayesian Posterior Predictive Distribution (marginalize over the model posterior)
         # Like ensembling, but each ensemble member is a sample from the model posterior.
-        pred_probs: Tensor = sum(self.model(x).softmax(dim=-1) for _ in range(n)) / n # type: ignore
+        pred_probs: Tensor = sum(self.model(x).softmax(dim=-1) for _ in range(n)) / n  # type: ignore
         loss = nll_loss(pred_probs.log(), y)
         return loss, pred_probs
+
+    def _before_training_exp(self, **kwargs):
+        # Reset the momentum optimizer to avoid forgetting previous tasks because of
+        # stale momentum.
+        self.optimizer = self.optimizer_fn()  # type: ignore
+        return super()._before_training_exp(**kwargs)
 
     def training_epoch(self, **kwargs):
         for self.mbatch in self.dataloader:

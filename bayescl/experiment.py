@@ -269,10 +269,15 @@ class Experiment:
         self._add_peft_adapters()
         self._add_plugins()
 
+    def get_optimizer(self) -> torch.optim.Optimizer:
+        return torch.optim.Adam(
+            filter(lambda p: p.requires_grad, self.model.parameters()), lr=self.cfg.lr
+        )
+
     def get_strategy(self) -> SupervisedTemplate:
         base_kwargs = dict(
             model=self.model,
-            optimizer=torch.optim.Adam(self.model.parameters(), lr=self.cfg.lr),
+            optimizer=self.get_optimizer(),
             train_mb_size=self.cfg.train_mb_size,
             eval_mb_size=self.cfg.eval_mb_size or self.cfg.train_mb_size,
             train_epochs=self.cfg.epochs,
@@ -290,7 +295,8 @@ class Experiment:
                 test_samples=self.cfg.peft.test_samples,
                 writer=self.tb_log.writer,
                 mask=self.mask,
-                train_data_size=len(self.benchmark.original_train_dataset),
+                train_data_size=len(self.benchmark.original_train_dataset),  # type: ignore
+                optimizer_fn=self.get_optimizer,
                 **base_kwargs,
             )
         elif strategy is None:
