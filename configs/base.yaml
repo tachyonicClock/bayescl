@@ -19,4 +19,4 @@ hpsearch:
   n_trials: 15
   direction: [maximize, minimize]
 
-hpsearch_study_version: 6
+hpsearch_study_version: 7
