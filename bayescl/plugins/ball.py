@@ -18,7 +18,6 @@ class BALLStrategy(Naive):
         train_samples: int,
         test_samples: int,
         mask: BoolTensor,
-        train_data_size: int,
         optimizer_fn: Callable[[], torch.optim.Optimizer],
         writer: SummaryWriter | None = None,
         **kwargs,
@@ -34,14 +33,13 @@ class BALLStrategy(Naive):
         self.beta = beta
         self.train_samples = train_samples
         self.test_samples = test_samples
-        self.train_data_size = train_data_size
         self.writer = writer
         self.mask = mask.to(self.device)
 
         logger.info(
             "Initialized `BALLStrategy` with"
             f" beta={self.beta} train_samples={self.train_samples}"
-            f" test_samples={self.test_samples} train_data_size={self.train_data_size}"
+            f" test_samples={self.test_samples}"
         )
 
     def kl_loss(self) -> Tensor:
@@ -70,7 +68,11 @@ class BALLStrategy(Naive):
         # Average over samples
         pred_probs /= self.train_samples
         nll /= self.train_samples
-        kl /= self.train_data_size
+
+        # Scale the KL divergence by the number of samples in the dataset so that
+        # it is in the same scale as the cross-entropy loss.
+        # The raw kl divergence is independent of the data batch size.
+        kl /= len(self.experience.dataset)
 
         beta_kl = self.beta * kl
         loss = nll + beta_kl

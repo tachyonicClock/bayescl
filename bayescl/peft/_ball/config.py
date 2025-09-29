@@ -5,6 +5,7 @@ from typing import Optional
 @dataclass
 class BALLConfig:
     r: int = 4
+    lora_alpha: int = 1
     prior_mean: float = 0.0
     prior_weight_sd: float = 1.0
     prior_bias_sd: float = 1.0

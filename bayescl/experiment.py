@@ -295,7 +295,6 @@ class Experiment:
                 test_samples=self.cfg.peft.test_samples,
                 writer=self.tb_log.writer,
                 mask=self.mask,
-                train_data_size=len(self.benchmark.original_train_dataset),  # type: ignore
                 optimizer_fn=self._new_optimizer,
                 **base_kwargs,
             )

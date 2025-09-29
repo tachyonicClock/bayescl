@@ -183,6 +183,8 @@ def run(
     n_trials: int = 1,
 ):
     cfg.scenario.validation = validate
+    git_commit_hash = commit_short_hash()
+    git_message = commit_message()
 
     study = None
     if from_study:
@@ -211,7 +213,14 @@ def run(
         ece_seen_avgs.append(ece_seen_avg)
 
     if from_study and study is not None:
-        log_to_logbook(cfg, study._study_id, accuracy_seen_avgs, ece_seen_avgs)
+        log_to_logbook(
+            cfg,
+            study._study_id,
+            accuracy_seen_avgs,
+            ece_seen_avgs,
+            git_commit_hash,
+            git_message,
+        )
 
 
 def log_to_logbook(
@@ -219,6 +228,8 @@ def log_to_logbook(
     optuna_id: int,
     accuracy_seen_avgs: Sequence[float],
     ece_seen_avgs: Sequence[float],
+    git_commit_hash: str,
+    git_message: str,
 ):
     filename = Path(
         f"~/logbooks/{cfg.label.scenario}_{cfg.label.method}.csv"
@@ -237,8 +248,9 @@ def log_to_logbook(
                     "scenario",
                     "method",
                     "study",
-                    "optuna_idcommit",
-                    "n_runs",
+                    "optuna_id",
+                    "git_commit",
+                    "n_trials",
                     "accuracy_mean",
                     "accuracy_std",
                     "ece_mean",
@@ -252,13 +264,13 @@ def log_to_logbook(
                 cfg.label.method,
                 cfg.label.study,
                 f"{optuna_id:06d}",
-                commit_short_hash(),
+                git_commit_hash,
                 len(accuracy_seen_avgs),
-                f"{np.mean(accuracy_seen_avgs) * 100:0.2f}",
-                f"{np.std(accuracy_seen_avgs) * 100:0.2f}",
-                f"{np.mean(ece_seen_avgs) * 100:0.2f}",
-                f"{np.std(ece_seen_avgs) * 100:0.2f}",
-                commit_message(),
+                f"{np.mean(accuracy_seen_avgs) * 100:0.4f}",
+                f"{np.std(accuracy_seen_avgs) * 100:0.4f}",
+                f"{np.mean(ece_seen_avgs) * 100:0.4f}",
+                f"{np.std(ece_seen_avgs) * 100:0.4f}",
+                git_message,
             ]
         )
 

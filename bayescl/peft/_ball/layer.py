@@ -104,10 +104,11 @@ class BALLLinear(nn.Linear, BALLLayer):
             nonlinearity_scale=config.nonlinearity_scale,
             sqrt_width_scaling=config.sqrt_width_scaling,
         )
+        self.scaling = config.lora_alpha / config.r
 
         # Initialize A and B
         nn.init.kaiming_uniform_(self.ball_A.weight_mean, a=math.sqrt(5))
         nn.init.zeros_(self.ball_B.weight_mean)
 
     def forward(self, input: torch.Tensor) -> torch.Tensor:
-        return super().forward(input) + self.ball_B(self.ball_A(input))
+        return super().forward(input) + self.ball_B(self.ball_A(input)) * self.scaling
