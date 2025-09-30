@@ -5,7 +5,6 @@ import optuna
 import yaml
 
 STORAGE = environ.get("OPTUNA_STORAGE")
-study_hash = "34ed8bb"
 
 DATASETS = {
     "SplitCIFAR100": "cifar100",
@@ -41,7 +40,7 @@ STUDIES = [
     # "bayescl/SplitImageNetR/joint/3bb542b",
     # "bayescl/SplitImageNetR/rwalk/3bb542b",
     # "bayescl/SplitDomainNet/ball/34ed8bb",
-    "bayescl/hp_0005/cifar100/ball"
+    "bayescl/hp_0002/cifar100/ball"
 ]
 
 

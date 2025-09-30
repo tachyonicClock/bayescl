@@ -1,7 +1,8 @@
+import os
+
+import click
 import matplotlib.pyplot as plt
 import optuna
-import click
-import os
 import pandas as pd
 import seaborn as sns
 
@@ -33,9 +34,9 @@ def main(study_name: str):
         study, evaluator=importance_eval, target=lambda t: t.values[1]
     )
 
-    ratio=2/1
-    width=4
-    fig, ax = plt.subplots(figsize=(width, width/ratio))
+    ratio = 2 / 1
+    width = 4
+    fig, ax = plt.subplots(figsize=(width, width / ratio))
     df_acc = pd.DataFrame.from_dict(
         acc_importance, orient="index", columns=["Importance"]
     ).reset_index()
@@ -46,7 +47,9 @@ def main(study_name: str):
     df_ece["Metric"] = "ECE"
     df_importance = pd.concat([df_acc, df_ece])
     sns.barplot(data=df_importance, y="index", x="Importance", hue="Metric", ax=ax)
-    ax.set_title(study_name + f"\n('{attr_git_message}' {attr_git_commit})", fontsize=10)
+    ax.set_title(
+        study_name + f"\n('{attr_git_message}' {attr_git_commit})", fontsize=10
+    )
     ax.set_xlabel("Importance")
     # remove y label
     ax.set_ylabel("")

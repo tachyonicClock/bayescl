@@ -14,9 +14,10 @@ I found the following resources helpful for understanding and implementing VBNNs
 
 import math
 from dataclasses import dataclass
-from typing import Generator, Tuple
+from typing import Generator, Optional, Tuple
 
 import torch
+from bnn.nn.modules import FFGLinear, FFGMixin
 from torch import Tensor, nn
 
 
@@ -62,13 +63,13 @@ def inv_softplus(x: Tensor) -> Tensor:
 class VBNNConfig:
     """Config for Variational Bayesian Neural Networks."""
 
-    prior_loc: float = 0.0
+    prior_mean: float = 0.0
     """Mean of the prior distribution."""
-    prior_std: float = 0.5
+    prior_weight_sd: float = 0.5
     """Standard deviation of the prior distribution."""
-    init_sigma_loc: float = 0.1
+    init_sd: float = 0.1
     """Mean of the initial variational posterior distribution."""
-    init_sigma_std: float = 0.1
+    init_sd_sd: float = 0.1
     """Standard deviation of the initial variational posterior distribution."""
     deterministic_eval: bool = False
     """If True, in evaluation mode, the forward pass will not add noise to the output."""
@@ -105,32 +106,30 @@ class VariationalParameter(nn.Module):
 
         # Register the parameters and buffers.
         rho_mean = inv_softplus(
-            (config.init_sigma_loc + config.init_sigma_std * torch.randn(shape)).clamp(
-                min=1e-5
-            )
+            (config.init_sd + config.init_sd_sd * torch.randn(shape)).clamp(min=1e-5)
         )
         self.mu = nn.Parameter(torch.zeros(shape))
         self.rho = nn.Parameter(rho_mean)
-        self.register_buffer("prior_sigma", torch.full(shape, config.prior_std))
-        self.register_buffer("prior_mu", torch.full(shape, config.prior_loc))
+        self.register_buffer("prior_sigma", torch.full(shape, config.prior_weight_sd))
+        self.register_buffer("prior_mu", torch.full(shape, config.prior_mean))
 
-    def sigma(self) -> Tensor:
+    def weight_sd(self) -> Tensor:
         """Applies softplus to the rho parameter to get the standard deviation."""
         return nn.functional.softplus(self.rho)
 
-    def kl_loss(self) -> Tensor:
+    def kl_divergence(self) -> Tensor:
         """Calculates the KL divergence loss between the posterior and prior distributions."""
         return self.kl_divergences().sum()
 
     def kl_divergences(self) -> Tensor:
         return univariate_gaussian_kl_divergence(
-            self.mu, self.sigma(), self.prior_mu, self.prior_sigma
+            self.mu, self.weight_sd(), self.prior_mu, self.prior_sigma
         )
 
     def forward(self) -> Tensor:
         """Sample from the posterior distribution using the reparameterization trick."""
         if self.training or not self._deterministic_eval:
-            return self.mu + self.sigma() * torch.randn_like(self.mu)
+            return self.mu + self.weight_sd() * torch.randn_like(self.mu)
         return self.mu
 
 
@@ -190,7 +189,7 @@ def iterate_variational_parameters(
             yield name, submodule
 
 
-def get_model_kl_loss(module: nn.Module) -> Tensor:
+def kl_divergence(module: nn.Module) -> Tensor:
     """Calculates the KL divergence loss for all variational parameters in the module.
 
     >>> _ = torch.manual_seed(0)
@@ -201,128 +200,74 @@ def get_model_kl_loss(module: nn.Module) -> Tensor:
     :param module: Module containing variational parameters.
     :return: Total KL divergence loss.
     """
-    kl = sum(p.kl_loss() for _, p in iterate_variational_parameters(module))
+    kl = sum(
+        m.kl_divergence()
+        for m in module.modules()
+        if hasattr(m, "kl_divergence")  # type: ignore
+    )
     assert isinstance(kl, Tensor)
     return kl
 
 
-@torch.no_grad()
-def get_posterior_state(module: nn.Module) -> dict[str, Tensor]:
-    """Returns the posterior state of the Bayesian neural network.
-
-    >>> _ = torch.manual_seed(0)
-    >>> linear = VariationalLinear(2, 2)
-    >>> state = get_posterior_state(linear)
-    >>> list(state.keys())
-    ['weight.mu', 'weight.sigma', 'bias.mu', 'bias.sigma']
-    >>> list(tuple(v.shape) for v in state.values())
-    [(2, 2), (2, 2), (2,), (2,)]
-    >>> state['weight.mu']
-    tensor([[-0.6755, -0.4683],
-            [-0.2915,  0.0262]])
-
-    :param module: Module containing variational parameters.
-    :return: Dictionary with posterior means and standard deviations.
-    """
-    posterior_state = {}
-    for name, p in iterate_variational_parameters(module):
-        posterior_state[f"{name}.mu"] = p.mu.detach().cpu()
-        posterior_state[f"{name}.sigma"] = p.sigma().detach().cpu()
-    return posterior_state
+@dataclass
+class FFGState:
+    weight_mean: Tensor
+    weight_sd: Tensor
+    bias_mean: Optional[Tensor]
+    bias_sd: Optional[Tensor]
 
 
 @torch.no_grad()
-def set_posterior_state(module: nn.Module, bnn_state: dict[str, Tensor]) -> None:
-    """Sets the posterior state of the Bayesian neural network.
-
-    >>> _ = torch.manual_seed(0)
-    >>> linear = VariationalLinear(2, 2)
-    >>> bnn_state = get_posterior_state(linear)
-    >>> set_posterior_state(linear, bnn_state)
-
-    :param module: Module containing variational parameters.
-    :param bnn_state: Dictionary with posterior means and standard deviations.
-        Fields should be named as "{name}.mu" and "{name}.sigma".
-    :return: None
-    """
-    for name, p in iterate_variational_parameters(module):
-        if f"{name}.mu" in bnn_state:
-            p.mu.copy_(bnn_state[f"{name}.mu"])
-        if f"{name}.sigma" in bnn_state:
-            p.rho.copy_(inv_softplus(bnn_state[f"{name}.sigma"]))
-
-
-def get_prior_state(module: nn.Module) -> dict[str, Tensor]:
-    """Returns the prior state of the Bayesian neural network.
-
-    >>> _ = torch.manual_seed(0)
-    >>> linear = VariationalLinear(2, 2)
-    >>> state = get_prior_state(linear)
-    >>> list(state.keys())
-    ['weight.mu', 'weight.sigma', 'bias.mu', 'bias.sigma']
-    >>> list(tuple(v.shape) for v in state.values())
-    [(2, 2), (2, 2), (2,), (2,)]
-    >>> state['weight.mu']
-    tensor([[0., 0.],
-            [0., 0.]])
-
-    :param module: Module containing variational parameters.
-    :return: Dictionary with prior means and standard deviations.
-    """
-    prior_state = {}
-    for name, p in iterate_variational_parameters(module):
-        prior_state[f"{name}.mu"] = p.prior_mu.detach().cpu()
-        prior_state[f"{name}.sigma"] = p.prior_sigma.detach().cpu()
-    return prior_state
+def get_posterior(vb_layer: FFGMixin | VariationalParameter) -> FFGState:
+    if isinstance(vb_layer, VariationalParameter):
+        return FFGState(
+            weight_mean=vb_layer.mu,
+            weight_sd=vb_layer.weight_sd(),
+            bias_mean=None,
+            bias_sd=None,
+        )
+    elif isinstance(vb_layer, FFGMixin):
+        return FFGState(
+            weight_mean=vb_layer.weight_mean,
+            weight_sd=vb_layer.weight_sd,
+            bias_mean=vb_layer.bias_mean,
+            bias_sd=vb_layer.bias_sd,
+        )
+    else:
+        raise TypeError(
+            f"`vb_layer` must be {FFGLinear} or {VariationalParameter}, got {type(vb_layer)}"
+        )
 
 
-def set_prior_state(module: nn.Module, bnn_state: dict[str, Tensor]) -> None:
-    """Sets the prior state of the Bayesian neural network.
+@torch.no_grad()
+def set_prior(vb_layer: FFGMixin | VariationalParameter, state: FFGState):
+    if isinstance(vb_layer, VariationalParameter):
+        vb_layer.prior_mu = state.weight_mean
+        vb_layer.prior_sigma = state.weight_sd
+    elif isinstance(vb_layer, FFGMixin):
+        assert isinstance(vb_layer.prior_weight_mean, Tensor)
+        assert isinstance(vb_layer.prior_weight_sd, Tensor)
+        vb_layer.prior_weight_mean.copy_(state.weight_mean)
+        vb_layer.prior_weight_sd.copy_(state.weight_sd)
 
-    >>> _ = torch.manual_seed(0)
-    >>> linear = VariationalLinear(2, 2)
-    >>> set_prior_state(linear, get_posterior_state(linear))
-
-    :param module: Module containing variational parameters.
-    :param bnn_state: Dictionary with prior means and standard deviations.
-        Fields should be named as "{name}.mu" and "{name}.sigma".
-    :return: None
-    """
-    for name, p in iterate_variational_parameters(module):
-        if f"{name}.mu" in bnn_state:
-            p.prior_mu.copy_(bnn_state[f"{name}.mu"])
-        if f"{name}.sigma" in bnn_state:
-            p.prior_sigma.copy_(bnn_state[f"{name}.sigma"])
-
-
-def sample_vbnn_vector(module: nn.Module) -> Tensor:
-    """Samples a vector from the posterior distribution of all variational parameters in the module.
-
-    >>> _ = torch.manual_seed(0)
-    >>> linear = VariationalLinear(2, 2)
-    >>> sample_vbnn_vector(linear)
-    tensor([-0.7419, -0.3929, -0.2915,  0.1579,  0.2795,  0.4243],
-           grad_fn=<CatBackward0>)
-
-    :param module: Module containing variational parameters.
-    :return: Concatenated vector of all variational parameters.
-    """
-    return torch.cat(
-        [p.forward().view(-1) for _, p in iterate_variational_parameters(module)],
-        dim=0,
-    )
+        if (
+            vb_layer.has_bias
+            and state.bias_mean is not None
+            and state.bias_sd is not None
+        ):
+            assert isinstance(vb_layer.prior_bias_mean, Tensor)
+            assert isinstance(vb_layer.prior_bias_sd, Tensor)
+            vb_layer.prior_bias_mean.copy_(state.bias_mean)
+            vb_layer.prior_bias_sd.copy_(state.bias_sd)
+        elif vb_layer.has_bias:
+            raise ValueError("bias_mean and bias_sd must be provided if FFG has bias")
+    else:
+        raise TypeError("ffg must be FFGMixin or VariationalParameter")
 
 
-def sample_vbnn_vectors(module: nn.Module, n_samples: int) -> Tensor:
-    """Samples multiple vectors from the posterior distribution of all variational parameters in the module.
-
-    >>> _ = torch.manual_seed(0)
-    >>> linear = VariationalLinear(2, 2)
-    >>> sample_vbnn_vectors(linear, 3).shape
-    torch.Size([3, 6])
-
-    :param module: Module containing variational parameters.
-    :param n_samples: Number of samples to draw.
-    :return: Tensor of shape (n_samples, total_parameters) with sampled vectors.
-    """
-    return torch.stack([sample_vbnn_vector(module) for _ in range(n_samples)], dim=0)
+def posterior_to_prior(module: nn.Module):
+    for submodule in module.modules():
+        if isinstance(submodule, FFGMixin):
+            set_prior(submodule, get_posterior(submodule))
+        if isinstance(submodule, VariationalParameter):
+            set_prior(submodule, get_posterior(submodule))

@@ -210,3 +210,4 @@ log
 .vscode
 nohup.out
 **.ipynb
+figs

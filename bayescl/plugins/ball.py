@@ -8,7 +8,7 @@ from torch import BoolTensor, Tensor
 from torch.nn.functional import cross_entropy, nll_loss
 from torch.utils.tensorboard import SummaryWriter
 
-from bayescl.peft._ball.layer import posterior_to_prior
+from bayescl.vbnn import kl_divergence, posterior_to_prior
 
 
 class BALLStrategy(Naive):
@@ -57,7 +57,7 @@ class BALLStrategy(Naive):
         t = self.clock.train_exp_counter
         x, y, _ = batch
 
-        kl = self.kl_loss()
+        kl = kl_divergence(self.model)
         pred_probs = 0
         nll = 0
         for k in range(self.train_samples):
@@ -72,16 +72,14 @@ class BALLStrategy(Naive):
         # Scale the KL divergence by the number of samples in the dataset so that
         # it is in the same scale as the cross-entropy loss.
         # The raw kl divergence is independent of the data batch size.
-        kl /= len(self.experience.dataset)
-
+        kl /= len(self.experience.dataset)  # type: ignore
         beta_kl = self.beta * kl
         loss = nll + beta_kl
 
-        self.writer.add_scalar("ball/nll", nll.item(), self.clock.train_iterations)
-        self.writer.add_scalar("ball/kl", kl.item(), self.clock.train_iterations)
-        self.writer.add_scalar(
-            "ball/beta_kl", beta_kl.item(), self.clock.train_iterations
-        )
+        step = self.clock.train_iterations
+        self.writer.add_scalar("ball/nll", nll.item(), step)
+        self.writer.add_scalar("ball/kl", kl.item(), step)
+        self.writer.add_scalar("ball/beta_kl", beta_kl.item(), step)
         return loss, pred_probs
 
     def predict_step(
@@ -116,7 +114,7 @@ class BALLStrategy(Naive):
 
             # Forward
             self._before_forward(**kwargs)
-            loss, mb_output = self.training_step(self.mbatch)
+            loss, mb_output = self.training_step(self.mbatch)  # type: ignore
             self.mb_output = mb_output
             self.loss += loss
             self._after_forward(**kwargs)
@@ -139,7 +137,7 @@ class BALLStrategy(Naive):
             self._before_eval_iteration(**kwargs)
 
             self._before_eval_forward(**kwargs)
-            self.loss, self.mb_output = self.predict_step(self.mbatch)
+            self.loss, self.mb_output = self.predict_step(self.mbatch)  # type: ignore
             self._after_eval_forward(**kwargs)
 
             self._after_eval_iteration(**kwargs)
