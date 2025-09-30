@@ -71,8 +71,6 @@ class VBNNConfig:
     """Mean of the initial variational posterior distribution."""
     init_sd_sd: float = 0.1
     """Standard deviation of the initial variational posterior distribution."""
-    deterministic_eval: bool = False
-    """If True, in evaluation mode, the forward pass will not add noise to the output."""
 
 
 class VariationalParameter(nn.Module):
@@ -102,8 +100,6 @@ class VariationalParameter(nn.Module):
         :param config: Configuration for the variational parameter.
         """
         super().__init__()
-        self._deterministic_eval = config.deterministic_eval
-
         # Register the parameters and buffers.
         rho_mean = inv_softplus(
             (config.init_sd + config.init_sd_sd * torch.randn(shape)).clamp(min=1e-5)
@@ -113,7 +109,7 @@ class VariationalParameter(nn.Module):
         self.register_buffer("prior_sigma", torch.full(shape, config.prior_weight_sd))
         self.register_buffer("prior_mu", torch.full(shape, config.prior_mean))
 
-    def weight_sd(self) -> Tensor:
+    def sigma(self) -> Tensor:
         """Applies softplus to the rho parameter to get the standard deviation."""
         return nn.functional.softplus(self.rho)
 
@@ -123,14 +119,12 @@ class VariationalParameter(nn.Module):
 
     def kl_divergences(self) -> Tensor:
         return univariate_gaussian_kl_divergence(
-            self.mu, self.weight_sd(), self.prior_mu, self.prior_sigma
+            self.mu, self.sigma(), self.prior_mu, self.prior_sigma
         )
 
     def forward(self) -> Tensor:
         """Sample from the posterior distribution using the reparameterization trick."""
-        if self.training or not self._deterministic_eval:
-            return self.mu + self.weight_sd() * torch.randn_like(self.mu)
-        return self.mu
+        return self.mu + self.sigma() * torch.randn_like(self.mu)
 
 
 class VariationalLinear(nn.Module):
@@ -222,7 +216,7 @@ def get_posterior(vb_layer: FFGMixin | VariationalParameter) -> FFGState:
     if isinstance(vb_layer, VariationalParameter):
         return FFGState(
             weight_mean=vb_layer.mu,
-            weight_sd=vb_layer.weight_sd(),
+            weight_sd=vb_layer.sigma(),
             bias_mean=None,
             bias_sd=None,
         )
