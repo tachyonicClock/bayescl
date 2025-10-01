@@ -2,24 +2,29 @@ from typing import Callable, Tuple
 
 import torch
 from avalanche.training.supervised import Naive
-from bnn.nn.mixins.variational.base import VariationalMixin
 from loguru import logger
-from torch import BoolTensor, Tensor
+from torch import BoolTensor, Tensor, nn
 from torch.nn.functional import cross_entropy, nll_loss
 from torch.utils.tensorboard import SummaryWriter
 
-from bayescl.vbnn import kl_divergence, posterior_to_prior
+from bayescl.vbnn import (
+    VariationalLinear,
+    VariationalParameter,
+    kl_divergence,
+    posterior_to_prior,
+)
 
 
 class BALLStrategy(Naive):
     def __init__(
         self,
+        *,
         beta: float,
         train_samples: int,
         test_samples: int,
         mask: BoolTensor,
         optimizer_fn: Callable[[], torch.optim.Optimizer],
-        writer: SummaryWriter | None = None,
+        writer: SummaryWriter,
         **kwargs,
     ):
         assert "criterion" not in kwargs, "criterion is set by BALL"
@@ -42,22 +47,24 @@ class BALLStrategy(Naive):
             f" test_samples={self.test_samples}"
         )
 
-    def kl_loss(self) -> Tensor:
-        return sum(
-            m.kl_divergence()
+        self.n_vbnn_param = sum(
+            m.mu.numel()  # type: ignore
             for m in self.model.modules()
-            if isinstance(m, VariationalMixin)
-        )  # type: ignore
+            if isinstance(m, VariationalParameter)
+        )
+        """Number of variational parameters in the model."""
+        assert self.n_vbnn_param > 0, "No variational parameters found in the model."
 
     def training_step(
         self, batch: Tuple[Tensor, Tensor, Tensor]
     ) -> Tuple[Tensor, Tensor]:
         assert not self.is_eval
+        encoder: nn.Module = self.model.model.vit  # type: ignore
+        head: nn.Module = self.model.model.classifier  # type: ignore
 
         t = self.clock.train_exp_counter
         x, y, _ = batch
 
-        kl = kl_divergence(self.model)
         pred_probs = 0
         nll = 0
         for k in range(self.train_samples):
@@ -65,14 +72,20 @@ class BALLStrategy(Naive):
             pred_probs += y_hat.softmax(dim=-1)
             nll += cross_entropy(y_hat, y)
 
-        # Average over samples
         pred_probs /= self.train_samples
         nll /= self.train_samples
 
-        # Scale the KL divergence by the number of samples in the dataset so that
-        # it is in the same scale as the cross-entropy loss.
-        # The raw kl divergence is independent of the data batch size.
-        kl /= len(self.experience.dataset)  # type: ignore
+        kl_encoder = kl_divergence(encoder)
+        kl_head = 0
+        if isinstance(head, VariationalLinear):
+            # Only calculate KL divergence for the active weights
+            kl_head = (self.mask[t] * head.weight.kl_divergences().sum(1)).sum()
+            kl_head += (self.mask[t] * head.bias.kl_divergences()).sum()
+
+        # Scale the KL divergence by the number of samples in the dataset.
+        # The idea is that the cross-entropy loss is an average over a mini-batch and
+        # is therefore 1/dataset_size to small compared to the likelihood
+        kl = (kl_encoder + kl_head) / len(self.experience.dataset)  # type: ignore
         beta_kl = self.beta * kl
         loss = nll + beta_kl
 
@@ -100,6 +113,21 @@ class BALLStrategy(Naive):
         # stale momentum.
         self.optimizer = self.optimizer_fn()  # type: ignore
         return super()._before_training_exp(**kwargs)
+
+    def _before_training_epoch(self, **kwargs):
+        sigma_sum: float = 0.0
+        sigma_count: int = 0
+        for name, module in self.model.named_modules():
+            if isinstance(module, VariationalParameter):
+                sigma = module.sigma()
+                sigma_sum += sigma.sum().item()
+                sigma_count += sigma.numel()
+
+        assert sigma_count > 0, "No variational parameters found in the model."
+        avg_sigma = sigma_sum / sigma_count
+        step = self.clock.train_iterations
+        self.writer.add_scalar("ball/avg_sigma", avg_sigma, step)
+        return super()._before_training_epoch(**kwargs)
 
     def training_epoch(self, **kwargs):
         for self.mbatch in self.dataloader:
@@ -144,5 +172,5 @@ class BALLStrategy(Naive):
 
     def _after_training_exp(self, **kwargs):
         logger.info("Using previous posterior as new prior.")
-        posterior_to_prior(self.model)
+        posterior_to_prior(self.model.model.vit)  # type: ignore
         return super()._after_training_exp(**kwargs)

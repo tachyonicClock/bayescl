@@ -14,7 +14,7 @@ I found the following resources helpful for understanding and implementing VBNNs
 
 import math
 from dataclasses import dataclass
-from typing import Generator, Optional, Tuple
+from typing import Generator, Literal, Optional, Tuple
 
 import torch
 from bnn.nn.modules import FFGLinear, FFGMixin
@@ -65,12 +65,13 @@ class VBNNConfig:
 
     prior_mean: float = 0.0
     """Mean of the prior distribution."""
-    prior_weight_sd: float = 0.5
+    prior_sd: float = 0.5
     """Standard deviation of the prior distribution."""
     init_sd: float = 0.1
     """Mean of the initial variational posterior distribution."""
     init_sd_sd: float = 0.1
     """Standard deviation of the initial variational posterior distribution."""
+    sd_mode: Literal["softplus", "abs"] = "softplus"
 
 
 class VariationalParameter(nn.Module):
@@ -101,17 +102,30 @@ class VariationalParameter(nn.Module):
         """
         super().__init__()
         # Register the parameters and buffers.
-        rho_mean = inv_softplus(
-            (config.init_sd + config.init_sd_sd * torch.randn(shape)).clamp(min=1e-5)
-        )
         self.mu = nn.Parameter(torch.zeros(shape))
-        self.rho = nn.Parameter(rho_mean)
-        self.register_buffer("prior_sigma", torch.full(shape, config.prior_weight_sd))
+        self.register_buffer("prior_sigma", torch.full(shape, config.prior_sd))
         self.register_buffer("prior_mu", torch.full(shape, config.prior_mean))
+
+        self.sigma_act_fn = None
+        if config.sd_mode == "softplus":
+            self.sigma_act_fn = nn.functional.softplus
+            rho = inv_softplus(
+                (config.init_sd + config.init_sd_sd * torch.randn(shape)).clamp(
+                    min=1e-5
+                )
+            )
+        elif config.sd_mode == "abs":
+            self.sigma_act_fn = torch.abs
+            rho = (config.init_sd + config.init_sd_sd * torch.randn(shape)).abs()
+        else:
+            raise ValueError(
+                f"Invalid sd_mode {config.sd_mode}, must be 'softplus' or 'abs'"
+            )
+        self.rho = nn.Parameter(rho)
 
     def sigma(self) -> Tensor:
         """Applies softplus to the rho parameter to get the standard deviation."""
-        return nn.functional.softplus(self.rho)
+        return self.sigma_act_fn(self.rho)  # type: ignore
 
     def kl_divergence(self) -> Tensor:
         """Calculates the KL divergence loss between the posterior and prior distributions."""
