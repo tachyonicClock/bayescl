@@ -35,7 +35,7 @@ class Int(_BaseConfig):
     #: Upper endpoint of the range of suggested values.
     high: int
     #: A step of discretization.
-    step: int
+    step: int = 1
     #: A flag to sample the value from the log domain or not.
     log: bool = False
 

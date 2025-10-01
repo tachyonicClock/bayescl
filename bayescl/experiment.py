@@ -57,7 +57,7 @@ from bayescl.peft import (
     parameter_summary_str,
     set_module,
 )
-from bayescl.plugins.ball import BALLPlugin
+from bayescl.plugins.ball import BALLStrategy
 from bayescl.plugins.train_mask import TrainTaskMask
 from bayescl.vbnn import VariationalLinear
 
@@ -182,16 +182,6 @@ class Experiment:
                 self.plugins.append(CLoRAPlugin(peft.lambda_, self.tb_log.writer))
             self.model.get_submodule(peft.head_module).requires_grad_(True)
         elif peft.type == "BALL":
-            # Add plugin that contributes kl divergence loss
-            self.plugins += [
-                BALLPlugin(
-                    beta=peft.beta,
-                    bayes_eval_samples=peft.bayes_eval_samples,
-                    writer=self.tb_log.writer,
-                    first_task_beta=peft.first_task_beta,
-                )
-            ]
-
             # Add BALL adapters
             factory = BALL(peft.config)
             add_adapters(self.model, filter_regex, factory)
@@ -222,20 +212,10 @@ class Experiment:
         for name, _ in iter_named_adapters(self.model):
             logger.info(f"{name}")
 
-    def _add_replay_plugin(self):
-        if self.cfg.replay > 0:
-            logger.info(f"Add replay plugin with memory size: {self.cfg.replay}")
-            self.plugins.append(
-                ReplayPlugin(
-                    mem_size=self.cfg.replay,
-                    storage_policy=ReservoirSamplingBuffer(self.cfg.replay),
-                )
-            )
-
     def _add_plugins(self):
         if self.cfg.use_local_ce:
             logger.info("Add 'TrainTaskMask' plugin")
-            self.plugins.append(TrainTaskMask(self.mask))
+            self.plugins.append(TrainTaskMask(self.mask, self._new_optimizer))
         if self.cfg.rwalk:
             logger.info("Add 'RWalk' plugin")
             config = self.cfg.rwalk
@@ -244,6 +224,14 @@ class Experiment:
                     ewc_lambda=config.ewc_lambda,
                     ewc_alpha=config.ewc_alpha,
                     delta_t=config.delta_t,
+                )
+            )
+        if self.cfg.replay > 0:
+            logger.info(f"Add replay plugin with memory size: {self.cfg.replay}")
+            self.plugins.append(
+                ReplayPlugin(
+                    mem_size=self.cfg.replay,
+                    storage_policy=ReservoirSamplingBuffer(self.cfg.replay),
                 )
             )
 
@@ -279,14 +267,17 @@ class Experiment:
         self.metrics_plugin = MetricsPlugin(self.num_tasks, self.num_classes)
         self.model = get_model(cfg, self.benchmark.n_classes)
         self._add_peft_adapters()
-        self._add_replay_plugin()
         self._add_plugins()
+
+    def _new_optimizer(self) -> torch.optim.Optimizer:
+        return torch.optim.Adam(
+            filter(lambda p: p.requires_grad, self.model.parameters()), lr=self.cfg.lr
+        )
 
     def get_strategy(self) -> SupervisedTemplate:
         base_kwargs = dict(
             model=self.model,
-            optimizer=torch.optim.Adam(self.model.parameters(), lr=self.cfg.lr),
-            criterion=torch.nn.CrossEntropyLoss(),
+            optimizer=self._new_optimizer(),
             train_mb_size=self.cfg.train_mb_size,
             eval_mb_size=self.cfg.eval_mb_size or self.cfg.train_mb_size,
             train_epochs=self.cfg.epochs,
@@ -296,7 +287,18 @@ class Experiment:
         )
 
         strategy = self.cfg.strategy
-        if strategy is None:
+        if self.cfg.peft and self.cfg.peft.type == "BALL":
+            assert strategy is None, "BALL sets its own strategy"
+            return BALLStrategy(
+                beta=self.cfg.peft.beta,
+                train_samples=self.cfg.peft.train_samples,
+                test_samples=self.cfg.peft.test_samples,
+                writer=self.tb_log.writer,
+                mask=self.mask,
+                optimizer_fn=self._new_optimizer,
+                **base_kwargs,
+            )
+        elif strategy is None:
             return Naive(**base_kwargs)
         elif isinstance(strategy, config.DERConfig):
             logger.info(
@@ -371,4 +373,8 @@ class Experiment:
                 )
                 torch.save(state, f)
 
+        logger.info(
+            f"accuracy_seen_avg: {metrics['accuracy_seen_avg'] * 100:.2f},"
+            f" ece_seen_avg: {metrics['ece_seen_avg'] * 100:.2f}"
+        )
         return metrics["accuracy_seen_avg"], metrics["ece_seen_avg"]

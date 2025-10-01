@@ -15,3 +15,6 @@ torchvision
 matplotlib
 loguru
 seaborn
+
+# install from https://github.com/microsoft/bayesianize.git
+git+https://github.com/microsoft/bayesianize.git

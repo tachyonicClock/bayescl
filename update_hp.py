@@ -5,7 +5,6 @@ import optuna
 import yaml
 
 STORAGE = environ.get("OPTUNA_STORAGE")
-study_hash = "34ed8bb"
 
 DATASETS = {
     "SplitCIFAR100": "cifar100",
@@ -40,7 +39,8 @@ STUDIES = [
     # "bayescl/SplitImageNetR/ball/34ed8bb",
     # "bayescl/SplitImageNetR/joint/3bb542b",
     # "bayescl/SplitImageNetR/rwalk/3bb542b",
-    "bayescl/SplitDomainNet/ball/34ed8bb",
+    # "bayescl/SplitDomainNet/ball/34ed8bb",
+    "bayescl/hp_0002/cifar100/ball"
 ]
 
 
@@ -54,8 +54,8 @@ yaml.add_representer(float, float_representer)
 
 
 for study_name in STUDIES:
-    _, o_dataset, o_method, _ = study_name.split("/")
-    f_dataset = DATASETS[o_dataset]
+    _, _, f_dataset, o_method = study_name.split("/")
+    # f_dataset = DATASETS[o_dataset]
     f_method = METHODS[o_method]
     filename = Path(f"configs/{f_dataset}/{f_method}.yaml")
 
@@ -70,7 +70,7 @@ for study_name in STUDIES:
     best_trial = min(best_trials, key=lambda t: t.values[1])
 
     print("========================================")
-    print(f"Dataset {o_dataset}, Method: {o_method}")
+    print(f"Dataset {f_dataset}, Method: {o_method}")
     print(f"Avg. Acc. {best_trial.values[0] * 100:.2f}")
     print(f"ECE       {best_trial.values[1] * 100:.2f}")
     print(f"N Trials  {len(study.trials)}")

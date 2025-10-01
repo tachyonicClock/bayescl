@@ -97,17 +97,6 @@ def run_study(config: Config):
         sampler=get_sampler(config.hpsearch.sampler),
         load_if_exists=True,
     )
-    short_hash = commit_short_hash()
-    if (
-        study.user_attrs.get("git_commit", None) is not None
-        and study.user_attrs["git_commit"] != short_hash
-    ):
-        logger.error(
-            f"Current git commit {short_hash} does not match the study's original git "
-            f"commit {study.user_attrs['git_commit']}"
-        )
-        raise SystemExit(1)
-
     study.set_user_attr("git_commit", commit_short_hash())
     study.set_user_attr("git_message", commit_message())
 
@@ -129,6 +118,7 @@ def run_study(config: Config):
 )
 @click.option(
     "--args",
+    "-a",
     type=str,
     multiple=True,
     help="Override config options using dotlist notation.",
@@ -138,9 +128,22 @@ def run_study(config: Config):
     help="Coefficient to scale number of epochs by.",
     default=1.0,
 )
+@click.option(
+    "--force",
+    "-f",
+    is_flag=True,
+    default=False,
+    help="Skip checking if repo is clean.",
+)
 @click.pass_context
-def cli(ctx: click.Context, configs: List[str], args: List[str], epochs_scale: float):
-    if not is_git_status_clean():
+def cli(
+    ctx: click.Context,
+    configs: List[str],
+    args: List[str],
+    epochs_scale: float,
+    force: bool,
+):
+    if not force and not is_git_status_clean():
         raise SystemExit("Please ensure everything is committed")
 
     cfg = from_configs(configs, args)
@@ -180,6 +183,8 @@ def run(
     n_trials: int = 1,
 ):
     cfg.scenario.validation = validate
+    git_commit_hash = commit_short_hash()
+    git_message = commit_message()
 
     study = None
     if from_study:
@@ -208,11 +213,27 @@ def run(
         ece_seen_avgs.append(ece_seen_avg)
 
     if from_study and study is not None:
-        log_to_logbook(cfg, study._study_id, accuracy_seen_avgs, ece_seen_avgs)
+        log_to_logbook(
+            cfg,
+            study._study_id,
+            accuracy_seen_avgs,
+            ece_seen_avgs,
+            git_commit_hash,
+            git_message,
+        )
 
 
-def log_to_logbook(cfg: Config, optuna_id: int, accuracy_seen_avgs: Sequence[float], ece_seen_avgs: Sequence[float]):
-    filename = Path(f"~/logbooks/{cfg.label.scenario}_{cfg.label.method}.csv").expanduser()
+def log_to_logbook(
+    cfg: Config,
+    optuna_id: int,
+    accuracy_seen_avgs: Sequence[float],
+    ece_seen_avgs: Sequence[float],
+    git_commit_hash: str,
+    git_message: str,
+):
+    filename = Path(
+        f"~/logbooks/{cfg.label.scenario}_{cfg.label.method}.csv"
+    ).expanduser()
     filename.parent.mkdir(parents=True, exist_ok=True)
 
     with open(filename, "a") as f:
@@ -227,14 +248,14 @@ def log_to_logbook(cfg: Config, optuna_id: int, accuracy_seen_avgs: Sequence[flo
                     "scenario",
                     "method",
                     "study",
-                    "commit",
-                    "n_runs",
+                    "optuna_id",
+                    "git_commit",
+                    "n_trials",
                     "accuracy_mean",
                     "accuracy_std",
                     "ece_mean",
                     "ece_std",
                     "git_message",
-                    "optuna_id"
                 ]
             )
         writer.writerow(
@@ -243,13 +264,13 @@ def log_to_logbook(cfg: Config, optuna_id: int, accuracy_seen_avgs: Sequence[flo
                 cfg.label.method,
                 cfg.label.study,
                 f"{optuna_id:06d}",
-                commit_short_hash(),
+                git_commit_hash,
                 len(accuracy_seen_avgs),
-                f"{np.mean(accuracy_seen_avgs) * 100:0.2f}",
-                f"{np.std(accuracy_seen_avgs) * 100:0.2f}",
-                f"{np.mean(ece_seen_avgs) * 100:0.2f}",
-                f"{np.std(ece_seen_avgs) * 100:0.2f}",
-                commit_message(),
+                f"{np.mean(accuracy_seen_avgs) * 100:0.4f}",
+                f"{np.std(accuracy_seen_avgs) * 100:0.4f}",
+                f"{np.mean(ece_seen_avgs) * 100:0.4f}",
+                f"{np.std(ece_seen_avgs) * 100:0.4f}",
+                git_message,
             ]
         )
 

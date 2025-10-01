@@ -114,22 +114,15 @@ class InfLoRAConfig(PEFTConfig):
 
 
 class BALL(PEFTConfig):
-    """BALL: Bayesian low-rank adaptation by backpropagation for large language
-    models
-    """
-
     type: Literal["BALL"] = "BALL"
-    #: strength of the kl divergence loss
     beta: float = 1.0
-    #: strength of beta in the first epoch, if None, use beta
-    first_task_beta: Optional[float] = None
-
-    #: number of samples to use for bayesian evaluation
-    bayes_eval_samples: int = 0
-
-    #: Use a variational bayesian last layer?
-    vbll: bool = False
-
+    """Hyperparameter weighting the KL divergence loss."""
+    vbll: bool
+    """If True, enable Variational Bayesian Last Layer"""
+    train_samples: int
+    """Number of samples for each step of training."""
+    test_samples: int
+    """Number of samples for each step of testing."""
     config: BALLConfig
 
 
