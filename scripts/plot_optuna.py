@@ -22,6 +22,16 @@ def main(study_name: str):
 
     sns.set_theme(style="ticks", context="paper")
     grid = sns.pairplot(df, y_vars=["Acc", "ECE"])
+
+    for x_var in grid.x_vars:
+        # get search space
+        if x_var.startswith("params_"):
+            distributions = study.trials[0].distributions
+            dist = distributions[x_var[len("params_") :]]
+            if isinstance(dist, optuna.distributions.FloatDistribution):
+                if dist.log:
+                    grid.axes[0, grid.x_vars.index(x_var)].set_xscale("log")
+
     grid.figure.suptitle(study_name + f" ('{attr_git_message}' {attr_git_commit})")
     grid.figure.savefig(f"figs/{study_name.replace('/', '-')}.png")
 

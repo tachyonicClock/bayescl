@@ -22,8 +22,14 @@ peft:
       deterministic_eval: false
 
 hpsearch:
+  n_trials: 45
   params:
-    "peft.config.vbnn.prior_sd": {type: float, low: 0.01, high: 2.0, log: True}
-    "peft.config.vbnn.init_sd": {type: float, low: 0.01, high: 1.0, log: True}
+    # Nuisance hyperparameters:
+    "lr": {type: float, low: 1e-3, high: 1e-2, log: True}
+    "peft.config.vbnn.prior_sd": {type: float, low: 1e-1, high: 1e0, log: True}
+    "peft.config.vbnn.init_sd": {type: float, low: 1e-2, high: 1e-1, log: True}
+
     # Scientific hyperparameter:
-    # "peft.config.vbnn.sd_mode": {type: categorical, choices: [ "softplus", "abs"]}
+    "peft.config.mode": {type: categorical, choices: [ "none", "lrt", "flipout"]}
+  
+hpsearch_study_version: 11
