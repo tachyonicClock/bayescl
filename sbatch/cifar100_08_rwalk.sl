@@ -14,7 +14,7 @@ set -e # Exit on error
 
 python main.py \
     -c configs/cifar100/08_rwalk.yaml \
-    -a study_name="run" \
+    -a label.study="run" \
     -a num_workers=5 \
     -a seed="$SLURM_ARRAY_TASK_ID" \
     run

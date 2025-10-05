@@ -14,7 +14,7 @@ set -e # Exit on error
 
 python main.py \
     -c configs/{{dataset}}/{{method}}.yaml \
-    -a study_name="run" \
+    -a label.study="run" \
     -a num_workers=5 \
     -a seed="$SLURM_ARRAY_TASK_ID" \
     run
