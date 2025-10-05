@@ -24,23 +24,14 @@ METHODS = {
 }
 
 STUDIES = [
-    # "bayescl/SplitCIFAR100/linear/870a71c",
-    # "bayescl/SplitCIFAR100/lora/870a71c",
-    # "bayescl/SplitCIFAR100/ball/34ed8bb",
-    # "bayescl/SplitCIFAR100/joint/3bb542b",
-    # "bayescl/SplitCIFAR100/rwalk/3bb542b",
-    # "bayescl/SplitDomainNet/linear/870a71c",
-    # "bayescl/SplitDomainNet/lora/b05d2af",
-    # "bayescl/SplitDomainNet/ball/34ed8bb",
-    # "bayescl/SplitDomainNet/joint/3bb542b",
-    # "bayescl/SplitDomainNet/rwalk/3bb542b",
-    # "bayescl/SplitImageNetR/linear/870a71c",
-    # "bayescl/SplitImageNetR/lora/b05d2af",
-    # "bayescl/SplitImageNetR/ball/34ed8bb",
-    # "bayescl/SplitImageNetR/joint/3bb542b",
-    # "bayescl/SplitImageNetR/rwalk/3bb542b",
-    # "bayescl/SplitDomainNet/ball/34ed8bb",
-    "bayescl/hp_0002/cifar100/ball"
+    "bayescl/hp_0100/cifar100/linear",
+    "bayescl/hp_0100/cifar100/lora",
+    "bayescl/hp_0100/cifar100/ball",
+    "bayescl/hp_0100/cifar100/replay",
+    # "bayescl/hp_0100/cifar100/gdumb",
+    "bayescl/hp_0100/cifar100/der",
+    # "bayescl/hp_0100/cifar100/joint",
+    "bayescl/hp_0100/cifar100/rwalk",
 ]
 
 

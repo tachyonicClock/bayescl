@@ -19,6 +19,8 @@ def main(study_name: str):
     df = study.trials_dataframe()
     # rename values_0 to train and values_1 to val
     df = df.rename(columns={"values_0": "Acc", "values_1": "ECE"})
+    # save to csv
+    df.to_csv(f"figs/{study_name.replace('/', '-')}.csv", index=False)
 
     sns.set_theme(style="ticks", context="paper")
     grid = sns.pairplot(df, y_vars=["Acc", "ECE"])

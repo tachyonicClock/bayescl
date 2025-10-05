@@ -2,7 +2,7 @@ include:
 - ../base.yaml
 - ../base/dataset/cifar100.yaml
 - ../base/method/08_rwalk.yaml
-lr: 0.0017
+lr: 0.0018
 rwalk:
-  ewc_alpha: 0.6
-  ewc_lambda: 0.052
+  ewc_alpha: 0.82
+  ewc_lambda: 0.16

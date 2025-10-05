@@ -1,10 +1,10 @@
 #!/bin/bash -e
-#SBATCH --job-name=cifar100_08_rwalk
+#SBATCH --job-name=cifar100_06_der
 #SBATCH --time=5:30:00
 #SBATCH --mem=16G
 #SBATCH --cpus-per-task=3
 #SBATCH --gpus-per-node=L4:1
-#SBATCH --output=log/cifar100_08_rwalk_%a.log
+#SBATCH --output=log/cifar100_06_der_%a.log
 #SBATCH --array=0-4
 
 export PATH=$NESI_PYVENV/bayescl/bin:$PATH
@@ -13,7 +13,7 @@ set -x # Echo commands to stdout
 set -e # Exit on error
 
 python main.py \
-    -c configs/cifar100/08_rwalk.yaml \
+    -c configs/cifar100/06_der.yaml \
     -a study_name="run" \
     -a num_workers=5 \
     -a seed="$SLURM_ARRAY_TASK_ID" \

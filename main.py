@@ -27,7 +27,7 @@ def get_sampler(sampler: str) -> optuna.samplers.BaseSampler:
     elif sampler == "random":
         return optuna.samplers.RandomSampler()
     elif sampler == "QMC":
-        return optuna.samplers.QMCSampler()
+        return optuna.samplers.QMCSampler(scramble=True)
     raise ValueError(f"Unknown sampler: {sampler}")
 
 

@@ -13,6 +13,8 @@ set -x # Echo commands to stdout
 set -e # Exit on error
 
 python main.py \
-    --args study_name="run" num_workers=5 {{args}} \
-    --config configs/{{dataset}}/{{method}}.yaml \
-    --args seed="$SLURM_ARRAY_TASK_ID"
+    -c configs/{{dataset}}/{{method}}.yaml \
+    -a study_name="run" \
+    -a num_workers=5 \
+    -a seed="$SLURM_ARRAY_TASK_ID" \
+    run

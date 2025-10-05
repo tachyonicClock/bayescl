@@ -1,6 +1,7 @@
 import argparse
 from os import environ
 
+import numpy as np
 import optuna
 import tabulate
 
@@ -49,9 +50,9 @@ def main(prefix: str | None = None, sort_on_ece: bool = False):
         if len(best_trial.values) != 2:
             continue
 
-        # durations = [t.duration.total_seconds() for t in trials_complete]
-        # avg_duration_s = np.mean(durations) if len(durations) > 0 else 0.0
-        # std_duration_s = np.std(durations) if len(durations) > 0 else 0.0
+        durations = [t.duration.total_seconds() for t in trials_complete]
+        avg_duration_s = np.mean(durations) if len(durations) > 0 else 0.0
+        std_duration_s = np.std(durations) if len(durations) > 0 else 0.0
 
         n_complete = len(trials_complete)
         n_running = len(trials_running)
@@ -71,7 +72,8 @@ def main(prefix: str | None = None, sort_on_ece: bool = False):
                 "N best": len(study.best_trials),
                 # "N Running": ,
                 # "N Total": len(study.trials),
-                # "Mean Duration": sec_to_hh_mm_ss(avg_duration_s),
+                "Mean Time": sec_to_hh_mm_ss(avg_duration_s),
+                "Std Time": sec_to_hh_mm_ss(std_duration_s),
                 # "Remaining": sec_to_hh_mm_ss(complete_in),
                 "Acc.": f"{best_trial.values[0] * 100:.2f}",
                 "ECE": f"{best_trial.values[1] * 100:.2f}",

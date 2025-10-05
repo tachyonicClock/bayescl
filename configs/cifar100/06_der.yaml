@@ -2,3 +2,7 @@ include:
 - ../base.yaml
 - ../base/dataset/cifar100.yaml
 - ../base/method/06_der.yaml
+lr: 0.00034
+strategy:
+  alpha: 0.3
+  beta: 0.47

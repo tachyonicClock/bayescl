@@ -225,6 +225,11 @@ class Config(BaseConfig):
     #: Random seed for reproducibility
     seed: int = 0
 
+    save_logits: bool = False
+    """If True, save the logits and true labels after each evaluation to the results
+    file. This can be used for further analysis, e.g. computing calibration metrics.
+    """
+
 
 def _resolve_includes(base: Path, filenames: list[str]) -> DictConfig:
     if filenames:

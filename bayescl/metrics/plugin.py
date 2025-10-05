@@ -7,8 +7,8 @@ from bayescl.metrics.results import ContinualLearningEvaluator
 
 
 class MetricsPlugin(SupervisedPlugin):
-    def __init__(self, num_tasks: int, num_classes: int) -> None:
-        self.evaluator = ContinualLearningEvaluator(num_tasks, num_classes)
+    def __init__(self, num_tasks: int, num_classes: int, save_logits: bool) -> None:
+        self.evaluator = ContinualLearningEvaluator(num_tasks, num_classes, save_logits)
         self._eval_task = 0
         self._train_task = -1
 

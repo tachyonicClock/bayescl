@@ -165,6 +165,7 @@ class ContinualLearningEvaluator:
         self,
         num_tasks: int,
         num_classes: int,
+        save_logits: bool = False,
     ) -> None:
         self._task_count = num_tasks
         self._class_count = num_classes
@@ -177,6 +178,7 @@ class ContinualLearningEvaluator:
         )
         self._train_tid = 0
         self._test_tid = 0
+        self._save_logits = save_logits
 
         #: Dictionary mapping (train_task_idx, test_task_idx) to list of true labels
         self._y_true: Dict[tuple[int, int], List[Tensor]] = {}
@@ -305,8 +307,12 @@ class ContinualLearningEvaluator:
         accuracy = correct / total
         return {
             **asdict(Result.from_accuracy_matrix(accuracy)),
-            # "y_true": {k: v.numpy() for k, v in y_true.items()},
-            # "y_logit": {k: v.numpy() for k, v in y_logit.items()},
+            "y_true": {k: v.half().numpy() for k, v in y_true.items()}
+            if self._save_logits
+            else None,
+            "y_logit": {k: v.half().numpy() for k, v in y_logit.items()}
+            if self._save_logits
+            else None,
             "ece_all": ece_all,
             "ece_all_avg": ece_all.mean(),
             "ece_seen": ece_seen,
