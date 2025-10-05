@@ -264,7 +264,9 @@ class Experiment:
         self.log_dir: Path = self._new_log_dir()
         self.tb_log = self._new_logger()
         self.eval_plugin: EvaluationPlugin = self._new_eval_plugin()
-        self.metrics_plugin = MetricsPlugin(self.num_tasks, self.num_classes)
+        self.metrics_plugin = MetricsPlugin(
+            self.num_tasks, self.num_classes, save_logits=cfg.save_logits
+        )
         self.model = get_model(cfg, self.benchmark.n_classes)
         self._add_peft_adapters()
         self._add_plugins()
