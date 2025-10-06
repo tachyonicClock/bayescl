@@ -1,6 +1,6 @@
 #!/bin/bash -e
 #SBATCH --job-name=cifar100_01_linear
-#SBATCH --time=5:30:00
+#SBATCH --time=7:30:00
 #SBATCH --mem=16G
 #SBATCH --cpus-per-task=3
 #SBATCH --gpus-per-node=L4:1
