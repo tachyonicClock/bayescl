@@ -7,7 +7,7 @@ from jinja2 import Environment, FileSystemLoader
 class Job:
     dataset: str
     method: str
-    duration: str = "5:30:00"
+    duration: str = "7:30:00"
     memory: str = "16G"
 
 

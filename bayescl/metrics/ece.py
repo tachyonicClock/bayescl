@@ -31,12 +31,16 @@ class ExpectedCalibrationError(PluginMetric[float]):
 
     def after_eval(self, strategy) -> MetricResult:
         i = strategy.clock.train_iterations
-        ece_seen = MetricValue(self, "ECE/seen", self.ece_seen.compute().item(), i)
-        ece_all = MetricValue(self, "ECE/all", self.ece_all.compute().item(), i)
-        ece_unseen = MetricValue(
-            self, "ECE/unseen", self.ece_unseen.compute().item(), i
-        )
-        return [ece_seen, ece_all, ece_unseen]
+        result = []
+        result.append(MetricValue(self, "ECE/seen", self.ece_seen.compute().item(), i))
+        result.append(MetricValue(self, "ECE/all", self.ece_all.compute().item(), i))
+
+        # ECE unseen cannot for the final task as there are no unseen classes
+        if len(self.ece_unseen.confidences) != 0:
+            result.append(MetricValue(self, "ECE/unseen", self.ece_unseen.compute().item(), i))
+
+        self.reset()
+        return result
 
     def result(self) -> float | None:
         return None

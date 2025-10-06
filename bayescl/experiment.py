@@ -375,8 +375,7 @@ class Experiment:
                 )
                 torch.save(state, f)
 
-        logger.info(
-            f"accuracy_seen_avg: {metrics['accuracy_seen_avg'] * 100:.2f},"
-            f" ece_seen_avg: {metrics['ece_seen_avg'] * 100:.2f}"
-        )
+        for key, value in metrics.items():
+            if isinstance(value, (float, int)):
+                logger.info(f"{key}: {value:.4f}")
         return metrics["accuracy_seen_avg"], metrics["ece_seen_avg"]
