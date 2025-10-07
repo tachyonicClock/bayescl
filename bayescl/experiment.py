@@ -298,6 +298,7 @@ class Experiment:
                 writer=self.tb_log.writer,
                 mask=self.mask,
                 optimizer_fn=self._new_optimizer,
+                warmup_epochs=self.cfg.peft.warmup_epochs,
                 **base_kwargs,
             )
         elif strategy is None:

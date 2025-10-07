@@ -25,6 +25,7 @@ class BALLStrategy(Naive):
         mask: BoolTensor,
         optimizer_fn: Callable[[], torch.optim.Optimizer],
         writer: SummaryWriter,
+        warmup_epochs: int | None = None,
         **kwargs,
     ):
         assert "criterion" not in kwargs, "criterion is set by BALL"
@@ -40,6 +41,7 @@ class BALLStrategy(Naive):
         self.test_samples = test_samples
         self.writer = writer
         self.mask = mask.to(self.device)
+        self.warmup_epochs = warmup_epochs
 
         logger.info(
             "Initialized `BALLStrategy` with"
@@ -82,11 +84,19 @@ class BALLStrategy(Naive):
             kl_head = (self.mask[t] * head.weight.kl_divergences().sum(1)).sum()
             kl_head += (self.mask[t] * head.bias.kl_divergences()).sum()
 
+        if (
+            self.warmup_epochs is not None
+            and self.clock.train_exp_epochs < self.warmup_epochs
+        ):
+            beta = 0.0
+        else:
+            beta = self.beta
+
         # Scale the KL divergence by the number of samples in the dataset.
         # The idea is that the cross-entropy loss is an average over a mini-batch and
         # is therefore 1/dataset_size to small compared to the likelihood
         kl = (kl_encoder + kl_head) / len(self.experience.dataset)  # type: ignore
-        beta_kl = self.beta * kl
+        beta_kl = beta * kl
         loss = nll + beta_kl
 
         step = self.clock.train_iterations

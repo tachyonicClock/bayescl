@@ -23,7 +23,9 @@ def main(study_name: str):
     df.to_csv(f"figs/{study_name.replace('/', '-')}.csv", index=False)
 
     sns.set_theme(style="ticks", context="paper")
-    grid = sns.pairplot(df, y_vars=["Acc", "ECE"])
+    grid = sns.pairplot(
+        df, y_vars=["Acc", "ECE"], hue="params_peft.config.vbnn.sd_mode"
+    )
 
     for x_var in grid.x_vars:
         # get search space

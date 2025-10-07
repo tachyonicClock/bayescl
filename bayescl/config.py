@@ -124,6 +124,8 @@ class BALL(PEFTConfig):
     test_samples: int
     """Number of samples for each step of testing."""
     config: BALLConfig
+    warmup_epochs: Optional[int] = None
+    """Number of epochs to train before enabling KL regularization. If None, KL is always enabled."""
 
 
 # --- Strategy Configurations ---

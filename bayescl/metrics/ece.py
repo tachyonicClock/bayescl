@@ -37,7 +37,9 @@ class ExpectedCalibrationError(PluginMetric[float]):
 
         # ECE unseen cannot for the final task as there are no unseen classes
         if len(self.ece_unseen.confidences) != 0:
-            result.append(MetricValue(self, "ECE/unseen", self.ece_unseen.compute().item(), i))
+            result.append(
+                MetricValue(self, "ECE/unseen", self.ece_unseen.compute().item(), i)
+            )
 
         self.reset()
         return result

@@ -25,11 +25,11 @@ hpsearch:
   n_trials: 15
   params:
     # Nuisance hyperparameters:
-    "lr": {type: float, low: 1e-3, high: 1e-2, log: True}
+    "lr": {type: float, low: 1e-3, high: 0.05, log: True}
     "peft.config.vbnn.prior_sd": {type: float, low: 1e-1, high: 1e0, log: True}
     "peft.config.vbnn.init_sd": {type: float, low: 1e-2, high: 1e-1, log: True}
 
     # Scientific hyperparameter:
-    "peft.config.vbnn.sd_mode": {type: categorical, choices: ["softplus", "abs"]}
+    "peft.warmup_epochs": {type: int, low: 0, high: 10, step: 1}
   
-hpsearch_study_version: 12
+hpsearch_study_version: 13
