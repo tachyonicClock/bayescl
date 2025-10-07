@@ -17,19 +17,14 @@ peft:
     vbnn:
       prior_mean: 0.0
       prior_sd: 1.0
-      init_sd: 0.1
-      init_sd_sd: 0.01
+      init_sd: 0.01
+      init_sd_sd: 0.001
       deterministic_eval: false
 
 hpsearch:
   n_trials: 15
   params:
-    # Nuisance hyperparameters:
-    "lr": {type: float, low: 1e-3, high: 0.05, log: True}
-    "peft.config.vbnn.prior_sd": {type: float, low: 1e-1, high: 1e0, log: True}
-    "peft.config.vbnn.init_sd": {type: float, low: 1e-2, high: 1e-1, log: True}
-
-    # Scientific hyperparameter:
+    "peft.beta": {type: float, low: 0.0001, high: 1.0, log: True}
     "peft.warmup_epochs": {type: int, low: 0, high: 10, step: 1}
   
 hpsearch_study_version: 13
