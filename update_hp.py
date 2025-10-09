@@ -24,6 +24,7 @@ METHODS = {
 }
 
 STUDIES = [
+    "bayescl/hp_0100/cifar100/ball",
     "bayescl/hp_0100/domainnet/linear",
     "bayescl/hp_0100/domainnet/lora",
     # "bayescl/hp_0100/domainnet/ball",
