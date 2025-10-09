@@ -24,14 +24,14 @@ METHODS = {
 }
 
 STUDIES = [
-    "bayescl/hp_0100/cifar100/linear",
-    "bayescl/hp_0100/cifar100/lora",
-    "bayescl/hp_0100/cifar100/ball",
-    "bayescl/hp_0100/cifar100/replay",
-    # "bayescl/hp_0100/cifar100/gdumb",
-    "bayescl/hp_0100/cifar100/der",
-    # "bayescl/hp_0100/cifar100/joint",
-    "bayescl/hp_0100/cifar100/rwalk",
+    "bayescl/hp_0100/domainnet/linear",
+    "bayescl/hp_0100/domainnet/lora",
+    # "bayescl/hp_0100/domainnet/ball",
+    "bayescl/hp_0100/domainnet/replay",
+    # "bayescl/hp_0100/domainnet/gdumb",
+    "bayescl/hp_0100/domainnet/der",
+    # "bayescl/hp_0100/domainnet/joint",
+    "bayescl/hp_0100/domainnet/rwalk",
 ]
 
 

@@ -21,6 +21,14 @@ def main():
         Job("cifar100", "06_der"),
         # Job("cifar100", "07_joint"),
         Job("cifar100", "08_rwalk"),
+        Job("domainnet", "01_linear", duration="12:00:00"),
+        Job("domainnet", "02_lora", duration="12:00:00"),
+        # Job("domainnet", "03_ball", duration="12:00:00"),
+        Job("domainnet", "04_replay", duration="12:00:00"),
+        # Job("domainnet", "05_gdumb", duration="12:00:00"),
+        Job("domainnet", "06_der", duration="12:00:00"),
+        # Job("domainnet", "07_joint", duration="12:00:00"),
+        Job("domainnet", "08_rwalk", duration="12:00:00"),
     ]
     env = Environment(loader=FileSystemLoader("slurm"))
     template = env.get_template("template.sl.jinja")
