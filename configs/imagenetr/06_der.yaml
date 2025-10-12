@@ -2,3 +2,7 @@ include:
 - ../base.yaml
 - ../base/dataset/imagenetr.yaml
 - ../base/method/06_der.yaml
+lr: 0.00072
+strategy:
+  alpha: 0.62
+  beta: 0.77

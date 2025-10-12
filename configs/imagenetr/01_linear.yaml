@@ -2,4 +2,4 @@ include:
 - ../base.yaml
 - ../base/dataset/imagenetr.yaml
 - ../base/method/01_linear.yaml
-lr: 0.001
+lr: 0.00062

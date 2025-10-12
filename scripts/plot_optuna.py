@@ -24,7 +24,9 @@ def main(study_name: str):
 
     sns.set_theme(style="ticks", context="paper")
     grid = sns.pairplot(
-        df, y_vars=["Acc", "ECE"], hue="params_peft.config.vbnn.sd_mode"
+        df,
+        y_vars=["Acc", "ECE"],
+        # hue="params_peft.config.vbnn.sd_mode",
     )
 
     for x_var in grid.x_vars:
