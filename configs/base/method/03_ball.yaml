@@ -8,24 +8,22 @@ peft:
   type: BALL
   beta: 1.0
 
-  vbll: True
+  vbll: False
   train_samples: 1
-  test_samples: 5
+  test_samples: 10
 
   config:
     r: 10
     vbnn:
       prior_mean: 0.0
       prior_sd: 1.0
-      init_sd: 0.01
-      init_sd_sd: 0.001
+      init_sd: 0.02
       deterministic_eval: false
 
 hpsearch:
   n_trials: 15
   params:
-    "peft.beta": {type: float, low: 0.0001, high: 1.0, log: True}
-    "peft.config.vbnn.prior_sd": {type: float, low: 1e-1, high: 1e0, log: True}
-    "peft.config.vbnn.init_sd": {type: float, low: 1e-2, high: 1e-1, log: True}
+    "lr": {type: float, low: 1e-3, high: 1e-2, log: True}
+    "peft.beta": {type: float, low: 0.01, high: 1.0, log: True}
 
-hpsearch_study_version: 13
+hpsearch_study_version: 14
