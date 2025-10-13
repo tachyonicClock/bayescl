@@ -2,7 +2,3 @@ include:
 - ../base.yaml
 - ../base/dataset/domainnet.yaml
 - ../base/method/03_ball.yaml
-lr: 0.001
-peft:
-  beta: 0.49
-  first_task_beta: 0.0024

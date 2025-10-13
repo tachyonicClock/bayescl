@@ -22,7 +22,6 @@ def main():
         Job("cifar100", "06_der"),
         # Job("cifar100", "07_joint"),
         Job("cifar100", "08_rwalk"),
-
         # DOMAINNET
         Job("domainnet", "01_linear", duration="12:00:00"),
         Job("domainnet", "02_lora", duration="12:00:00"),
@@ -32,7 +31,6 @@ def main():
         Job("domainnet", "06_der", duration="12:00:00"),
         # Job("domainnet", "07_joint", duration="12:00:00"),
         Job("domainnet", "08_rwalk", duration="12:00:00"),
-
         # IMAGENET-R
         Job("imagenetr", "01_linear", duration="08:00:00"),
         Job("imagenetr", "02_lora", duration="08:00:00"),
