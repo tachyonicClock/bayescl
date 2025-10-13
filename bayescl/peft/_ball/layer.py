@@ -19,9 +19,7 @@ class BALLLayer(AdapterBase):
     """Tunable parameters in BALL adapters."""
 
 
-def forward_ball_lrt(
-    x: Tensor, A_mu: Tensor, A_sigma: Tensor, B_mu: Tensor, B_sigma: Tensor
-) -> Tensor:
+def forward_lrt(x: Tensor, weight_mean: Tensor, weight_sd: Tensor) -> Tensor:
     """Local reparameterization trick forward pass.
 
     Takes advantage of the fact that a linear transformation of a Gaussian is also
@@ -34,23 +32,31 @@ def forward_ball_lrt(
 
     Kingma, D. P., Salimans, T., & Welling, M. (2015). Variational dropout and the local
     reparameterization trick. https://arxiv.org/abs/1506.02557
+
+    :param x: Input of shape (batch_size, in_features)
+    :param weight_mean: Mean of weights of shape (out_features, in_features)
+    :param weight_sd: Standard deviation of weights of shape (out_features, in_features)
+    :return: Output of shape (batch_size, out_features)
     """
-    # (batch_size, out_features)
-    z_mean = (x @ A_mu.T) @ B_mu.T
-    # (batch_size, out_features)
-    z_sd = ((x.square() @ A_sigma.square().T) @ B_sigma.square().T).sqrt()
-    z = z_mean + z_sd * torch.randn_like(z_mean)
-    return z
+    assert x.dim() == 2
+    assert weight_mean.dim() == 2
+    assert weight_sd.dim() == 2
+    assert x.size(1) == weight_mean.size(1) == weight_sd.size(1)
+    assert weight_mean.size(0) == weight_sd.size(0)
+
+    mean = x @ weight_mean.T
+    sd = ((x.pow(2) @ weight_sd.pow(2).T) + 1e-16).sqrt()
+    return mean + torch.randn_like(mean) * sd
 
 
-def forward_flipout(x: Tensor, mu: Tensor, sigma: Tensor) -> Tensor:
+def forward_flipout(x: Tensor, weight_mean: Tensor, weight_sd: Tensor) -> Tensor:
     """Flipout forward pass.
 
     Based on:
     * https://github.com/IntelLabs/bayesian-torch/blob/dfb44c29ec9544589097be31a892214520ddb2a4/bayesian_torch/layers/flipout_layers/linear_flipout.py#L145
     """
-    delta_weight = sigma * torch.randn_like(sigma)
-    z_mean = x @ mu.T
+    delta_weight = weight_sd * torch.randn_like(weight_sd)
+    z_mean = x @ weight_mean.T
     sign_input = x.clone().uniform_(-1, 1).sign()
     sign_output = z_mean.clone().uniform_(-1, 1).sign()
     perturbed_outputs = ((x * sign_input) @ delta_weight.T) * sign_output
@@ -80,13 +86,8 @@ class BALLLinear(nn.Linear, BALLLayer):
         nn.init.zeros_(self.ball_B.mu)
 
     def forward_lrt(self, input: torch.Tensor) -> torch.Tensor:
-        z = forward_ball_lrt(
-            input,
-            A_mu=self.ball_A.mu,
-            A_sigma=self.ball_A.sigma(),
-            B_mu=self.ball_B.mu,
-            B_sigma=self.ball_B.sigma(),
-        )
+        bottleneck = forward_lrt(input, self.ball_A.mu, self.ball_A.sigma())
+        z = forward_lrt(bottleneck, self.ball_B.mu, self.ball_B.sigma())
         return super().forward(input) + z * self.scaling
 
     def forward_flipout(self, input: torch.Tensor) -> torch.Tensor:
