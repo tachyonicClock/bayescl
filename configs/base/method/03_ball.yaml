@@ -11,6 +11,7 @@ peft:
   vbll: False
   train_samples: 1
   test_samples: 10
+  # mode: LRT
 
   config:
     r: 10
@@ -25,5 +26,6 @@ hpsearch:
   params:
     "lr": {type: float, low: 1e-3, high: 1e-2, log: True}
     "peft.beta": {type: float, low: 0.01, high: 1.0, log: True}
+    "peft.config.dropout": {type: float, low: 0.0, high: 1.0, log: False}
 
-hpsearch_study_version: 14
+hpsearch_study_version: 15

@@ -80,6 +80,7 @@ class BALLLinear(nn.Linear, BALLLayer):
         #: B of shape (o,r)
         self.ball_B = VariationalParameter((out_features, config.r), config.vbnn)
         self.scaling = config.lora_alpha / config.r
+        self.dropout = nn.Dropout(config.dropout) if config.dropout > 0 else nn.Identity()
 
         # Initialize A and B
         nn.init.kaiming_uniform_(self.ball_A.mu, a=math.sqrt(5))
@@ -102,6 +103,8 @@ class BALLLinear(nn.Linear, BALLLayer):
         return super().forward(input) + z * self.scaling
 
     def forward(self, input: torch.Tensor) -> Tensor:
+        input = self.dropout(input)
+
         # If not training, do a standard forward pass
         if not self.training:
             return self.forward_none(input)

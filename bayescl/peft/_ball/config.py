@@ -38,11 +38,6 @@ class BALLConfig:
     mode: VarianceReduction = VarianceReduction.NONE
     """Variance reduction method to use. Changes how the forward pass is computed in training mode."""
     vbnn: VBNNConfig = field(default_factory=VBNNConfig)
-    # prior_mean: float = 0.0
-    # prior_weight_sd: float = 1.0
-    # prior_bias_sd: float = 1.0
-    # init_sd: float = 1e-4
-    # max_sd: Optional[float] = None
-    # local_reparameterization: bool = True
-    # nonlinearity_scale: float = 1.0
-    # sqrt_width_scaling: bool = False
+    """Configuration for the underlying Bayesian Neural Network."""
+    dropout: float = 0.0
+    """Dropout rate to use on the adapter inputs."""
