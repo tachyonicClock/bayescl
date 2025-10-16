@@ -193,5 +193,7 @@ sbatch sbatch/imagenetr_08_rwalk.sl
 ```
 
 ```bash
-ts -G 1 -L cifar_ball notirun.sh cifar_ball python main.py -c configs/cifar100/03_ball.yaml -a hpsearch.sampler=TPE -a hpsearch_study_version=101 hpsearch
+ts -G 1 -L cifar_ball     notirun.sh cifar_ball     python main.py -c configs/cifar100/03_ball.yaml  -a hpsearch.sampler=TPE -a hpsearch_study_version=102 hpsearch
+ts -G 1 -L domainnet_ball notirun.sh domainnet_ball python main.py -c configs/domainnet/03_ball.yaml -a hpsearch.sampler=TPE -a hpsearch_study_version=102 hpsearch
+ts -G 1 -L imagenetr_ball notirun.sh imagenetr_ball python main.py -c configs/imagenetr/03_ball.yaml -a hpsearch.sampler=TPE -a hpsearch_study_version=102 hpsearch
 ```

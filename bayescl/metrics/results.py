@@ -160,6 +160,76 @@ class Result:
         )
 
 
+def only_seen(matrix: Tensor) -> Tensor:
+    """Get a vector representing performance only on previously seen tasks.
+
+    >>> matrix = torch.tensor([[1, 2, 3],
+    ...                        [4, 5, 6],
+    ...                        [7, 8, 9]])
+    >>> only_seen(matrix)
+    tensor([1.0000, 4.5000, 8.0000])
+
+    :param matrix: Result matrix of shape (train tasks, test tasks)
+    :return: A vector of the diagonal and lower triangle of the matrix.
+    """
+    assert matrix.ndim == 2
+    assert matrix.shape[0] == matrix.shape[1]
+    n_tasks = matrix.shape[0]
+    seen = torch.tril(matrix)
+    return seen.sum(dim=1) / torch.arange(1, n_tasks + 1, dtype=matrix.dtype)
+
+
+def only_unseen(matrix: Tensor) -> Tensor:
+    """Get a vector representing performance only on unseen tasks.
+
+    >>> matrix = torch.tensor([[1, 2, 3],
+    ...                        [4, 5, 6],
+    ...                        [7, 8, 9]])
+    >>> only_unseen(matrix)
+    tensor([2.5000, 6.0000])
+
+    :param matrix: Square matrix of results of shape (train tasks, test tasks)
+    :return: A vector of the upper triangle of the matrix of shape (n_tasks-1,).
+    """
+    assert matrix.ndim == 2
+    assert matrix.shape[0] == matrix.shape[1]
+    n_tasks = matrix.shape[0]
+    unseen = torch.triu(matrix, diagonal=1)
+    return unseen.sum(dim=1)[: n_tasks - 1] / torch.arange(
+        n_tasks - 1, 0, -1, dtype=matrix.dtype
+    )
+
+
+def only_seen_avg(matrix: Tensor) -> float:
+    """Get the average performance on seen tasks.
+
+    >>> matrix = torch.tensor([[1, 2, 3],
+    ...                        [4, 5, 6],
+    ...                        [7, 8, 9]])
+    >>> only_seen_avg(matrix)
+    4.5
+
+    :param matrix: Result matrix of shape (train tasks, test tasks)
+    :return: The average performance on seen tasks.
+    """
+    return only_seen(matrix).mean().item()
+
+
+def only_unseen_avg(matrix: Tensor) -> float:
+    """Get the average performance on unseen tasks.
+
+    >>> matrix = torch.tensor([[1, 2, 3],
+    ...                        [4, 5, 6],
+    ...                        [7, 8, 9]])
+    >>> only_unseen_avg(matrix)
+    4.25
+
+    :param matrix: Result matrix of shape (train tasks, test tasks)
+    :return: The average performance on unseen tasks.
+    """
+    return only_unseen(matrix).mean().item()
+
+
 class ContinualLearningEvaluator:
     def __init__(
         self,
@@ -242,7 +312,7 @@ class ContinualLearningEvaluator:
             y_prob.numpy(),
             y_true.numpy(),
             num_bins=num_bins,
-            top_class_only=False,
+            top_class_only=True,
             equal_size_bins=True,  # gives results for the Adaptive Calibration Error
         )
         return expected_calibration_error(bin_prob, bin_freq, bin_weights)
@@ -284,51 +354,86 @@ class ContinualLearningEvaluator:
             y_logit_all.append(torch.cat(_y_logit_all, dim=0))
 
         # Compute expected calibration errors per task
-        ece_all = np.zeros(self._task_count)
-        ece_seen = np.zeros(self._task_count)
-        ace_all = np.zeros(self._task_count)
-        ace_seen = np.zeros(self._task_count)
-        sce_all = np.zeros(self._task_count)
-        sce_seen = np.zeros(self._task_count)
-        # brier_seen = np.zeros(self._task_count)
-        brier_all = np.zeros(self._task_count)
-        for t in range(self._task_count):
-            ece_all[t] = self.ece(y_logit_all[t], y_true_all[t])
-            ece_seen[t] = self.ece(y_logit_seen[t], y_true_seen[t])
-            ace_all[t] = self.ace(y_logit_all[t], y_true_all[t])
-            ace_seen[t] = self.ace(y_logit_seen[t], y_true_seen[t])
-            sce_all[t] = self.sce(y_logit_all[t], y_true_all[t])
-            sce_seen[t] = self.sce(y_logit_seen[t], y_true_seen[t])
-            brier_all[t] = self.brier(y_logit_all[t], y_true_all[t])
-            # brier_seen[t] = self.brier(y_logit_seen[t], y_true_seen[t])
+        ece_matrix = torch.zeros(self._task_count, self._task_count)
+        sce_matrix = torch.zeros(self._task_count, self._task_count)
+        ace_matrix = torch.zeros(self._task_count, self._task_count)
+
+        for train_tid in range(self._task_count):
+            for test_tid in range(self._task_count):
+                ece_matrix[train_tid, test_tid] = self.ece(
+                    y_logit[(train_tid, test_tid)],
+                    y_true[(train_tid, test_tid)],
+                )
+                sce_matrix[train_tid, test_tid] = self.sce(
+                    y_logit[(train_tid, test_tid)],
+                    y_true[(train_tid, test_tid)],
+                )
+                ace_matrix[train_tid, test_tid] = self.ace(
+                    y_logit[(train_tid, test_tid)],
+                    y_true[(train_tid, test_tid)],
+                )
 
         correct = self._big_r.diagonal(dim1=2, dim2=3).sum(dim=-1)
         total = self._big_r.sum(dim=(2, 3))
         accuracy = correct / total
+
+        # Expected Calibration Error
+        ece_all = ece_matrix.mean(1)
+        ece_all_avg = ece_all.mean().item()
+        ece_all_final = ece_all[-1].item()
+        ece_seen = only_seen(ece_matrix)
+        ece_seen_avg = only_seen_avg(ece_matrix)
+        ece_seen_final = ece_seen[-1].item()
+        ece_unseen = only_unseen(ece_matrix)
+        ece_unseen_avg = only_unseen_avg(ece_matrix)
+
+        # Static Calibration Error
+        sce_all = sce_matrix.mean(1)
+        sce_all_avg = sce_all.mean().item()
+        sce_all_final = sce_all[-1].item()
+        sce_seen = only_seen(sce_matrix)
+        sce_seen_avg = only_seen_avg(sce_matrix)
+        sce_seen_final = sce_seen[-1].item()
+        sce_unseen = only_unseen(sce_matrix)
+        sce_unseen_avg = only_unseen_avg(sce_matrix)
+
+        # Adaptive Calibration Error
+        ace_all = ace_matrix.mean(1)
+        ace_all_avg = ace_all.mean().item()
+        ace_all_final = ace_all[-1].item()
+        ace_seen = only_seen(ace_matrix)
+        ace_seen_avg = only_seen_avg(ace_matrix)
+        ace_seen_final = ace_seen[-1].item()
+        ace_unseen = only_unseen(ace_matrix)
+        ace_unseen_avg = only_unseen_avg(ace_matrix)
+
         return {
             **asdict(Result.from_accuracy_matrix(accuracy)),
-            "y_true": {k: v.half().numpy() for k, v in y_true.items()}
-            if self._save_logits
-            else None,
-            "y_logit": {k: v.half().numpy() for k, v in y_logit.items()}
-            if self._save_logits
-            else None,
-            "ece_all": ece_all,
-            "ece_all_avg": ece_all.mean(),
-            "ece_seen": ece_seen,
-            "ece_seen_avg": ece_seen.mean(),
-            "ece_final": ece_all[-1],
-            "ace_all": ace_all,
-            "ace_all_avg": ace_all.mean(),
-            "ace_seen": ace_seen,
-            "ace_seen_avg": ace_seen.mean(),
-            "ace_final": ace_all[-1],
-            "sce_all": sce_all,
-            "sce_all_avg": sce_all.mean(),
-            "sce_seen": sce_seen,
-            "sce_seen_avg": sce_seen.mean(),
-            "sce_final": sce_all[-1],
-            "brier_all": brier_all,
-            "brier_all_avg": brier_all.mean(),
-            "brier_final": brier_all[-1],
+            "ece_matrix": ece_matrix.numpy(),
+            "sce_matrix": sce_matrix.numpy(),
+            "ace_matrix": ace_matrix.numpy(),
+            "ece_all": ece_all.numpy(),
+            "ece_all_avg": ece_all_avg,
+            "ece_all_final": ece_all_final,
+            "ece_seen": ece_seen.numpy(),
+            "ece_seen_avg": ece_seen_avg,
+            "ece_seen_final": ece_seen_final,
+            "ece_unseen": ece_unseen.numpy(),
+            "ece_unseen_avg": ece_unseen_avg,
+            "sce_all": sce_all.numpy(),
+            "sce_all_avg": sce_all_avg,
+            "sce_all_final": sce_all_final,
+            "sce_seen": sce_seen.numpy(),
+            "sce_seen_avg": sce_seen_avg,
+            "sce_seen_final": sce_seen_final,
+            "sce_unseen": sce_unseen.numpy(),
+            "sce_unseen_avg": sce_unseen_avg,
+            "ace_all": ace_all.numpy(),
+            "ace_all_avg": ace_all_avg,
+            "ace_all_final": ace_all_final,
+            "ace_seen": ace_seen.numpy(),
+            "ace_seen_avg": ace_seen_avg,
+            "ace_seen_final": ace_seen_final,
+            "ace_unseen": ace_unseen.numpy(),
+            "ace_unseen_avg": ace_unseen_avg,
         }

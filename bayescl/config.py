@@ -195,6 +195,9 @@ class Config(BaseConfig):
     eval_mb_size: Optional[int] = None
     #: Number of epochs for training each experience
     epochs: int = 1
+    #: Evaluate every N epochs. If 0, only evaluate at the end of each experience.
+    eval_every: int = 0
+
     #: Number of epochs in the first experience
     first_exp_epochs: Optional[int] = None
 

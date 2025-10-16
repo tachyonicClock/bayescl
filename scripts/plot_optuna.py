@@ -22,7 +22,6 @@ def main(study_name: str, hue: str):
     df = df.rename(columns={"values_0": "Acc", "values_1": "ECE"})
     # save to csv
     df.to_csv(f"figs/{study_name.replace('/', '-')}.csv", index=False)
-    
 
     # sns.set_theme(style="ticks", context="paper")
     hue_key = f"params_{hue}"
@@ -31,7 +30,7 @@ def main(study_name: str, hue: str):
         x_vars=[col for col in df.columns if col.startswith("params_")],
         y_vars=["Acc", "ECE"],
         hue=hue_key if hue_key in df.columns else None,
-        height=2.0
+        height=2.0,
     )
 
     # Set labels in pairplot
@@ -40,7 +39,6 @@ def main(study_name: str, hue: str):
             if ax.get_xlabel().startswith("params_"):
                 label = ax.get_xlabel()[len("params_") :]
                 ax.set_xlabel(label.split(".")[-1])
-
 
     for x_var in grid.x_vars:
         # get search space
@@ -54,8 +52,12 @@ def main(study_name: str, hue: str):
                 if dist.log:
                     grid.axes[0, grid.x_vars.index(x_var)].set_xscale("log")
 
-    grid.figure.suptitle(study_name + f" ('{attr_git_message}' {attr_git_commit})", y=1.02, fontsize=10)
-    grid.figure.savefig(f"figs/{study_name.replace('/', '-')}.png", dpi=300, bbox_inches="tight")
+    grid.figure.suptitle(
+        study_name + f" ('{attr_git_message}' {attr_git_commit})", y=1.02, fontsize=10
+    )
+    grid.figure.savefig(
+        f"figs/{study_name.replace('/', '-')}.png", dpi=300, bbox_inches="tight"
+    )
 
     # plot hyperparameter importance
     importance_eval = optuna.importance.MeanDecreaseImpurityImportanceEvaluator()

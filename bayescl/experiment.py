@@ -286,6 +286,7 @@ class Experiment:
             evaluator=self.eval_plugin,
             device=self.cfg.device,
             plugins=self.plugins,
+            eval_every=self.cfg.eval_every,
         )
 
         strategy = self.cfg.strategy
@@ -342,11 +343,10 @@ class Experiment:
             )
 
             # train returns a dictionary which contains all the metric values
-            strategy.train(experience, num_workers=self.cfg.num_workers)
-            logger.info("Training completed")
+            strategy.train(
+                experience, self.benchmark.test_stream, num_workers=self.cfg.num_workers
+            )
 
-            logger.info("Computing accuracy on the whole test set")
-            # eval also returns a dictionary which contains all the metric values
             results.append(
                 strategy.eval(
                     self.benchmark.test_stream, num_workers=self.cfg.num_workers

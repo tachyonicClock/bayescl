@@ -16,7 +16,7 @@ def main():
         # CIFAR100
         Job("cifar100", "01_linear"),
         Job("cifar100", "02_lora"),
-        # Job("cifar100", "03_ball"),
+        Job("cifar100", "03_ball"),
         Job("cifar100", "04_replay"),
         # Job("cifar100", "05_gdumb"),
         Job("cifar100", "06_der"),
@@ -34,7 +34,7 @@ def main():
         # IMAGENET-R
         Job("imagenetr", "01_linear", duration="08:00:00"),
         Job("imagenetr", "02_lora", duration="08:00:00"),
-        # Job("imagenetr", "03_ball", duration="08:00:00"),
+        Job("imagenetr", "03_ball", duration="08:00:00"),
         Job("imagenetr", "04_replay", duration="08:00:00"),
         # Job("imagenetr", "05_gdumb", duration="08:00:00"),
         Job("imagenetr", "06_der", duration="08:00:00"),

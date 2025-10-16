@@ -17,5 +17,5 @@ loguru
 seaborn
 typeguard
 
-# install from https://github.com/microsoft/bayesianize.git
 git+https://github.com/microsoft/bayesianize.git
+git+https://github.com/tachyonicClock/avalanche.git
