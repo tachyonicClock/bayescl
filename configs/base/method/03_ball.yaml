@@ -14,6 +14,7 @@ peft:
 
   config:
     r: 10
+    mode: lrt
     vbnn:
       prior_mean: 0.0
       prior_sd: 1.0
@@ -23,8 +24,7 @@ peft:
 hpsearch:
   n_trials: 15
   params:
-    "lr": {type: float, low: 1e-3, high: 1e-2, log: True}
-    "peft.beta": {type: float, low: 0.01, high: 1.0, log: True}
-    # "peft.config.dropout": {type: float, low: 0.0, high: 1.0, log: False}
+    "peft.first_task_beta": {type: float, low: 0.001, high: 1.0, log: False}
+    "peft.beta": {type: float, low: 0.001, high: 5.0, log: False}
 
-hpsearch_study_version: 15
+hpsearch_study_version: 16

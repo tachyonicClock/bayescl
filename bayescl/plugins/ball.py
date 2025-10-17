@@ -112,8 +112,8 @@ class BALLStrategy(Naive):
         x, y, _ = batch
         # Bayesian Posterior Predictive Distribution (marginalize over the model posterior)
         # Like ensembling, but each ensemble member is a sample from the model posterior.
-        pred_probs: Tensor = sum(self.model(x) for _ in range(n)) / n  # type: ignore
-        loss = nll_loss(pred_probs.softmax(-1).log(), y)
+        pred_probs: Tensor = sum(self.model(x).softmax(dim=-1) for _ in range(n)) / n  # type: ignore
+        loss = nll_loss(pred_probs.log(), y)
         return loss, pred_probs
 
     def _before_training_exp(self, **kwargs):
