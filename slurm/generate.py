@@ -25,7 +25,7 @@ def main():
         # DOMAINNET
         Job("domainnet", "01_linear", duration="12:00:00"),
         Job("domainnet", "02_lora", duration="12:00:00"),
-        # Job("domainnet", "03_ball", duration="12:00:00"),
+        Job("domainnet", "03_ball", duration="12:00:00"),
         Job("domainnet", "04_replay", duration="12:00:00"),
         # Job("domainnet", "05_gdumb", duration="12:00:00"),
         Job("domainnet", "06_der", duration="12:00:00"),

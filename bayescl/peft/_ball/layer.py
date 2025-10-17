@@ -38,12 +38,6 @@ def forward_lrt(x: Tensor, weight_mean: Tensor, weight_sd: Tensor) -> Tensor:
     :param weight_sd: Standard deviation of weights of shape (out_features, in_features)
     :return: Output of shape (batch_size, out_features)
     """
-    assert x.dim() == 2
-    assert weight_mean.dim() == 2
-    assert weight_sd.dim() == 2
-    assert x.size(1) == weight_mean.size(1) == weight_sd.size(1)
-    assert weight_mean.size(0) == weight_sd.size(0)
-
     mean = x @ weight_mean.T
     sd = ((x.pow(2) @ weight_sd.pow(2).T) + 1e-16).sqrt()
     return mean + torch.randn_like(mean) * sd
