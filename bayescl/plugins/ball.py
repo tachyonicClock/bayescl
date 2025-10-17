@@ -25,7 +25,8 @@ class BALLStrategy(Naive):
         mask: BoolTensor,
         optimizer_fn: Callable[[], torch.optim.Optimizer],
         writer: SummaryWriter,
-        first_task_beta: float | None = None,
+        first_task_beta: float | None,
+        softmax_avg: bool,
         **kwargs,
     ):
         assert "criterion" not in kwargs, "criterion is set by BALL"
@@ -38,6 +39,7 @@ class BALLStrategy(Naive):
         self.optimizer_fn = optimizer_fn
         self.beta = beta
         self.first_task_beta = first_task_beta
+        self.softmax_avg = softmax_avg
         self.train_samples = train_samples
         self.test_samples = test_samples
         self.writer = writer
@@ -110,9 +112,19 @@ class BALLStrategy(Naive):
 
         n = self.test_samples
         x, y, _ = batch
+
         # Bayesian Posterior Predictive Distribution (marginalize over the model posterior)
         # Like ensembling, but each ensemble member is a sample from the model posterior.
-        pred_probs: Tensor = sum(self.model(x).softmax(dim=-1) for _ in range(n)) / n  # type: ignore
+        if self.softmax_avg:
+            # Apply softmax to each sample and then average
+            pred_probs: Tensor = (
+                sum(self.model(x).softmax(dim=-1) for _ in range(n)) / n
+            )  # type: ignore
+        else:
+            # Average the logits and then apply softmax
+            pred_logits: Tensor = sum(self.model(x) for _ in range(n)) / n  # type: ignore
+            pred_probs = pred_logits.softmax(dim=-1)
+
         loss = nll_loss(pred_probs.log(), y)
         return loss, pred_probs
 

@@ -300,6 +300,7 @@ class Experiment:
                 mask=self.mask,
                 optimizer_fn=self._new_optimizer,
                 first_task_beta=self.cfg.peft.first_task_beta,
+                softmax_avg=self.cfg.peft.softmax_avg,
                 **base_kwargs,
             )
         elif strategy is None:
