@@ -4,8 +4,6 @@ label:
 # BALL uses local CE but it is implemented internally so we turn this off here
 use_local_ce: False
 
-eval_every: 1
-
 peft:
   type: BALL
   beta: 1.0
