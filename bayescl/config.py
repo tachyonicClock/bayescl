@@ -117,6 +117,8 @@ class BALL(PEFTConfig):
     type: Literal["BALL"] = "BALL"
     beta: float = 1.0
     """Hyperparameter weighting the KL divergence loss."""
+    first_task_beta: Optional[float] = None
+    """If set, use a different beta for the first task."""
     vbll: bool
     """If True, enable Variational Bayesian Last Layer"""
     train_samples: int
@@ -124,8 +126,6 @@ class BALL(PEFTConfig):
     test_samples: int
     """Number of samples for each step of testing."""
     config: BALLConfig
-    warmup_epochs: Optional[int] = None
-    """Number of epochs to train before enabling KL regularization. If None, KL is always enabled."""
 
 
 # --- Strategy Configurations ---

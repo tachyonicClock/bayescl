@@ -25,7 +25,7 @@ class BALLStrategy(Naive):
         mask: BoolTensor,
         optimizer_fn: Callable[[], torch.optim.Optimizer],
         writer: SummaryWriter,
-        warmup_epochs: int | None = None,
+        first_task_beta: float | None = None,
         **kwargs,
     ):
         assert "criterion" not in kwargs, "criterion is set by BALL"
@@ -37,11 +37,11 @@ class BALLStrategy(Naive):
 
         self.optimizer_fn = optimizer_fn
         self.beta = beta
+        self.first_task_beta = first_task_beta
         self.train_samples = train_samples
         self.test_samples = test_samples
         self.writer = writer
         self.mask = mask.to(self.device)
-        self.warmup_epochs = warmup_epochs
 
         logger.info(
             "Initialized `BALLStrategy` with"
@@ -84,11 +84,9 @@ class BALLStrategy(Naive):
             kl_head = (self.mask[t] * head.weight.kl_divergences().sum(1)).sum()
             kl_head += (self.mask[t] * head.bias.kl_divergences()).sum()
 
-        if (
-            self.warmup_epochs is not None
-            and self.clock.train_exp_epochs < self.warmup_epochs
-        ):
-            beta = 0.0
+        # Use a different beta for the first task if specified
+        if t == 0 and self.first_task_beta is not None:
+            beta = self.first_task_beta
         else:
             beta = self.beta
 
