@@ -2,3 +2,6 @@ include:
 - ../base.yaml
 - ../base/dataset/cifar100.yaml
 - ../base/method/03_ball.yaml
+
+peft:
+  first_task_beta: 0.011
