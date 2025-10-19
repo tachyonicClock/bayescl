@@ -204,10 +204,9 @@ def run(
 
     accuracy_seen_avgs, ece_seen_avgs = [], []
     for i in range(n_trials):
-        cfg.seed = i
+        cfg.seed = cfg.seed + i
         if n_trials > 1:
             cfg.label.run = f"run_{i:04d}"
-
         accuracy_seen_avg, ece_seen_avg = Experiment(cfg).run()
         accuracy_seen_avgs.append(accuracy_seen_avg)
         ece_seen_avgs.append(ece_seen_avg)
