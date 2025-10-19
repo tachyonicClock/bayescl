@@ -6,7 +6,6 @@ use_local_ce: False
 
 peft:
   type: BALL
-  beta: 1.0
 
   vbll: False
   train_samples: 1
@@ -25,6 +24,6 @@ peft:
 hpsearch:
   n_trials: 15
   params:
-    "peft.beta": {type: float, low: 0.01, high: 1.0, log: true}
+    "peft.beta": {type: float, low: 0.0, high: 1.0, log: False}
 
 hpsearch_study_version: 17
