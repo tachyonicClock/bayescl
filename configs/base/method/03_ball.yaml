@@ -4,18 +4,23 @@ label:
 # BALL uses local CE but it is implemented internally so we turn this off here
 use_local_ce: False
 
+model:
+  type: huggingface
+  name: google/vit-base-patch16-224
+  adapter_filter: ".*(key|query|dense)"
+
 peft:
   type: BALL
 
   vbll: False
   train_samples: 1
-  test_samples: 10
+  test_samples: 5
 
   softmax_avg: False
 
   config:
-    r: 10
-    mode: lrt
+    r: 5
+    mode: none
 
     vbnn:
       prior_mean: 0.0
@@ -29,4 +34,4 @@ hpsearch:
     "peft.beta": {type: float, low: 0.01, high: 2.0, log: True}
     "peft.first_task_beta": {type: float, low: 0.01, high: 2.0, log: True}
 
-hpsearch_study_version: 17
+hpsearch_study_version: 18
