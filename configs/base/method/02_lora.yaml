@@ -1,6 +1,11 @@
 label:
   method: lora
 
+model:
+  type: huggingface
+  name: google/vit-base-patch16-224
+  adapter_filter: ".*(key|query|dense)"
+
 peft:
   type: LoRA
-  r: 10
+  r: 5
