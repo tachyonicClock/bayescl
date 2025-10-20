@@ -11,27 +11,19 @@ model:
 
 peft:
   type: BALL
+  beta: 1.0
 
   vbll: False
   train_samples: 1
   test_samples: 5
 
-  softmax_avg: False
-
   config:
-    r: 5
-    mode: none
-
+    r: 10
     vbnn:
       prior_mean: 0.0
-      prior_sd: 1.0
-      init_sd: 0.02
-      deterministic_eval: false
+      prior_sd: 0.5
+      init_sd: 0.1
 
 hpsearch:
-  n_trials: 15
   params:
-    "peft.beta": {type: float, low: 0.01, high: 2.0, log: True}
-    "peft.first_task_beta": {type: float, low: 0.01, high: 2.0, log: True}
-
-hpsearch_study_version: 18
+    "peft.beta": {type: float, low: 0.1, high: 2.0, log: True}

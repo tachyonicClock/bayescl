@@ -8,4 +8,4 @@ model:
 
 peft:
   type: LoRA
-  r: 5
+  r: 10
