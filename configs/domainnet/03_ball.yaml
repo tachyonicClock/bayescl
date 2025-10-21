@@ -2,3 +2,6 @@ include:
 - ../base.yaml
 - ../base/dataset/domainnet.yaml
 - ../base/method/03_ball.yaml
+lr: 0.0011
+peft:
+  beta: 0.029
