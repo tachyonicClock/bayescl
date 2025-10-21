@@ -125,7 +125,7 @@ class BALL(PEFTConfig):
     """Number of samples for each step of training."""
     test_samples: int
     """Number of samples for each step of testing."""
-    softmax_avg: bool = False
+    softmax_avg: bool = True
     """If true apply softmax before averaging the logits over samples.
     
     This is theoretically more sound but empirically tends to perform worse.
