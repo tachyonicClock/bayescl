@@ -21,6 +21,7 @@ peft:
       prior_mean: 0.0
       prior_sd: 1.0
       init_sd: 0.02
+      init_sd_sd: 0.005
       deterministic_eval: false
 
 hpsearch:
