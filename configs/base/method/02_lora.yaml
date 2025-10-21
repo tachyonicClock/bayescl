@@ -4,7 +4,7 @@ label:
 model:
   type: huggingface
   name: google/vit-base-patch16-224
-  adapter_filter: ".*(key|query|dense)"
+  adapter_filter: ".*(key|query)"
 
 peft:
   type: LoRA
