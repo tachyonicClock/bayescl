@@ -7,3 +7,5 @@ label:
 
 eval_every: 5
 epochs: 20
+
+hpsearch_study_version: 1
