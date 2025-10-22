@@ -3,9 +3,8 @@ scenario:
   n_tasks: 1
   shuffle: false
 label:
-  scenario: cifar100
+  scenario: offline_cifar
 
-eval_every: 5
 epochs: 20
 
 hpsearch_study_version: 1
