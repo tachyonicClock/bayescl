@@ -1,0 +1,6 @@
+include:
+- ../base.yaml
+- ../base/dataset/offline_cifar.yaml
+- ../base/method/02_lora.yaml
+
+lr: 0.0014

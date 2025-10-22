@@ -15,7 +15,6 @@ peft:
 
   config:
     r: 10
-    mode: lrt
 
     vbnn:
       prior_mean: 0.0

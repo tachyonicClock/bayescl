@@ -1,0 +1,9 @@
+scenario:
+  dataset: CIFAR100
+  n_tasks: 1
+  shuffle: false
+label:
+  scenario: cifar100
+
+eval_every: 5
+epochs: 20
