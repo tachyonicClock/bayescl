@@ -69,7 +69,7 @@ class VBNNConfig:
     """Standard deviation of the prior distribution."""
     init_sd: float = 0.1
     """Mean of the initial variational posterior distribution."""
-    init_sd_sd: float = 0.1
+    init_sd_sd: float = 0.01
     """Standard deviation of the initial variational posterior distribution."""
     sd_mode: Literal["softplus", "abs"] = "softplus"
 

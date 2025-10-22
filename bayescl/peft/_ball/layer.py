@@ -3,6 +3,7 @@ import math
 import torch
 import torch.nn as nn
 from torch import Tensor
+from torch.nn import functional as F
 
 from bayescl.peft._ball.config import BALLConfig, VarianceReduction
 from bayescl.peft._base import AdapterBase
@@ -85,18 +86,18 @@ class BALLLinear(nn.Linear, BALLLayer):
     def forward_lrt(self, input: torch.Tensor) -> torch.Tensor:
         bottleneck = forward_lrt(input, self.ball_A.mu, self.ball_A.sigma())
         z = forward_lrt(bottleneck, self.ball_B.mu, self.ball_B.sigma())
-        return super().forward(input) + z * self.scaling
+        return F.linear(input, self.weight, self.bias) + z * self.scaling
 
     def forward_flipout(self, input: torch.Tensor) -> torch.Tensor:
         bottleneck = forward_flipout(input, self.ball_A.mu, self.ball_A.sigma())
         z = forward_flipout(bottleneck, self.ball_B.mu, self.ball_B.sigma())
-        return super().forward(input) + z * self.scaling
+        return F.linear(input, self.weight, self.bias) + z * self.scaling
 
     def forward_none(self, input: torch.Tensor) -> torch.Tensor:
         lora_A = self.ball_A.forward()
         lora_B = self.ball_B.forward()
         z = (input @ lora_A.T) @ lora_B.T
-        return super().forward(input) + z * self.scaling
+        return F.linear(input, self.weight, self.bias) + z * self.scaling
 
     def forward(self, input: torch.Tensor) -> Tensor:
         input = self.dropout(input)
