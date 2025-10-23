@@ -33,11 +33,27 @@ class VarianceReduction(Enum):
 
 @dataclass
 class BALLConfig:
+    class PerturbationType(Enum):
+        ADDITIVE = "additive"
+        """LoRA-style additive perturbation."""
+        MULTIPLICATIVE = "multiplicative"
+        """LoRMA/Rank-1 BNN-style multiplicative perturbation.
+        
+        Bihany, Harsh, Shubham Patel, and Ashutosh Modi. “LoRMA: Low-Rank Multiplicative
+        Adaptation for LLMs.” In Findings of the Association for Computational
+        Linguistics, ACL 2025, Vienna, Austria, July 27 - August 1, 2025, edited by
+        Wanxiang Che, Joyce Nabende, Ekaterina Shutova, and Mohammad Taher Pilehvar.
+        Association for Computational Linguistics, 2025.
+        https://aclanthology.org/2025.findings-acl.527/.
+        """
+
     r: int = 4
     lora_alpha: int = 1
-    mode: VarianceReduction = VarianceReduction.NONE
-    """Variance reduction method to use. Changes how the forward pass is computed in training mode."""
+    batch_ensemble_size: int = 1
+    """Number of ensemble members in the Batch-Ensemble."""
     vbnn: VBNNConfig = field(default_factory=VBNNConfig)
     """Configuration for the underlying Bayesian Neural Network."""
     dropout: float = 0.0
     """Dropout rate to use on the adapter inputs."""
+    perturbation_type: PerturbationType = PerturbationType.ADDITIVE
+    """Type of perturbation to use in the Batch-Ensemble adapters."""

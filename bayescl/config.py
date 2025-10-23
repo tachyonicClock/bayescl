@@ -91,28 +91,6 @@ class LoRAConfig(PEFTConfig):
     head_module: str = "model.classifier"
 
 
-class CLoRAConfig(PEFTConfig):
-    type: Literal["CLoRA"] = "CLoRA"
-    r: int = 4
-    lambda_: float = 1.0
-    head_module: str = "model.classifier"
-
-
-class InfLoRAConfig(PEFTConfig):
-    """InfLoRA: Interference-Free Low-Rank Adaptation for Continual Learning
-
-    Liang, Y.-S., & Li, W.-J. (2024). InfLoRA: Interference-Free Low-Rank Adaptation for
-    Continual Learning. 23638–23647.
-    """
-
-    type: Literal["InfLoRA"] = "InfLoRA"
-    r: int = 4
-    threshold: float = 0.95
-    """Also called epsilon in the paper. Controls how accurate the k-rank approximation
-    of the representation is. Default threshold is 0.95, see Table 1 in Liang & Li (2024).
-    """
-
-
 class BALL(PEFTConfig):
     type: Literal["BALL"] = "BALL"
     beta: float = 1.0
@@ -179,7 +157,7 @@ class Config(BaseConfig):
         discriminator="type",
     )
 
-    peft: Optional[LoRAConfig | BALL | CLoRAConfig | InfLoRAConfig] = Field(
+    peft: Optional[LoRAConfig | BALL] = Field(
         None,
         discriminator="type",
     )

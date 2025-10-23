@@ -15,6 +15,6 @@ class AdapterBase:
 class AdapterFactory(Protocol):
     """A callable that creates an adapter for a given module."""
 
-    def __call__(self, module: nn.Module) -> AdapterBase | nn.Module:
+    def __call__(self, module: nn.Module) -> nn.Module:
         """Create an adapter for a given module copying its state."""
         ...

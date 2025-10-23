@@ -23,51 +23,6 @@ class LoRA_Factory(AdapterFactory):
                     lora_dropout=self.lora_dropout,
                     merge_weights=False,
                 )
-            case nn.Conv1d():
-                return layer.Conv1d(
-                    module.in_channels,
-                    module.out_channels,
-                    module.kernel_size,
-                    stride=module.stride,
-                    padding=module.padding,
-                    dilation=module.dilation,
-                    groups=module.groups,
-                    bias=module.bias is not None,
-                    r=self.r,
-                    lora_alpha=self.lora_alpha,
-                    lora_dropout=self.lora_dropout,
-                    merge_weights=False,
-                )
-            case nn.Conv2d():
-                return layer.Conv2d(
-                    module.in_channels,
-                    module.out_channels,
-                    module.kernel_size,
-                    stride=module.stride,
-                    padding=module.padding,
-                    dilation=module.dilation,
-                    groups=module.groups,
-                    bias=module.bias is not None,
-                    r=self.r,
-                    lora_alpha=self.lora_alpha,
-                    lora_dropout=self.lora_dropout,
-                    merge_weights=False,
-                )
-            case nn.Conv3d():
-                return layer.Conv3d(
-                    module.in_channels,
-                    module.out_channels,
-                    module.kernel_size,
-                    stride=module.stride,
-                    padding=module.padding,
-                    dilation=module.dilation,
-                    groups=module.groups,
-                    bias=module.bias is not None,
-                    r=self.r,
-                    lora_alpha=self.lora_alpha,
-                    lora_dropout=self.lora_dropout,
-                    merge_weights=False,
-                )
             case _:
                 raise ValueError(f"Unsupported layer type: {type(module)}")
 

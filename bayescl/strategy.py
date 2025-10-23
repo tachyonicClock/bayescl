@@ -7,6 +7,7 @@ from torch import BoolTensor, Tensor, nn
 from torch.nn.functional import cross_entropy, nll_loss
 from torch.utils.tensorboard import SummaryWriter
 
+from bayescl.config import BALL
 from bayescl.vbnn import (
     VariationalLinear,
     VariationalParameter,
@@ -19,45 +20,34 @@ class BALLStrategy(Naive):
     def __init__(
         self,
         *,
-        beta: float,
-        train_samples: int,
-        test_samples: int,
         mask: BoolTensor,
         optimizer_fn: Callable[[], torch.optim.Optimizer],
         writer: SummaryWriter,
-        first_task_beta: float | None,
-        softmax_avg: bool,
+        config: BALL,
         **kwargs,
     ):
         assert "criterion" not in kwargs, "criterion is set by BALL"
         super().__init__(**kwargs)
-        if train_samples < 1:
+        self.cfg = config
+        if self.cfg.train_samples < 1:
             raise ValueError("train_samples must be at least 1")
-        if test_samples < 1:
+        if self.cfg.test_samples < 1:
             raise ValueError("test_samples must be at least 1")
 
         self.optimizer_fn = optimizer_fn
-        self.beta = beta
-        self.first_task_beta = first_task_beta
-        self.softmax_avg = softmax_avg
-        self.train_samples = train_samples
-        self.test_samples = test_samples
         self.writer = writer
         self.mask = mask.to(self.device)
 
-        logger.info(
-            "Initialized `BALLStrategy` with"
-            f" beta={self.beta} train_samples={self.train_samples}"
-            f" test_samples={self.test_samples}"
-        )
+        logger.info("Initialized `BALLStrategy`")
 
-        self.n_vbnn_param = sum(
-            m.mu.numel()  # type: ignore
-            for m in self.model.modules()
-            if isinstance(m, VariationalParameter)
-        )
-        """Number of variational parameters in the model."""
-        assert self.n_vbnn_param > 0, "No variational parameters found in the model."
+    @property
+    def beta(self) -> float:
+        # Use a different beta for the first task if specified
+        t = self.clock.train_exp_counter
+        if t == 0 and self.cfg.first_task_beta is not None:
+            return self.cfg.first_task_beta
+        else:
+            return self.cfg.beta
 
     def training_step(
         self, batch: Tuple[Tensor, Tensor, Tensor]
@@ -69,15 +59,16 @@ class BALLStrategy(Naive):
         t = self.clock.train_exp_counter
         x, y, _ = batch
 
+        # Monte Carlo estimate of the expected log-likelihood
         pred_probs = 0
         nll = 0
-        for k in range(self.train_samples):
+        for k in range(self.cfg.train_samples):
             y_hat = self.mask[t] * self.model(x)
             pred_probs += y_hat.softmax(dim=-1)
             nll += cross_entropy(y_hat, y)
 
-        pred_probs /= self.train_samples
-        nll /= self.train_samples
+        pred_probs /= self.cfg.train_samples
+        nll /= self.cfg.train_samples
 
         kl_encoder = kl_divergence(encoder)
         kl_head = 0
@@ -86,44 +77,50 @@ class BALLStrategy(Naive):
             kl_head = (self.mask[t] * head.weight.kl_divergences().sum(1)).sum()
             kl_head += (self.mask[t] * head.bias.kl_divergences()).sum()
 
-        # Use a different beta for the first task if specified
-        if t == 0 and self.first_task_beta is not None:
-            beta = self.first_task_beta
-        else:
-            beta = self.beta
-
         # Scale the KL divergence by the number of samples in the dataset.
         # The idea is that the cross-entropy loss is an average over a mini-batch and
-        # is therefore 1/dataset_size to small compared to the likelihood
+        # is therefore scaled down by 1/dataset_size. To balance this, we scale the KL
+        # divergence by the dataset size.
         kl = (kl_encoder + kl_head) / len(self.experience.dataset)  # type: ignore
-        beta_kl = beta * kl
+        beta_kl = self.beta * kl
         loss = nll + beta_kl
 
         step = self.clock.train_iterations
         self.writer.add_scalar("ball/nll", nll.item(), step)
         self.writer.add_scalar("ball/kl", kl.item(), step)
         self.writer.add_scalar("ball/beta_kl", beta_kl.item(), step)
-        return loss, pred_probs
+        return loss, pred_probs  # type: ignore
+
+    def ensemble_forward(self, input: Tensor) -> Tensor:
+        # Use batch-ensemble to compute multiple forward passes in parallel
+        bs = input.size(0)  # batch size
+        es = self.cfg.config.batch_ensemble_size  # ensemble size
+
+        inputs = input.repeat(es, 1, 1, 1)
+        outputs = self.model(inputs)  # type: ignore
+
+        # Reshape outputs to (batch_size, ensemble_size, num_classes)
+        outputs = outputs.view(bs, es, -1)
+        return outputs.permute(1, 0, 2)  # (ensemble_size, batch_size, num_classes)
 
     def predict_step(
         self, batch: Tuple[Tensor, Tensor, Tensor]
     ) -> Tuple[Tensor, Tensor]:
         assert self.is_eval
-
-        n = self.test_samples
         x, y, _ = batch
 
-        # Bayesian Posterior Predictive Distribution (marginalize over the model posterior)
-        # Like ensembling, but each ensemble member is a sample from the model posterior.
-        if self.softmax_avg:
-            # Apply softmax to each sample and then average
-            pred_probs: Tensor = (
-                sum(self.model(x).softmax(dim=-1) for _ in range(n)) / n
-            )  # type: ignore
+        # Output logits shape: (test_samples, ensemble_size, batch_size, num_classes)
+        logits = torch.stack(
+            [self.ensemble_forward(x) for _ in range(self.cfg.test_samples)]
+        )
+
+        if self.cfg.softmax_avg:
+            # Softmax before averaging
+            pred_probs = logits.softmax(dim=-1).mean(dim=(0, 1))
         else:
-            # Average the logits and then apply softmax
-            pred_logits: Tensor = sum(self.model(x) for _ in range(n)) / n  # type: ignore
-            pred_probs = pred_logits.softmax(dim=-1)
+            # Average logits before softmax
+            avg_logits = logits.mean(dim=(0, 1))
+            pred_probs = avg_logits.softmax(dim=-1)
 
         loss = nll_loss(pred_probs.log(), y)
         return loss, pred_probs
@@ -146,7 +143,9 @@ class BALLStrategy(Naive):
         assert sigma_count > 0, "No variational parameters found in the model."
         avg_sigma = sigma_sum / sigma_count
         step = self.clock.train_iterations
+
         self.writer.add_scalar("ball/avg_sigma", avg_sigma, step)
+        self.writer.add_scalar("ball/beta", self.beta, step)
         return super()._before_training_epoch(**kwargs)
 
     def training_epoch(self, **kwargs):

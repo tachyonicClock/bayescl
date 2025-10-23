@@ -4,17 +4,22 @@ label:
 # BALL uses local CE but it is implemented internally so we turn this off here
 use_local_ce: False
 
+# Since we use 'ensemble_size' samples per forward pass, we reduce the eval batch size 
+# to keep memory usage similar to other methods
+eval_mb_size: 64
+
 peft:
   type: BALL
 
   vbll: False
   train_samples: 1
-  test_samples: 10
+  test_samples: 1
+  ensemble_size: 4
 
   softmax_avg: False
 
   config:
-    r: 10
+    r: 3
 
     vbnn:
       prior_mean: 0.0
@@ -27,6 +32,3 @@ hpsearch:
   n_trials: 15
   params:
     "peft.beta": {type: float, low: 0.01, high: 2.0, log: True}
-    "peft.first_task_beta": {type: float, low: 0.01, high: 2.0, log: True}
-
-hpsearch_study_version: 17

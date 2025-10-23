@@ -57,8 +57,8 @@ from bayescl.peft import (
     parameter_summary_str,
     set_module,
 )
-from bayescl.plugins.ball import BALLStrategy
 from bayescl.plugins.train_mask import TrainTaskMask
+from bayescl.strategy import BALLStrategy
 from bayescl.vbnn import VariationalLinear
 
 
@@ -293,18 +293,14 @@ class Experiment:
         if self.cfg.peft and self.cfg.peft.type == "BALL":
             assert strategy is None, "BALL sets its own strategy"
             return BALLStrategy(
-                beta=self.cfg.peft.beta,
-                train_samples=self.cfg.peft.train_samples,
-                test_samples=self.cfg.peft.test_samples,
                 writer=self.tb_log.writer,
                 mask=self.mask,
                 optimizer_fn=self._new_optimizer,
-                first_task_beta=self.cfg.peft.first_task_beta,
-                softmax_avg=self.cfg.peft.softmax_avg,
+                config=self.cfg.peft,
                 **base_kwargs,
             )
         elif strategy is None:
-            return Naive(**base_kwargs)
+            return Naive(**base_kwargs)  # type: ignore
         elif isinstance(strategy, config.DERConfig):
             logger.info(
                 f"DER(mem_size={strategy.mem_size}, alpha={strategy.alpha}, beta={strategy.beta})"
