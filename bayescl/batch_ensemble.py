@@ -6,6 +6,26 @@ from torch import Tensor, nn
 from bayescl.vbnn import VariationalParameter, VBNNConfig
 
 
+def ensemble_predict(input: Tensor, module: nn.Module, ensemble_size: int) -> Tensor:
+    """_summary_
+
+    :param input: tensor of shape (batch_size, in_features)
+    :param module: a module that accepts input of shape (ensemble_size*batch_size, *)
+        and outputs tensor of shape (ensemble_size*batch_size, num_classes)
+    :param ensemble_size: size of the ensemble
+    :return: tensor of shape (ensemble_size, batch_size, num_classes)
+    """
+    es = ensemble_size  # ensemble size
+    bs = input.size(0)  # batch size
+    ndim = input.dim()
+
+    # Repeat the batches such that the shape is (es*bs, *) where * is the remaining
+    # dimensions
+    inputs = torch.tile(input, (es, *(1,) * (ndim - 1)))
+    outputs = module(inputs)  # type: ignore
+    return outputs.view(es, bs, -1)
+
+
 def _reset_parameters(weight: Tensor, bias: Tensor | None, ensemble_size: int) -> None:
     for k in range(ensemble_size):
         nn.init.kaiming_uniform_(weight[k], a=math.sqrt(5))

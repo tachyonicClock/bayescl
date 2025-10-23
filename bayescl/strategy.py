@@ -7,6 +7,7 @@ from torch import BoolTensor, Tensor, nn
 from torch.nn.functional import cross_entropy, nll_loss
 from torch.utils.tensorboard import SummaryWriter
 
+from bayescl.batch_ensemble import ensemble_predict
 from bayescl.config import BALL
 from bayescl.vbnn import (
     VariationalLinear,
@@ -91,18 +92,6 @@ class BALLStrategy(Naive):
         self.writer.add_scalar("ball/beta_kl", beta_kl.item(), step)
         return loss, pred_probs  # type: ignore
 
-    def ensemble_forward(self, input: Tensor) -> Tensor:
-        # Use batch-ensemble to compute multiple forward passes in parallel
-        bs = input.size(0)  # batch size
-        es = self.cfg.config.ensemble_size  # ensemble size
-
-        inputs = input.repeat(es, 1, 1, 1)
-        outputs = self.model(inputs)  # type: ignore
-
-        # Reshape outputs to (batch_size, ensemble_size, num_classes)
-        outputs = outputs.view(bs, es, -1)
-        return outputs.permute(1, 0, 2)  # (ensemble_size, batch_size, num_classes)
-
     def predict_step(
         self, batch: Tuple[Tensor, Tensor, Tensor]
     ) -> Tuple[Tensor, Tensor]:
@@ -111,7 +100,10 @@ class BALLStrategy(Naive):
 
         # Output logits shape: (test_samples, ensemble_size, batch_size, num_classes)
         logits = torch.stack(
-            [self.ensemble_forward(x) for _ in range(self.cfg.test_samples)]
+            [
+                ensemble_predict(x, self.model, self.cfg.config.ensemble_size)
+                for _ in range(self.cfg.test_samples)
+            ]
         )
 
         if self.cfg.softmax_avg:

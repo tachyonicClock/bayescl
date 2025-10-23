@@ -106,10 +106,10 @@ def test_ball():
 
     # Ensure gradients flow correctly
     model(x).sum().backward()
-    assert model.ball_A.mu.grad is not None
-    assert model.ball_A.rho.grad is not None
-    assert model.ball_B.mu.grad is not None
-    assert model.ball_B.rho.grad is not None
+    assert model.ball_A.weight.mu.grad is not None
+    assert model.ball_A.weight.rho.grad is not None
+    assert model.ball_B.weight.mu.grad is not None
+    assert model.ball_B.weight.rho.grad is not None
     assert model.weight.grad is None
     assert model.bias.grad is None
     zero_grad(model)
@@ -117,34 +117,42 @@ def test_ball():
     # Ensure kl divergence can be computed and backpropagated
     kl = vbnn_kl_divergence(model)
     kl.backward()
-    assert model.ball_A.mu.grad is not None
-    assert model.ball_A.rho.grad is not None
-    assert model.ball_B.mu.grad is not None
-    assert model.ball_B.rho.grad is not None
+    assert model.ball_A.weight.mu.grad is not None
+    assert model.ball_A.weight.rho.grad is not None
+    assert model.ball_B.weight.mu.grad is not None
+    assert model.ball_B.weight.rho.grad is not None
     assert model.weight.grad is None
     assert model.bias.grad is None
 
     # Ensure setting prior to posterior works
-    mu_A = model.ball_A.mu.clone()
-    sigma_A = model.ball_A.sigma().clone()
-    mu_B = model.ball_B.mu.clone()
-    sigma_B = model.ball_B.sigma().clone()
+    mu_A = model.ball_A.weight.mu.clone()
+    sigma_A = model.ball_A.weight.sigma().clone()
+    mu_B = model.ball_B.weight.mu.clone()
+    sigma_B = model.ball_B.weight.sigma().clone()
     posterior_to_prior(model)
-    torch.testing.assert_close(model.ball_A.prior_mu, mu_A)
-    torch.testing.assert_close(model.ball_A.prior_sigma, sigma_A)
-    torch.testing.assert_close(model.ball_B.prior_mu, mu_B)
-    torch.testing.assert_close(model.ball_B.prior_sigma, sigma_B)
+    torch.testing.assert_close(model.ball_A.weight.prior_mu, mu_A)
+    torch.testing.assert_close(model.ball_A.weight.prior_sigma, sigma_A)
+    torch.testing.assert_close(model.ball_B.weight.prior_mu, mu_B)
+    torch.testing.assert_close(model.ball_B.weight.prior_sigma, sigma_B)
     zero_grad(model)
 
     # Now that prior == posterior, kl divergence should be zero
     kl = vbnn_kl_divergence(model)
     assert kl.item() == approx(0.0)
     kl.backward()
-    assert torch.allclose(model.ball_A.mu.grad, torch.zeros_like(model.ball_A.mu))
     assert torch.allclose(
-        model.ball_A.rho.grad, torch.zeros_like(model.ball_A.rho), atol=1e-6
+        model.ball_A.weight.mu.grad, torch.zeros_like(model.ball_A.weight.mu)
     )
-    assert torch.allclose(model.ball_B.mu.grad, torch.zeros_like(model.ball_B.mu))
     assert torch.allclose(
-        model.ball_B.rho.grad, torch.zeros_like(model.ball_B.rho), atol=1e-6
+        model.ball_A.weight.rho.grad,
+        torch.zeros_like(model.ball_A.weight.rho),
+        atol=1e-6,
+    )
+    assert torch.allclose(
+        model.ball_B.weight.mu.grad, torch.zeros_like(model.ball_B.weight.mu)
+    )
+    assert torch.allclose(
+        model.ball_B.weight.rho.grad,
+        torch.zeros_like(model.ball_B.weight.rho),
+        atol=1e-6,
     )

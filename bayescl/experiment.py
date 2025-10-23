@@ -60,7 +60,6 @@ from bayescl.peft import (
 )
 from bayescl.plugins.train_mask import TrainTaskMask
 from bayescl.strategy import BALLStrategy
-from bayescl.vbnn import VariationalLinear
 
 
 def avalanche_class_schedule(

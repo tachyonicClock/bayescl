@@ -30,8 +30,9 @@ peft:
       deterministic_eval: false
 
 hpsearch:
-  n_trials: 15
+  n_trials: 30
   params:
     "lr": {type: float, low: 0.0001, high: 0.005, log: True}
+    "peft.beta": {type: categorical, choices: [0.0, 0.01, 0.1, 1.0, 10.0]}
     "peft.config.vbnn.prior_sd": {type: categorical, choices: [0.01, 0.1, 0.5, 1.0]}
     "peft.config.vbnn.init_sd": {type: categorical, choices: [0.001, 0.01, 0.1]}

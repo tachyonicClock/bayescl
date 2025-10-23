@@ -2,7 +2,20 @@ import pytest
 import torch
 import torch.nn as nn
 
-from bayescl.batch_ensemble import BatchEnsembleLinear
+from bayescl.batch_ensemble import BatchEnsembleLinear, ensemble_predict
+
+
+def test_ensemble_predict():
+    bs = 6  # batch size
+    es = 4  # ensemble size
+    in_features = 1
+
+    input = torch.arange(bs * in_features).view(bs, in_features).float()
+    module = nn.Identity()
+    outputs = ensemble_predict(input, module, es)
+
+    assert outputs.shape == (es, bs, in_features)
+    assert torch.allclose(outputs.mean(0), input)
 
 
 def test_like_linear():

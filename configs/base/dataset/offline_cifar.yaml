@@ -8,4 +8,4 @@ label:
 epochs: 20
 
 eval_every: 2
-hpsearch_study_version: 2
+hpsearch_study_version: 3
