@@ -2,6 +2,7 @@ import os
 
 import matplotlib
 
+from bayescl.batch_ensemble import BatchEnsembleLinear, BayesianBatchEnsembleLinear
 from bayescl.plugins.clora import CLoRAPlugin
 from bayescl.plugins.inflora import PluginInfLoRA
 
@@ -191,15 +192,25 @@ class Experiment:
                 # Replace classifier with VBNN linear layer
                 linear = self.model.get_submodule(peft.head_module)
                 assert isinstance(linear, torch.nn.Linear)
-                new_linear = VariationalLinear(
+                new_linear = BayesianBatchEnsembleLinear(
                     in_features=linear.in_features,
                     out_features=linear.out_features,
+                    ensemble_size=peft.config.ensemble_size,
+                    bias=linear.bias is not None,
                     config=peft.config.vbnn,
                 )  # type: ignore
                 set_module(self.model, peft.head_module, new_linear)
             else:
-                logger.info("Using standard last layer")
-                self.model.get_submodule(peft.head_module).requires_grad_(True)
+                logger.info("Replacing head with 'BatchEnsembleLinear'")
+                old_head = self.model.get_submodule(peft.head_module)
+                assert isinstance(old_head, torch.nn.Linear)
+                head = BatchEnsembleLinear(
+                    in_features=old_head.in_features,
+                    out_features=old_head.out_features,
+                    ensemble_size=peft.config.ensemble_size,
+                    bias=old_head.bias is not None,
+                )
+                set_module(self.model, peft.head_module, head)
 
         # Optionally load adapter weights from checkpoint
         if peft.checkpoint is not None:

@@ -94,7 +94,7 @@ class BALLStrategy(Naive):
     def ensemble_forward(self, input: Tensor) -> Tensor:
         # Use batch-ensemble to compute multiple forward passes in parallel
         bs = input.size(0)  # batch size
-        es = self.cfg.config.batch_ensemble_size  # ensemble size
+        es = self.cfg.config.ensemble_size  # ensemble size
 
         inputs = input.repeat(es, 1, 1, 1)
         outputs = self.model(inputs)  # type: ignore

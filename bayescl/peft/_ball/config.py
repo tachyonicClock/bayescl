@@ -31,7 +31,7 @@ class VarianceReduction(Enum):
     """No variance reduction"""
 
 
-@dataclass
+@dataclass(kw_only=True)
 class BALLConfig:
     class PerturbationType(Enum):
         ADDITIVE = "additive"
@@ -49,7 +49,7 @@ class BALLConfig:
 
     r: int = 4
     lora_alpha: int = 1
-    batch_ensemble_size: int = 1
+    ensemble_size: int = 1
     """Number of ensemble members in the Batch-Ensemble."""
     vbnn: VBNNConfig = field(default_factory=VBNNConfig)
     """Configuration for the underlying Bayesian Neural Network."""

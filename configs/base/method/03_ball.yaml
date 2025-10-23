@@ -12,23 +12,26 @@ peft:
   type: BALL
 
   vbll: False
+  beta: 1.0
   train_samples: 1
-  test_samples: 1
-  ensemble_size: 4
+  test_samples: 4
 
   softmax_avg: False
 
   config:
     r: 3
+    ensemble_size: 4
 
     vbnn:
       prior_mean: 0.0
-      prior_sd: 1.0
-      init_sd: 0.02
+      prior_sd: 0.1
+      init_sd: 0.1
       init_sd_sd: 0.005
       deterministic_eval: false
 
 hpsearch:
   n_trials: 15
   params:
-    "peft.beta": {type: float, low: 0.01, high: 2.0, log: True}
+    "lr": {type: float, low: 0.0001, high: 0.005, log: True}
+    "peft.config.vbnn.prior_sd": {type: categorical, choices: [0.01, 0.1, 0.5, 1.0]}
+    "peft.config.vbnn.init_sd": {type: categorical, choices: [0.001, 0.01, 0.1]}

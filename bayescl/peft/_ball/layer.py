@@ -36,7 +36,7 @@ class BALLLinear(nn.Linear, BALLLayer):
         self.ball_A = BayesianBatchEnsembleLinear(
             in_features,
             config.r,
-            config.batch_ensemble_size,
+            config.ensemble_size,
             bias=False,
             config=config.vbnn,
         )
@@ -44,7 +44,7 @@ class BALLLinear(nn.Linear, BALLLayer):
         self.ball_B = BayesianBatchEnsembleLinear(
             config.r,
             out_features,
-            config.batch_ensemble_size,
+            config.ensemble_size,
             bias=False,
             config=config.vbnn,
         )
@@ -53,8 +53,8 @@ class BALLLinear(nn.Linear, BALLLayer):
             nn.Dropout(config.dropout) if config.dropout > 0 else nn.Identity()
         )
 
-        # Initialize A and B
-        nn.init.kaiming_uniform_(self.ball_A.weight.mu, a=math.sqrt(5))
+        # Zero initialize B to ensure initial behavior is equivalent to the original
+        # linear layer (ignoring noise from VBNN)
         nn.init.zeros_(self.ball_B.weight.mu)
 
     def forward(self, input: torch.Tensor) -> Tensor:
@@ -65,4 +65,4 @@ class BALLLinear(nn.Linear, BALLLayer):
             )
         else:
             perturbation = self.dropout(self.ball_B(self.ball_A(input))) * self.scaling
-            return F.linear(input, self.weight * (1 + perturbation), self.bias)
+            return F.linear(input, self.weight, self.bias) * (1 + perturbation)
