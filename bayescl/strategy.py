@@ -44,11 +44,13 @@ class BALLStrategy(Naive):
     @property
     def beta(self) -> float:
         # Use a different beta for the first task if specified
-        t = self.clock.train_exp_counter
-        if t == 0 and self.cfg.first_task_beta is not None:
-            return self.cfg.first_task_beta
-        else:
+        epoch = self.clock.train_exp_epochs
+        if self.cfg.beta_anneal_epochs <= 0:
             return self.cfg.beta
+        else:
+            return min(
+                self.cfg.beta, self.cfg.beta * (epoch + 1) / self.cfg.beta_anneal_epochs
+            )
 
     def training_step(
         self, batch: Tuple[Tensor, Tensor, Tensor]

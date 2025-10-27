@@ -95,8 +95,8 @@ class BALL(PEFTConfig):
     type: Literal["BALL"] = "BALL"
     beta: float = 1.0
     """Hyperparameter weighting the KL divergence loss."""
-    first_task_beta: Optional[float] = None
-    """If set, use a different beta for the first task."""
+    beta_anneal_epochs: int = 0
+    """Number of epochs over which to anneal beta from 0 to beta."""
     vbll: bool
     """If True, enable Variational Bayesian Last Layer"""
     train_samples: int

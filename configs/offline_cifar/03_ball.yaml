@@ -2,3 +2,10 @@ include:
 - ../base.yaml
 - ../base/dataset/offline_cifar.yaml
 - ../base/method/03_ball.yaml
+lr: 0.00079
+peft:
+  beta: 0.01
+  config:
+    vbnn:
+      init_sd: 0.001
+      prior_sd: !!float '1'
