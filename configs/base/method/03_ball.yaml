@@ -1,15 +1,16 @@
 label:
-  method: ball
+  study: init_sd
 
 # BALL uses local CE but it is implemented internally so we turn this off here
 use_local_ce: False
 
 peft:
   type: BALL
+  beta: 1.0
 
-  vbll: False
+  vbll: True
   train_samples: 1
-  test_samples: 10
+  test_samples: 5
 
   softmax_avg: False
 
@@ -19,12 +20,11 @@ peft:
     vbnn:
       prior_mean: 0.0
       prior_sd: 1.0
-      init_sd: 0.02
-      init_sd_sd: 0.005
+      init_sd: 0.001
+      init_sd_sd: 1e-5
       deterministic_eval: false
 
 hpsearch:
   n_trials: 15
   params:
-    "peft.beta": {type: float, low: 0.01, high: 2.0, log: True}
-    "peft.first_task_beta": {type: float, low: 0.01, high: 2.0, log: True}
+    peft.config.vbnn.init_sd: {type: float, low: 1e-4, high: 1.0, log: True}

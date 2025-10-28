@@ -88,6 +88,9 @@ def test_variational_parameter(config: VBNNConfig):
     assert torch.allclose(vp.mu.grad, torch.zeros_like(vp.mu))
     assert torch.allclose(vp.rho.grad, torch.zeros_like(vp.rho), atol=1e-6)
 
+    vp.mu.data += 0.1
+    assert vbnn_kl_divergence(vp).item() > 0.0
+
 
 def test_ball():
     torch.manual_seed(0)

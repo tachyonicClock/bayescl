@@ -250,8 +250,10 @@ def get_posterior(vb_layer: FFGMixin | VariationalParameter) -> FFGState:
 @torch.no_grad()
 def set_prior(vb_layer: FFGMixin | VariationalParameter, state: FFGState):
     if isinstance(vb_layer, VariationalParameter):
-        vb_layer.prior_mu = state.weight_mean
-        vb_layer.prior_sigma = state.weight_sd
+        assert isinstance(vb_layer.prior_mu, Tensor)
+        assert isinstance(vb_layer.prior_sigma, Tensor)
+        vb_layer.prior_mu.copy_(state.weight_mean)
+        vb_layer.prior_sigma.copy_(state.weight_sd)
     elif isinstance(vb_layer, FFGMixin):
         assert isinstance(vb_layer.prior_weight_mean, Tensor)
         assert isinstance(vb_layer.prior_weight_sd, Tensor)

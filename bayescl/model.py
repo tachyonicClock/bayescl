@@ -16,6 +16,14 @@ class HuggingFaceAdapter(nn.Module):
         super().__init__()
         self.model = model
 
+    def get_encoder(self) -> nn.Module:
+        if hasattr(self.model, "vit"):
+            return self.model.vit  # type: ignore
+        elif hasattr(self.model, "dinov2"):
+            return self.model.dinov2  # type: ignore
+        else:
+            raise ValueError("Unsupported model architecture for encoder extraction.")
+
     def forward(self, x: Tensor) -> Tensor:
         return self.model(x).logits
 

@@ -63,7 +63,7 @@ class BALLStrategy(Naive):
         self, batch: Tuple[Tensor, Tensor, Tensor]
     ) -> Tuple[Tensor, Tensor]:
         assert not self.is_eval
-        encoder: nn.Module = self.model.model.vit  # type: ignore
+        encoder: nn.Module = self.model.get_encoder()  # type: ignore
         head: nn.Module = self.model.model.classifier  # type: ignore
 
         t = self.clock.train_exp_counter
@@ -192,5 +192,5 @@ class BALLStrategy(Naive):
 
     def _after_training_exp(self, **kwargs):
         logger.info("Using previous posterior as new prior.")
-        posterior_to_prior(self.model.model.vit)  # type: ignore
+        posterior_to_prior(self.model.get_encoder())  # type: ignore
         return super()._after_training_exp(**kwargs)
