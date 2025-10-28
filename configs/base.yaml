@@ -1,3 +1,6 @@
+label:
+  study: dino
+
 lr: 0.001
 
 train_mb_size: 128

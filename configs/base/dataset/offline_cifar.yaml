@@ -6,5 +6,3 @@ label:
   scenario: offline_cifar
 
 epochs: 20
-
-hpsearch_study_version: 1

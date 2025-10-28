@@ -13,5 +13,3 @@ hpsearch:
   sampler: QMC
   n_trials: 3
   direction: [maximize, minimize]
-
-hpsearch_study_version: 2

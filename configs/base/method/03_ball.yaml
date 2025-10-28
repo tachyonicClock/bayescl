@@ -28,5 +28,3 @@ hpsearch:
   params:
     "peft.beta": {type: float, low: 0.01, high: 2.0, log: True}
     "peft.first_task_beta": {type: float, low: 0.01, high: 2.0, log: True}
-
-hpsearch_study_version: 17

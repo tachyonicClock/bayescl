@@ -230,7 +230,6 @@ class Config(BaseConfig):
     use_local_ce: bool = True
 
     hpsearch: Optional[HyperparameterSearch] = None
-    hpsearch_study_version: int = 0
 
     #: Random seed for reproducibility
     seed: int = 0

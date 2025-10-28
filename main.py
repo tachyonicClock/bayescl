@@ -69,9 +69,8 @@ def optimize_with_max_trials(
 
 
 def get_optuna_study_name(config: Config) -> str:
-    study = f"hp_{config.hpsearch_study_version:04d}"
     return (
-        f"{OPTUNA_PROJECT_PREFIX}/{study}/{config.label.scenario}/{config.label.method}"
+        f"{OPTUNA_PROJECT_PREFIX}/{config.label.study}/{config.label.scenario}/{config.label.method}"
     )
 
 
@@ -87,8 +86,6 @@ def run_study(config: Config):
         config.seed = trial.number
         optuna_suggest(trial, config, config.hpsearch.params)
         return Experiment(config).run(trial)
-
-    config.label.study = f"hp_{config.hpsearch_study_version:04d}"
 
     study = optuna.create_study(
         directions=config.hpsearch.direction,
@@ -188,7 +185,6 @@ def run(
 
     study = None
     if from_study:
-        cfg.label.study = f"hp_{cfg.hpsearch_study_version:04d}"
         study = optuna.load_study(
             study_name=get_optuna_study_name(cfg),
             storage=environ["OPTUNA_STORAGE"],
