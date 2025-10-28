@@ -307,10 +307,10 @@ class ContinualLearningEvaluator:
         accuracy = correct / total
         return {
             **asdict(Result.from_accuracy_matrix(accuracy)),
-            "y_true": {k: v.half().numpy() for k, v in y_true.items()}
+            "y_true": {k: v.numpy().astype(np.half) for k, v in y_true.items()}
             if self._save_logits
             else None,
-            "y_logit": {k: v.half().numpy() for k, v in y_logit.items()}
+            "y_logit": {k: v.numpy().astype(np.half) for k, v in y_logit.items()}
             if self._save_logits
             else None,
             "ece_all": ece_all,
