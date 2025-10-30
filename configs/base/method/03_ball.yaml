@@ -1,4 +1,5 @@
 label:
+  study: vr # Variance Reduction
   method: ball
 
 # BALL uses local CE but it is implemented internally so we turn this off here
@@ -22,9 +23,9 @@ peft:
       prior_sd: 1.0
       init_sd: 0.001
       init_sd_sd: 1e-5
-      deterministic_eval: false
 
 hpsearch:
   n_trials: 15
   params:
-    "peft.beta": {type: float, low: 0.0, high: 2.0, log: False}
+    "lr": {type: float, low: 0.0005, high: 0.002, log: True}
+    "peft.config.mode": {type: categorical, choices: ["lrt", "flipout"]}
