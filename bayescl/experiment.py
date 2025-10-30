@@ -319,6 +319,7 @@ class Experiment:
             logger.info(f"GDumb(mem_size={strategy.mem_size})")
             return GDumb(
                 mem_size=strategy.mem_size,
+                criterion=torch.nn.CrossEntropyLoss(),
                 **base_kwargs,
             )
         raise ValueError(f"Unknown strategy: {strategy}")
