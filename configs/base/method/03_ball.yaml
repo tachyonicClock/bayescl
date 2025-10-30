@@ -1,4 +1,5 @@
 label:
+  study: init-sd
   method: ball
 
 # BALL uses local CE but it is implemented internally so we turn this off here
@@ -27,4 +28,6 @@ peft:
 hpsearch:
   n_trials: 15
   params:
-    "peft.beta": {type: float, low: 0.0, high: 2.0, log: False}
+    "lr": {type: float, low: 0.0005, high: 0.002, log: True}
+    "peft.config.vbnn.init_sd": {type: float, low: 1e-4, high: 0.1, log: True}
+    "peft.config.vbnn.prior_sd": {type: float, low: 0.1, high: 1.0, log: True}
