@@ -7,6 +7,7 @@ from torch import BoolTensor, Tensor, nn
 from torch.nn.functional import cross_entropy, nll_loss
 from torch.utils.tensorboard import SummaryWriter
 
+from bayescl.config import BALL, CyclicAnneal, LinearAnneal
 from bayescl.vbnn import (
     VariationalLinear,
     VariationalParameter,
@@ -15,41 +16,57 @@ from bayescl.vbnn import (
 )
 
 
+def annealed_beta(progress: float, beta: float, start: float, end: float) -> float:
+    """Anneal the beta value linearly from 0 to 'beta' between 'start_time' and 'end_time'.
+
+    :param progress: Training progress as a fraction between 0 and 1
+    :param beta: Final beta value
+    :param start: Start time for annealing as a fraction of training progress.
+    :param end: End time for annealing as a fraction of training progress.
+    :return: Annealed beta value
+    """
+    assert 0.0 <= start < end <= 1.0, "Invalid annealing times."
+    if progress < start:
+        return 0.0
+    elif progress > end:
+        return beta
+    else:
+        # Linear annealing between start_time and end_time
+        scaled_progress = (progress - start) / (end - start)
+        return beta * scaled_progress
+
+
+def blob_annealed_beta(i: int, M: int) -> float:
+    return 2 ** (i % M) / (2 ** (M) - 1)
+
+
 class BALLStrategy(Naive):
     def __init__(
         self,
         *,
-        beta: float,
-        train_samples: int,
-        test_samples: int,
+        cfg: BALL,
         mask: BoolTensor,
         optimizer_fn: Callable[[], torch.optim.Optimizer],
         writer: SummaryWriter,
-        first_task_beta: float | None,
-        softmax_avg: bool,
         **kwargs,
     ):
         assert "criterion" not in kwargs, "criterion is set by BALL"
         super().__init__(**kwargs)
-        if train_samples < 1:
+        if cfg.train_samples < 1:
             raise ValueError("train_samples must be at least 1")
-        if test_samples < 1:
+        if cfg.test_samples < 1:
             raise ValueError("test_samples must be at least 1")
 
+        self.cfg = cfg
         self.optimizer_fn = optimizer_fn
-        self.beta = beta
-        self.first_task_beta = first_task_beta
-        self.softmax_avg = softmax_avg
-        self.train_samples = train_samples
-        self.test_samples = test_samples
+        self._beta = cfg.beta
+        self.softmax_avg = cfg.softmax_avg
+        self.train_samples = cfg.train_samples
+        self.test_samples = cfg.test_samples
         self.writer = writer
         self.mask = mask.to(self.device)
 
-        logger.info(
-            "Initialized `BALLStrategy` with"
-            f" beta={self.beta} train_samples={self.train_samples}"
-            f" test_samples={self.test_samples}"
-        )
+        self._epoch_step_count: int = 1
 
         self.n_vbnn_param = sum(
             m.mu.numel()  # type: ignore
@@ -86,24 +103,57 @@ class BALLStrategy(Naive):
             kl_head = (self.mask[t] * head.weight.kl_divergences().sum(1)).sum()
             kl_head += (self.mask[t] * head.bias.kl_divergences()).sum()
 
-        # Use a different beta for the first task if specified
-        if t == 0 and self.first_task_beta is not None:
-            beta = self.first_task_beta
-        else:
-            beta = self.beta
-
         # Scale the KL divergence by the number of samples in the dataset.
         # The idea is that the cross-entropy loss is an average over a mini-batch and
         # is therefore 1/dataset_size to small compared to the likelihood
-        kl = (kl_encoder + kl_head) / len(self.experience.dataset)  # type: ignore
-        beta_kl = beta * kl
+        kl = kl_encoder + kl_head  # type: ignore
+        beta_kl = self.beta * kl
         loss = nll + beta_kl
 
         step = self.clock.train_iterations
+        self.writer.add_scalar("ball/beta", self.beta, step)
         self.writer.add_scalar("ball/nll", nll.item(), step)
         self.writer.add_scalar("ball/kl", kl.item(), step)
         self.writer.add_scalar("ball/beta_kl", beta_kl.item(), step)
         return loss, pred_probs
+
+    def progress(self):
+        task_step = self.clock.train_exp_iterations
+        task_total_steps = self.train_epochs * self._epoch_step_count  # type: ignore
+        progress = task_step / task_total_steps
+        assert 0.0 <= progress <= 1.0
+        return progress
+
+    @property
+    def beta(self) -> float:
+        dataset_size = len(self.experience.dataset)  # type: ignore
+        task_total_steps = self.train_epochs * self._epoch_step_count  # type: ignore
+
+        if self.cfg.anneal is None:
+            return self._beta / dataset_size
+        elif isinstance(self.cfg.anneal, LinearAnneal):
+            return (
+                annealed_beta(
+                    self.progress(),
+                    self._beta,
+                    self.cfg.anneal.start,
+                    self.cfg.anneal.end,
+                )
+                / dataset_size
+            )
+        elif isinstance(self.cfg.anneal, CyclicAnneal):
+            return (
+                self._beta
+                * blob_annealed_beta(
+                    i=int(task_total_steps * self.progress()),
+                    M=int(
+                        task_total_steps / (self.cfg.anneal.cycles * self.train_epochs)
+                    ),
+                )
+                / (dataset_size / self._epoch_step_count)
+            )  # divide by batch size
+        else:
+            raise ValueError("Unsupported annealing type.")
 
     def predict_step(
         self, batch: Tuple[Tensor, Tensor, Tensor]
@@ -146,6 +196,7 @@ class BALLStrategy(Naive):
         assert sigma_count > 0, "No variational parameters found in the model."
         avg_sigma = sigma_sum / sigma_count
         step = self.clock.train_iterations
+
         self.writer.add_scalar("ball/avg_sigma", avg_sigma, step)
         return super()._before_training_epoch(**kwargs)
 
@@ -153,6 +204,7 @@ class BALLStrategy(Naive):
         for self.mbatch in self.dataloader:
             if self._stop_training:
                 break
+            self._epoch_step_count = len(self.dataloader)  # type: ignore
 
             self._unpack_minibatch()
             self._before_training_iteration(**kwargs)

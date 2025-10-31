@@ -1,6 +1,6 @@
 from os import environ
 from pathlib import Path
-from typing import Literal, Optional
+from typing import Literal, Optional, Union
 
 import torch
 from loguru import logger
@@ -113,18 +113,37 @@ class InfLoRAConfig(PEFTConfig):
     """
 
 
+class LinearAnneal(BaseModel):
+    type: Literal["linear"] = "linear"
+    start: float = 0.0
+    """The position (as a fraction of task training) to start annealing."""
+    end: float = 1.0
+    """The position (as a fraction of task training) to end annealing."""
+
+
+class CyclicAnneal(BaseModel):
+    type: Literal["cyclic"] = "cyclic"
+    cycles: float
+    """Number of cycles per epoch"""
+
+
 class BALL(PEFTConfig):
     type: Literal["BALL"] = "BALL"
     beta: float = 1.0
     """Hyperparameter weighting the KL divergence loss."""
-    first_task_beta: Optional[float] = None
-    """If set, use a different beta for the first task."""
+
+    anneal: Union[None, LinearAnneal, CyclicAnneal] = Field(None, discriminator="type")
+    """If specified, use annealing for beta over the course of training."""
+
     vbll: bool
     """If True, enable Variational Bayesian Last Layer"""
+
     train_samples: int
     """Number of samples for each step of training."""
+
     test_samples: int
     """Number of samples for each step of testing."""
+
     softmax_avg: bool = True
     """If true apply softmax before averaging the logits over samples.
     

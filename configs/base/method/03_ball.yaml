@@ -1,4 +1,5 @@
 label:
+  study: anneal
   method: ball
 
 # BALL uses local CE but it is implemented internally so we turn this off here
@@ -14,6 +15,11 @@ peft:
 
   softmax_avg: False
 
+  anneal:
+    type: linear
+    start: 0.0
+    end: 1.0
+
   config:
     r: 10
 
@@ -27,4 +33,6 @@ peft:
 hpsearch:
   n_trials: 15
   params:
-    "peft.beta": {type: float, low: 0.0, high: 2.0, log: False}
+    "lr": {type: float, low: 0.0005, high: 0.002, log: True}
+    "peft.anneal.start": {type: float, low: 0.0, high: 0.5}
+    "peft.anneal.end": {type: float, low: 0.5, high: 1.0}

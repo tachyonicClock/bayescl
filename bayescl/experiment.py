@@ -293,14 +293,10 @@ class Experiment:
         if self.cfg.peft and self.cfg.peft.type == "BALL":
             assert strategy is None, "BALL sets its own strategy"
             return BALLStrategy(
-                beta=self.cfg.peft.beta,
-                train_samples=self.cfg.peft.train_samples,
-                test_samples=self.cfg.peft.test_samples,
+                cfg=self.cfg.peft,
                 writer=self.tb_log.writer,
                 mask=self.mask,
                 optimizer_fn=self._new_optimizer,
-                first_task_beta=self.cfg.peft.first_task_beta,
-                softmax_avg=self.cfg.peft.softmax_avg,
                 **base_kwargs,
             )
         elif strategy is None:
