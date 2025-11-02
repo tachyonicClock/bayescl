@@ -69,9 +69,7 @@ def optimize_with_max_trials(
 
 
 def get_optuna_study_name(config: Config) -> str:
-    return (
-        f"{OPTUNA_PROJECT_PREFIX}/{config.label.study}/{config.label.scenario}/{config.label.method}"
-    )
+    return f"{OPTUNA_PROJECT_PREFIX}/{config.label.study}/{config.label.scenario}/{config.label.method}"
 
 
 def run_study(config: Config):

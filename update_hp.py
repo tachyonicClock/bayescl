@@ -24,14 +24,22 @@ METHODS = {
 }
 
 STUDIES = [
-    # "bayescl/hp_0100/imagenetr/linear",
-    # "bayescl/hp_0100/imagenetr/lora",
-    # "bayescl/hp_0100/imagenetr/replay",
-    # "bayescl/hp_0100/imagenetr/der",
-    # "bayescl/hp_0100/imagenetr/rwalk",
-    "bayescl/hp_0102/cifar100/ball",
-    "bayescl/hp_0102/imagenetr/ball",
-    "bayescl/hp_0102/domainnet/ball",
+    "bayescl/hp/cifar100/linear",
+    "bayescl/hp/cifar100/lora",
+    "bayescl/hp/cifar100/ball",
+    "bayescl/hp/cifar100/replay",
+    "bayescl/hp/cifar100/gdumb",
+    "bayescl/hp/cifar100/der",
+    "bayescl/hp/cifar100/joint",
+    "bayescl/hp/cifar100/rwalk",
+    "bayescl/hp/imagenetr/linear",
+    "bayescl/hp/imagenetr/lora",
+    "bayescl/hp/imagenetr/ball",
+    "bayescl/hp/imagenetr/replay",
+    "bayescl/hp/imagenetr/gdumb",
+    "bayescl/hp/imagenetr/der",
+    "bayescl/hp/imagenetr/joint",
+    "bayescl/hp/imagenetr/rwalk",
 ]
 
 
@@ -58,7 +66,7 @@ for study_name in STUDIES:
 
     best_trials = study.best_trials
     # select the trial with the best ECE (second value in the values tuple)
-    best_trial = min(best_trials, key=lambda t: t.values[1])
+    best_trial = max(best_trials, key=lambda t: t.values[0])
 
     print("========================================")
     print(f"Dataset {f_dataset}, Method: {o_method}")
@@ -81,5 +89,14 @@ for study_name in STUDIES:
             sub_config = sub_config.setdefault(key, {})
         sub_config[keys[-1]] = best_trial.params[param]
 
+    git_hash = study.user_attrs.get("git_commit")
+
     with open(filename, "w") as f:
+        f.writelines(
+            [
+                f"# {study_name} {git_hash}\n",
+                f"# {best_trial.values[0] * 100:.2f}% Acc. {best_trial.values[1] * 100:.2f}% ECE\n",
+                f"# Selected best run based on highest accuracy from {len(study.trials)} trials\n",
+            ]
+        )
         yaml.dump(config, f)

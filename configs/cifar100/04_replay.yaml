@@ -1,5 +1,8 @@
+# bayescl/hp/cifar100/replay 88eba84
+# 89.67% Acc. 2.49% ECE
+# Selected best run based on highest accuracy from 15 trials
 include:
 - ../base.yaml
 - ../base/dataset/cifar100.yaml
 - ../base/method/04_replay.yaml
-lr: 0.00023
+lr: 0.00012

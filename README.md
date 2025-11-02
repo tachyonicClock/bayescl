@@ -71,6 +71,17 @@ gzip -d < metadata/domainnet_train.yaml.gz > $DATASETS/domainnet/domainnet_train
 gzip -d < metadata/domainnet_test.yaml.gz  > $DATASETS/domainnet/domainnet_test.yaml
 ```
 
+## Results
+
+We save the results of each experiment in `log/` folder by default. The results are organized as follows:
+
+* `avalanche_results.pkl`: Pickle containing a list of collected avalanche metrics.
+* `config.yaml`: Configuration file used for the experiment.
+* `metrics.pkl`: Pickled dictionary containing detailed metrics including
+  accuracy matrices and expected calibration error.
+* `events.out.tfevents.1762118680.*.3634449.0`: Tensorboard log file.
+* `raw_data.pkl`: Pickled logits/true labels collected during evaluation.
+* `checkpoint-*.pth`: Model checkpoint saved after each task (if enabled).
 
 ## Virtual Environment
 

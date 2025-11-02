@@ -1,4 +1,5 @@
 import argparse
+from itertools import product
 from os import environ
 
 import numpy as np
@@ -7,7 +8,25 @@ import tabulate
 
 n = 100
 
-target_trial_count = 20
+target_trial_count = 15
+
+
+SCENARIOS = [
+    "cifar100",
+    "imagenetr",
+    "domainnet",
+]
+
+METHODS = [
+    "linear",
+    "lora",
+    "ball",
+    "replay",
+    "gdumb",
+    "der",
+    "joint",
+    "rwalk",
+]
 
 
 def sec_to_hh_mm_ss(seconds):
@@ -20,14 +39,17 @@ def sec_to_hh_mm_ss(seconds):
 def main(prefix: str | None = None, sort_on_ece: bool = False):
     OPTUNA_STORAGE = environ.get("OPTUNA_STORAGE")
 
-    study_names = optuna.get_all_study_names(storage=OPTUNA_STORAGE)[-100:]
-    study_names = reversed(study_names)  # most recent first
+    study_names = optuna.get_all_study_names(storage=OPTUNA_STORAGE)
+    # study_names = reversed(study_names)  # most recent first
 
     rows = []
 
-    for study_name in study_names:
-        if not study_name.startswith(prefix):
+    for scenario, method in product(SCENARIOS, METHODS):
+        study_name = f"{prefix}/{scenario}/{method}"
+
+        if study_name not in study_names:
             continue
+
         study = optuna.load_study(study_name=study_name, storage=OPTUNA_STORAGE)
         trials_complete = [
             t for t in study.trials if t.state == optuna.trial.TrialState.COMPLETE
@@ -69,11 +91,11 @@ def main(prefix: str | None = None, sort_on_ece: bool = False):
                 # "Study ID": study._study_id,
                 "Study Name": study.study_name[len(prefix) + 1 :],
                 "done/total (running)": f"{n_complete}/{target_trial_count} ({n_running})",
-                "N best": len(study.best_trials),
+                # "N best": len(study.best_trials),
                 # "N Running": ,
                 # "N Total": len(study.trials),
                 "Mean Time": sec_to_hh_mm_ss(avg_duration_s),
-                "Std Time": sec_to_hh_mm_ss(std_duration_s),
+                # "Std Time": sec_to_hh_mm_ss(std_duration_s),
                 # "Remaining": sec_to_hh_mm_ss(complete_in),
                 "Acc.": f"{best_trial.values[0] * 100:.2f}",
                 "ECE": f"{best_trial.values[1] * 100:.2f}",

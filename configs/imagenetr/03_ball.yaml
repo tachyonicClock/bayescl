@@ -1,7 +1,10 @@
+# bayescl/hp/imagenetr/ball 88eba84
+# 79.63% Acc. 2.89% ECE
+# Selected best run based on highest accuracy from 15 trials
 include:
 - ../base.yaml
 - ../base/dataset/imagenetr.yaml
 - ../base/method/03_ball.yaml
-lr: 0.0016
+lr: 0.00055
 peft:
-  beta: 0.15
+  beta: 0.0028

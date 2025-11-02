@@ -1,8 +1,11 @@
+# bayescl/hp/cifar100/rwalk 88eba84
+# 88.13% Acc. 2.03% ECE
+# Selected best run based on highest accuracy from 15 trials
 include:
 - ../base.yaml
 - ../base/dataset/cifar100.yaml
 - ../base/method/08_rwalk.yaml
-lr: 0.0018
+lr: 0.00086
 rwalk:
-  ewc_alpha: 0.82
-  ewc_lambda: 0.16
+  ewc_alpha: 0.77
+  ewc_lambda: 0.37

@@ -1,5 +1,8 @@
+# bayescl/hp/cifar100/lora 88eba84
+# 77.53% Acc. 8.37% ECE
+# Selected best run based on highest accuracy from 15 trials
 include:
 - ../base.yaml
 - ../base/dataset/cifar100.yaml
 - ../base/method/02_lora.yaml
-lr: 0.0014
+lr: 0.00081

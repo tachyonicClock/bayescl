@@ -1,5 +1,8 @@
+# bayescl/hp/cifar100/linear 88eba84
+# 78.06% Acc. 2.20% ECE
+# Selected best run based on highest accuracy from 15 trials
 include:
 - ../base.yaml
 - ../base/dataset/cifar100.yaml
 - ../base/method/01_linear.yaml
-lr: 0.0019
+lr: 0.00073

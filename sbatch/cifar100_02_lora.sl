@@ -1,6 +1,6 @@
 #!/bin/bash -e
 #SBATCH --job-name=cifar100_02_lora
-#SBATCH --time=7:30:00
+#SBATCH --time=4:06:57
 #SBATCH --mem=16G
 #SBATCH --cpus-per-task=3
 #SBATCH --gpus-per-node=L4:1
@@ -17,4 +17,5 @@ python main.py \
     -a label.study="run" \
     -a num_workers=5 \
     -a seed="$SLURM_ARRAY_TASK_ID" \
+    -a checkpoint=True \
     run

@@ -52,7 +52,6 @@ from bayescl.peft import (
     LoRA_Factory,
     RegexFilter,
     add_adapters,
-    iter_adapter_parameters,
     iter_named_adapters,
     parameter_summary_str,
     set_module,
@@ -264,9 +263,7 @@ class Experiment:
         self.log_dir: Path = self._new_log_dir()
         self.tb_log = self._new_logger()
         self.eval_plugin: EvaluationPlugin = self._new_eval_plugin()
-        self.metrics_plugin = MetricsPlugin(
-            self.num_tasks, self.num_classes, save_logits=cfg.save_logits
-        )
+        self.metrics_plugin = MetricsPlugin(self.num_tasks, self.num_classes)
         self.model = get_model(cfg, self.benchmark.n_classes)
         self._add_peft_adapters()
         self._add_plugins()
@@ -275,6 +272,17 @@ class Experiment:
         return torch.optim.Adam(
             filter(lambda p: p.requires_grad, self.model.parameters()), lr=self.cfg.lr
         )
+
+    def save_checkpoint(self, filename: Path) -> None:
+        # Only save learnable parameters (adapters)
+        state = {
+            k: v.to(copy=True, dtype=torch.float16)
+            for k, v in self.model.named_parameters()
+            if v.requires_grad
+        }
+        numel = sum(p.numel() for p in state.values())
+        logger.info(f"Saving checkpoint to '{filename}' ({numel} parameters)")
+        torch.save(state, filename)
 
     def get_strategy(self) -> SupervisedTemplate:
         base_kwargs = dict(
@@ -354,6 +362,9 @@ class Experiment:
                     self.benchmark.test_stream, num_workers=self.cfg.num_workers
                 )
             )
+            if self.cfg.checkpoint:
+                checkpoint_path = self.log_dir / f"checkpoint-t{t:02d}.pth"
+                self.save_checkpoint(checkpoint_path)
 
             if self.cfg.max_tasks is not None and t + 1 >= self.cfg.max_tasks:
                 logger.info(f"Stopping after {self.cfg.max_tasks} tasks")
@@ -363,20 +374,9 @@ class Experiment:
         with open(self.log_dir / "avalanche_results.pkl", "wb") as f:
             pickle.dump(results, f)
 
-        metrics = self.metrics_plugin.evaluator.result()
+        metrics, raw_data = self.metrics_plugin.evaluator.result()
         pickle.dump(metrics, open(self.log_dir / "metrics.pkl", "wb"))
-
-        # Optionally save adapter weights
-        if self.cfg.peft and self.cfg.peft.save:
-            filename = self.log_dir / "adapter.pth"
-            logger.info(f"Saving adapter weights to '{filename}'.")
-            with open(filename, "wb") as f:
-                state = dict(iter_adapter_parameters(self.model))
-                head = self.cfg.peft.head_module
-                state.update(
-                    self.model.get_submodule(head).state_dict(prefix=head + ".")
-                )
-                torch.save(state, f)
+        pickle.dump(raw_data, open(self.log_dir / "raw_data.pkl", "wb"))
 
         for key, value in metrics.items():
             if isinstance(value, (float, int)):

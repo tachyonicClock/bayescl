@@ -1,4 +1,8 @@
+# bayescl/hp/imagenetr/gdumb 88eba84
+# 76.02% Acc. 3.75% ECE
+# Selected best run based on highest accuracy from 15 trials
 include:
 - ../base.yaml
 - ../base/dataset/imagenetr.yaml
 - ../base/method/05_gdumb.yaml
+lr: 0.00013

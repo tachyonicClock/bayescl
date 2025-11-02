@@ -1,4 +1,5 @@
 import pickle
+import time
 from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any, BinaryIO, Dict, List
@@ -165,7 +166,6 @@ class ContinualLearningEvaluator:
         self,
         num_tasks: int,
         num_classes: int,
-        save_logits: bool = False,
     ) -> None:
         self._task_count = num_tasks
         self._class_count = num_classes
@@ -178,12 +178,12 @@ class ContinualLearningEvaluator:
         )
         self._train_tid = 0
         self._test_tid = 0
-        self._save_logits = save_logits
 
         #: Dictionary mapping (train_task_idx, test_task_idx) to list of true labels
         self._y_true: Dict[tuple[int, int], List[Tensor]] = {}
         #: Dictionary mapping (train_task_idx, test_task_idx) to list of predicted logits
         self._y_logit: Dict[tuple[int, int], List[Tensor]] = {}
+        self._start_time = time.perf_counter()
 
     @torch.no_grad()
     def update(
@@ -254,7 +254,7 @@ class ContinualLearningEvaluator:
         return float(brier_score_loss(y_true.numpy(), y_prob.numpy()))
 
     @torch.no_grad()
-    def result(self) -> Dict[str, Any]:
+    def result(self) -> tuple[Dict[str, Any], Dict[str, Any]]:
         y_true: Dict[tuple[int, int], Tensor] = {
             k: torch.cat(v, dim=0) for k, v in self._y_true.items()
         }
@@ -305,14 +305,8 @@ class ContinualLearningEvaluator:
         correct = self._big_r.diagonal(dim1=2, dim2=3).sum(dim=-1)
         total = self._big_r.sum(dim=(2, 3))
         accuracy = correct / total
-        return {
+        metrics = {
             **asdict(Result.from_accuracy_matrix(accuracy)),
-            "y_true": {k: v.numpy().astype(np.half) for k, v in y_true.items()}
-            if self._save_logits
-            else None,
-            "y_logit": {k: v.numpy().astype(np.half) for k, v in y_logit.items()}
-            if self._save_logits
-            else None,
             "ece_all": ece_all,
             "ece_all_avg": ece_all.mean(),
             "ece_seen": ece_seen,
@@ -331,4 +325,16 @@ class ContinualLearningEvaluator:
             "brier_all": brier_all,
             "brier_all_avg": brier_all.mean(),
             "brier_final": brier_all[-1],
+            "duration_s": time.perf_counter() - self._start_time,
         }
+        raw_data = {
+            "R": self._big_r.cpu().numpy().astype(np.int32),
+            "y_true": {
+                k: v.cpu().numpy().astype(np.float16) for k, v in y_true.items()
+            },
+            "y_logit": {
+                k: v.cpu().numpy().astype(np.float16) for k, v in y_logit.items()
+            },
+        }
+
+        return metrics, raw_data

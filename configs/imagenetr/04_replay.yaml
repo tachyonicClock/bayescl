@@ -1,5 +1,8 @@
+# bayescl/hp/imagenetr/replay 88eba84
+# 82.46% Acc. 3.00% ECE
+# Selected best run based on highest accuracy from 15 trials
 include:
 - ../base.yaml
 - ../base/dataset/imagenetr.yaml
 - ../base/method/04_replay.yaml
-lr: 0.00019
+lr: 0.0001

@@ -1,5 +1,8 @@
+# bayescl/hp/cifar100/joint 88eba84
+# 90.32% Acc. 0.90% ECE
+# Selected best run based on highest accuracy from 15 trials
 include:
 - ../base.yaml
 - ../base/dataset/cifar100.yaml
 - ../base/method/07_joint.yaml
-lr: 0.001
+lr: 0.00013
