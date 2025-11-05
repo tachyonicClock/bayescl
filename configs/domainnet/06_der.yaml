@@ -1,8 +1,11 @@
+# bayescl/hp/domainnet/der 88eba84
+# 72.10% Acc. 2.46% ECE
+# Selected best run based on highest accuracy from 15 trials
 include:
 - ../base.yaml
 - ../base/dataset/domainnet.yaml
 - ../base/method/06_der.yaml
-lr: 0.00027
+lr: 0.00013
 strategy:
-  alpha: 0.37
+  alpha: 0.81
   beta: !!float '1'

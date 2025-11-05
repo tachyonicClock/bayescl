@@ -1,8 +1,11 @@
+# bayescl/hp/imagenetr/rwalk 88eba84
+# 78.05% Acc. 5.39% ECE
+# Selected best run based on highest accuracy from 15 trials
 include:
 - ../base.yaml
 - ../base/dataset/imagenetr.yaml
 - ../base/method/08_rwalk.yaml
-lr: 0.0011
+lr: 0.0012
 rwalk:
-  ewc_alpha: 0.011
-  ewc_lambda: 0.39
+  ewc_alpha: 0.98
+  ewc_lambda: 0.96

@@ -40,6 +40,14 @@ STUDIES = [
     "bayescl/hp/imagenetr/der",
     "bayescl/hp/imagenetr/joint",
     "bayescl/hp/imagenetr/rwalk",
+    "bayescl/hp/domainnet/linear",
+    "bayescl/hp/domainnet/lora",
+    "bayescl/hp/domainnet/ball",
+    "bayescl/hp/domainnet/replay",
+    "bayescl/hp/domainnet/gdumb",
+    "bayescl/hp/domainnet/der",
+    "bayescl/hp/domainnet/joint",
+    "bayescl/hp/domainnet/rwalk",
 ]
 
 

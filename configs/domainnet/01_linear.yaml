@@ -1,5 +1,8 @@
+# bayescl/hp/domainnet/linear 88eba84
+# 74.98% Acc. 1.88% ECE
+# Selected best run based on highest accuracy from 15 trials
 include:
 - ../base.yaml
 - ../base/dataset/domainnet.yaml
 - ../base/method/01_linear.yaml
-lr: 0.0011
+lr: 0.00039

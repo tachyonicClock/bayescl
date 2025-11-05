@@ -14,3 +14,12 @@ imagenetr,04_replay,9:53:00,16G
 imagenetr,05_gdumb,5:00:06,16G
 imagenetr,06_der,10:09:18,16G
 imagenetr,07_joint,4:36:06,16G
+imagenetr,08_rwalk,9:57:48,16G
+domainnet,01_linear,2:28:09,16G
+domainnet,02_lora,7:01:15,16G
+domainnet,03_ball,6:12:24,16G
+domainnet,04_replay,12:18:39,16G
+domainnet,05_gdumb,0:42:03,16G
+domainnet,06_der,13:18:21,16G
+domainnet,07_joint,6:36:30,16G
+domainnet,08_rwalk,13:28:36,16G
