@@ -2,9 +2,6 @@ import os
 
 import matplotlib
 
-from bayescl.plugins.clora import CLoRAPlugin
-from bayescl.plugins.inflora import PluginInfLoRA
-
 matplotlib.use("Agg")
 
 import pickle
@@ -44,11 +41,9 @@ from bayescl.metrics.ece import (
     ExpectedCalibrationError,
 )
 from bayescl.metrics.plugin import MetricsPlugin
-from bayescl.model import get_model, get_peft_filter
+from bayescl.model import get_model
 from bayescl.peft import (
     BALL,
-    CLoRA,
-    CLoRAConfig,
     LoRA_Factory,
     RegexFilter,
     add_adapters,
