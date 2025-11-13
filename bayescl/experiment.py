@@ -162,23 +162,13 @@ class Experiment:
         if peft.type == "LoRA":
             add_adapters(
                 self.model,
-                get_peft_filter(self.cfg),
+                filter_regex,
                 LoRA_Factory(
                     r=peft.r,
                     lora_alpha=peft.lora_alpha,
                     lora_dropout=peft.lora_dropout,
                 ),
             )
-            self.model.get_submodule(peft.head_module).requires_grad_(True)
-        elif peft.type == "CLoRA" or peft.type == "InfLoRA":
-            add_adapters(self.model, filter_regex, CLoRA(CLoRAConfig(r=peft.r)))
-
-            if peft.type == "InfLoRA":
-                self.plugins.append(
-                    PluginInfLoRA(threshold=peft.threshold, total_tasks=self.num_tasks)
-                )
-            elif peft.type == "CLoRA":
-                self.plugins.append(CLoRAPlugin(peft.lambda_, self.tb_log.writer))
             self.model.get_submodule(peft.head_module).requires_grad_(True)
         elif peft.type == "BALL":
             # Add BALL adapters

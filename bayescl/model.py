@@ -3,12 +3,6 @@ from torch import Tensor, nn
 from transformers import AutoModelForImageClassification
 
 from bayescl.config import BasicModelConfig, Config, HuggingFaceModelConfig
-from bayescl.peft import RegexFilter
-
-_PEFT_MODEL_REGEX = {
-    "facebook/dinov2-small": ".*(dense|fc1|fc2|key|query|value)",
-    "google/vit-base-patch16-224": ".*(key|query)",
-}
 
 
 class HuggingFaceAdapter(nn.Module):
@@ -57,7 +51,3 @@ def get_model(cfg: Config, num_classes: int) -> nn.Module:
         return _get_huggingface_model(cfg.model, num_classes)
     else:
         raise ValueError(f"Unsupported model type: {cfg.model.type}")
-
-
-def get_peft_filter(cfg: Config) -> RegexFilter:
-    return RegexFilter(_PEFT_MODEL_REGEX[cfg.model.name])

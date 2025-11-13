@@ -7,15 +7,10 @@ train_mb_size: 128
 eval_mb_size: 256
 num_workers: 4
 
-# model:
-#   type: huggingface
-#   name: google/vit-base-patch16-224
-#   adapter_filter: ".*(key|query)"
-
 model:
   type: huggingface
   name: facebook/dinov2-small
-  adapter_filter: ".*(key|query|value)"
+  adapter_filter: ".*(dense|fc1|fc2|key|query|value)"
 
 hpsearch:
   params:
