@@ -1,6 +1,6 @@
 # Large Language Model Use
 
-We used large language models (Gemini 2.5 Flash and Pro) to help polish the writing and to find some related works.
+We used large language models (Gemini 2.5 Flash and Pro) to help polish the writing and exploratory search for related works (carefully cited and checked for relevance).
 Github Copilot's code-suggestions feature was used during writing of the source code.
 We reviewed all suggested changes and inclusions for factual accuracy, clarity, conciseness, and style.
 We cannot provide prompts for information retrieval and discovery because we conducted this on an ad hoc basis.

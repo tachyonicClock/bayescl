@@ -1,15 +1,15 @@
 # BALL
 
-
-
-
 ## Overview
 
 * `bayescl`: Source code implementing BALL and other experiments.
 * `metadata`: Datasplits for DomainNet dataset.
 * `configs`: Configuration files defining hyperparameters search spaces and final
   configurations for each dataset and method.
+    * Explanations of each configuration parameter can be found in `bayescl/config.py`.
 * `main.py`: Main entry point to run experiments.
+* See [LLM.md](LLM.md) for details on the use of large language models in this project.
+
 
 ## Algorithm
 
@@ -133,83 +133,9 @@ python main.py --hpsearch -c configs/cifar100/01_linear.yaml --args epochs=1
 
 ### Hardware
 
-* The code has been with CUDA 12.9 on Experiments were conducted on various GPUs with CUDA
+* The code has been tested with CUDA 12.9 and Experiments were conducted on various GPUs with CUDA
 12.9: Quadro RTX 6000, L4, RTX A5000, and  RTX A6000.
 * A GPU with at least 20GB of memory is needed for the default batch sizes.
 * 16GB of RAM.
 * 6 core CPU for data loading.
 * Linux.
-
-### 3. Hyperparameter Search
-
-```bash
-ts -G 1 -L cifar_linea python main.py --hpsearch -c configs/cifar100/01_linear.yaml
-ts -G 1 -L image_linea python main.py --hpsearch -c configs/imagenetr/01_linear.yaml
-ts -G 1 -L domai_linea python main.py --hpsearch -c configs/domainnet/01_linear.yaml
-ts -G 1 -L cifar_lora  python main.py --hpsearch -c configs/cifar100/02_lora.yaml
-ts -G 1 -L image_lora  python main.py --hpsearch -c configs/imagenetr/02_lora.yaml
-ts -G 1 -L domai_lora  python main.py --hpsearch -c configs/domainnet/02_lora.yaml
-ts -G 1 -L cifar_ball  python main.py --hpsearch -c configs/cifar100/03_ball.yaml
-ts -G 1 -L image_ball  python main.py --hpsearch -c configs/imagenetr/03_ball.yaml
-ts -G 1 -L domai_ball  python main.py --hpsearch -c configs/domainnet/03_ball.yaml
-ts -G 1 -L cifar_repla python main.py --hpsearch -c configs/cifar100/04_replay.yaml
-ts -G 1 -L image_repla python main.py --hpsearch -c configs/imagenetr/04_replay.yaml
-ts -G 1 -L domai_repla python main.py --hpsearch -c configs/domainnet/04_replay.yaml
-ts -G 1 -L cifar_gdumb python main.py --hpsearch -c configs/cifar100/05_gdumb.yaml
-ts -G 1 -L image_gdumb python main.py --hpsearch -c configs/imagenetr/05_gdumb.yaml
-ts -G 1 -L domai_gdumb python main.py --hpsearch -c configs/domainnet/05_gdumb.yaml
-ts -G 1 -L cifar_der   python main.py --hpsearch -c configs/cifar100/06_der.yaml
-ts -G 1 -L image_der   python main.py --hpsearch -c configs/imagenetr/06_der.yaml
-ts -G 1 -L domai_der   python main.py --hpsearch -c configs/domainnet/06_der.yaml
-ts -G 1 -L cifar_joint python main.py --hpsearch -c configs/cifar100/07_joint.yaml
-ts -G 1 -L image_joint python main.py --hpsearch -c configs/imagenetr/07_joint.yaml
-ts -G 1 -L domai_joint python main.py --hpsearch -c configs/domainnet/07_joint.yaml
-ts -G 1 -L cifar_rwalk python main.py --hpsearch -c configs/cifar100/08_rwalk.yaml
-ts -G 1 -L image_rwalk python main.py --hpsearch -c configs/imagenetr/08_rwalk.yaml
-ts -G 1 -L domai_rwalk python main.py --hpsearch -c configs/domainnet/08_rwalk.yaml
-
-# Notify me when all jobs are completed
-ts_notify 
-```
-
-
-```bash
-# Copy conda env from lagerfield to local scratch
-rsync -a --info=progress2 lagerfield.ecs.vuw.ac.nz:$ECS_SCRATCH/miniconda3/envs/bayescl $ECS_SCRATCH/miniconda3/envs
-rsync -a --info=progress2 lagerfield.ecs.vuw.ac.nz:$DATASETS/cifar-100-python $DATASETS
-rsync -a --info=progress2 lagerfield.ecs.vuw.ac.nz:$DATASETS/imagenet-r       $DATASETS
-rsync -a --info=progress2 lagerfield.ecs.vuw.ac.nz:$DATASETS/domainnet        $DATASETS
-pip install -r requirements.txt
-```
-
-
-```bash
-sbatch sbatch/cifar100_01_linear.sl
-sbatch sbatch/cifar100_02_lora.sl
-sbatch sbatch/cifar100_04_replay.sl
-sbatch sbatch/cifar100_05_gdumb.sl
-sbatch sbatch/cifar100_06_der.sl
-sbatch sbatch/cifar100_07_joint.sl
-sbatch sbatch/cifar100_08_rwalk.sl
-
-sbatch sbatch/imagenetr_01_linear.sl
-sbatch sbatch/imagenetr_02_lora.sl
-sbatch sbatch/imagenetr_04_replay.sl
-sbatch sbatch/imagenetr_05_gdumb.sl
-sbatch sbatch/imagenetr_06_der.sl
-sbatch sbatch/imagenetr_07_joint.sl
-
-sbatch sbatch/imagenetr_08_rwalk.sl
-sbatch sbatch/domainnet_01_linear.sl
-sbatch sbatch/domainnet_02_lora.sl
-sbatch sbatch/domainnet_04_replay.sl
-sbatch sbatch/domainnet_05_gdumb.sl
-sbatch sbatch/domainnet_06_der.sl
-sbatch sbatch/domainnet_07_joint.sl
-sbatch sbatch/domainnet_08_rwalk.sl
-
-sbatch --array 0-0 sbatch/cifar100_03_ball.sl
-sbatch sbatch/imagenetr_03_ball.sl
-sbatch sbatch/domainnet_03_ball.sl
-```
-

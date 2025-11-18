@@ -209,5 +209,4 @@ __marimo__/
 log
 .vscode
 nohup.out
-**.ipynb
 figs

@@ -16,6 +16,3 @@ matplotlib
 loguru
 seaborn
 typeguard
-
-git+https://github.com/microsoft/bayesianize.git
-git+https://github.com/tachyonicClock/avalanche.git
