@@ -186,27 +186,30 @@ pip install -r requirements.txt
 ```bash
 sbatch sbatch/cifar100_01_linear.sl
 sbatch sbatch/cifar100_02_lora.sl
-sbatch sbatch/cifar100_03_ball.sl
 sbatch sbatch/cifar100_04_replay.sl
+sbatch sbatch/cifar100_05_gdumb.sl
 sbatch sbatch/cifar100_06_der.sl
+sbatch sbatch/cifar100_07_joint.sl
 sbatch sbatch/cifar100_08_rwalk.sl
-
-sbatch sbatch/domainnet_01_linear.sl
-sbatch sbatch/domainnet_02_lora.sl
-sbatch sbatch/domainnet_04_replay.sl
-sbatch sbatch/domainnet_06_der.sl
-sbatch sbatch/domainnet_08_rwalk.sl
 
 sbatch sbatch/imagenetr_01_linear.sl
 sbatch sbatch/imagenetr_02_lora.sl
-sbatch sbatch/imagenetr_03_ball.sl
 sbatch sbatch/imagenetr_04_replay.sl
+sbatch sbatch/imagenetr_05_gdumb.sl
 sbatch sbatch/imagenetr_06_der.sl
+sbatch sbatch/imagenetr_07_joint.sl
+
 sbatch sbatch/imagenetr_08_rwalk.sl
+sbatch sbatch/domainnet_01_linear.sl
+sbatch sbatch/domainnet_02_lora.sl
+sbatch sbatch/domainnet_04_replay.sl
+sbatch sbatch/domainnet_05_gdumb.sl
+sbatch sbatch/domainnet_06_der.sl
+sbatch sbatch/domainnet_07_joint.sl
+sbatch sbatch/domainnet_08_rwalk.sl
+
+sbatch --array 0-0 sbatch/cifar100_03_ball.sl
+sbatch sbatch/imagenetr_03_ball.sl
+sbatch sbatch/domainnet_03_ball.sl
 ```
 
-```bash
-ts -G 1 -L cifar_ball     notirun.sh cifar_ball     python main.py -c configs/cifar100/03_ball.yaml  -a hpsearch.sampler=TPE -a hpsearch_study_version=102 hpsearch
-ts -G 1 -L domainnet_ball notirun.sh domainnet_ball python main.py -c configs/domainnet/03_ball.yaml -a hpsearch.sampler=TPE -a hpsearch_study_version=102 hpsearch
-ts -G 1 -L imagenetr_ball notirun.sh imagenetr_ball python main.py -c configs/imagenetr/03_ball.yaml -a hpsearch.sampler=TPE -a hpsearch_study_version=102 hpsearch
-```

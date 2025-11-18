@@ -1,6 +1,11 @@
 label:
   method: ball
 
+model:
+  type: huggingface
+  name: facebook/dinov2-small
+  adapter_filter: ".*(key|query|value)"
+
 # BALL uses local CE but it is implemented internally so we turn this off here
 use_local_ce: False
 
