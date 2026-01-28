@@ -1,22 +1,20 @@
 import pickle
 import tarfile
 from dataclasses import asdict, dataclass
-from itertools import chain
 from pathlib import Path
 from typing import Any, Dict, Generator, Tuple
 
 import numpy as np
 import pandas as pd
 import torch
-from torch import Tensor
-from torchmetrics.utilities.compute import normalize_logits_if_needed
-
 from calibration import (
     calibration_curve as compute_calibration_curve,
 )
 from calibration import (
     expected_calibration_error,
 )
+from torch import Tensor
+from torchmetrics.utilities.compute import normalize_logits_if_needed
 
 DATASET_NAME_MAP = {
     "ImageNet_R": "imagenetr",

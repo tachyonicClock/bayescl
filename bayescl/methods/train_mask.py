@@ -11,11 +11,11 @@ class TrainTaskMask(SupervisedPlugin):
         self.optimizer_fn = optimizer_fn
 
     def before_training_exp(self, strategy: Any, *args, **kwargs) -> Any:
-        strategy.optimizer = self.optimizer_fn()
+        strategy.optimizer = self.optimizer_fn(strategy.model.parameters())
 
     def before_training(self, strategy: Any, *args, **kwargs) -> Any:
         self.mask = self.mask.to(strategy.device)
 
     def after_forward(self, strategy: Any, *args, **kwargs) -> Any:
         t = strategy.clock.train_exp_counter
-        strategy.mb_output = self.mask[t] * strategy.mb_output
+        strategy.mb_output[:, ~self.mask[t]] = -torch.inf

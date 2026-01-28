@@ -1,0 +1,11 @@
+label:
+  method: l2p
+
+peft:
+  type: L2P
+  pool_size: 10
+  prompt_length: 5
+  top_k: 5
+  pull_constraint_coeff: 0.1
+
+lr: 0.01

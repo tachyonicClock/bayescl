@@ -1,4 +1,4 @@
-from typing import Callable, Tuple
+from typing import Any, Callable, Tuple
 
 import torch
 from avalanche.training.supervised import Naive
@@ -23,7 +23,7 @@ class BALLStrategy(Naive):
         train_samples: int,
         test_samples: int,
         mask: BoolTensor,
-        optimizer_fn: Callable[[], torch.optim.Optimizer],
+        optimizer_fn: Callable[[Any], torch.optim.Optimizer],
         writer: SummaryWriter,
         first_task_beta: float | None,
         softmax_avg: bool,
@@ -131,7 +131,7 @@ class BALLStrategy(Naive):
     def _before_training_exp(self, **kwargs):
         # Reset the momentum optimizer to avoid forgetting previous tasks because of
         # stale momentum.
-        self.optimizer = self.optimizer_fn()  # type: ignore
+        self.optimizer = self.optimizer_fn(self.model.parameters())  # type: ignore
         return super()._before_training_exp(**kwargs)
 
     def _before_training_epoch(self, **kwargs):

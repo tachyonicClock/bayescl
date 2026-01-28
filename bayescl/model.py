@@ -1,14 +1,24 @@
+from typing import override
+
 from avalanche.models import SimpleMLP
 from torch import Tensor, nn
 from transformers import AutoModelForImageClassification
+from transformers.models.dinov2.modeling_dinov2 import (
+    Dinov2ForImageClassification,
+)
 
 from bayescl.config import BasicModelConfig, Config, HuggingFaceModelConfig
+from bayescl.methods.l2p import Backbone
 
 
-class HuggingFaceAdapter(nn.Module):
+class HuggingFaceAdapter(Backbone, nn.Module):
     def __init__(self, model: nn.Module):
         super().__init__()
         self.model = model
+        if isinstance(model, Dinov2ForImageClassification):
+            self.embed_dim = model.dinov2.config.hidden_size  # type: ignore
+        else:
+            raise NotImplementedError(f"Got unsupported model type: {type(model)}")
 
     def get_encoder(self) -> nn.Module:
         if hasattr(self.model, "vit"):
@@ -20,6 +30,24 @@ class HuggingFaceAdapter(nn.Module):
 
     def forward(self, x: Tensor) -> Tensor:
         return self.model(x).logits
+
+    @override
+    def embed_patches(self, pixel_values: Tensor) -> Tensor:
+        if isinstance(self.model, Dinov2ForImageClassification):
+            return self.model.dinov2.embeddings(pixel_values=pixel_values)
+        else:
+            raise NotImplementedError("embed_patches not implemented for this model.")
+
+    @override
+    def forward_encoder(self, patch_embeddings: Tensor) -> Tensor:
+        if isinstance(self.model, Dinov2ForImageClassification):
+            return self.model.dinov2.encoder(patch_embeddings).last_hidden_state  # type: ignore
+        else:
+            raise NotImplementedError("forward_encoder not implemented for this model.")
+
+    @override
+    def forward_query(self, patch_embeddings: Tensor) -> Tensor:
+        return self.forward_encoder(patch_embeddings)[:, 0]
 
 
 def _get_basic_model(model_cfg: BasicModelConfig, num_classes: int) -> nn.Module:

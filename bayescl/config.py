@@ -152,6 +152,15 @@ class GDumbConfig(PEFTConfig):
     mem_size: int
 
 
+class L2PConfig(PEFTConfig):
+    type: Literal["L2P"] = "L2P"
+    model: HuggingFaceModelConfig = Field(HuggingFaceModelConfig())
+    pull_constraint_coeff: float
+    pool_size: int
+    prompt_length: int
+    top_k: int
+
+
 class Label(BaseConfig):
     """Label given to the experiment: ``{study}/{scenario}/{method}/{run}``"""
 
@@ -174,12 +183,12 @@ class Config(BaseConfig):
     scenario: Scenario = Field(Scenario())
 
     #: Model configuration.
-    model: BasicModelConfig | HuggingFaceModelConfig = Field(
+    model: BasicModelConfig | HuggingFaceModelConfig | L2PConfig = Field(
         BasicModelConfig(),
         discriminator="type",
     )
 
-    peft: Optional[LoRAConfig | BALL | CLoRAConfig | InfLoRAConfig] = Field(
+    peft: Optional[LoRAConfig | BALL | CLoRAConfig | InfLoRAConfig | L2PConfig] = Field(
         None,
         discriminator="type",
     )

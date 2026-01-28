@@ -35,8 +35,12 @@ from optuna import Trial
 from setproctitle import setproctitle
 from torch import BoolTensor
 
+import bayescl.methods.l2p as l2p
 from bayescl import config
+from bayescl.methods.l2p import Backbone
 from bayescl.benchmark import get_benchmark
+from bayescl.methods.ball import BALLStrategy
+from bayescl.methods.train_mask import TrainTaskMask
 from bayescl.metrics.ece import (
     ExpectedCalibrationError,
 )
@@ -51,8 +55,6 @@ from bayescl.peft import (
     parameter_summary_str,
     set_module,
 )
-from bayescl.plugins.ball import BALLStrategy
-from bayescl.plugins.train_mask import TrainTaskMask
 from bayescl.vbnn import VariationalLinear
 
 
@@ -165,6 +167,22 @@ class Experiment:
                 ),
             )
             self.model.get_submodule(peft.head_module).requires_grad_(True)
+        elif isinstance(peft, config.L2PConfig):
+            assert isinstance(self.model, Backbone)
+            logger.info("Using L2P prompt-based method")
+            del self.model.model.classifier  # type: ignore
+            self.plugins += [l2p.L2PPlugin()]
+            self.model = l2p.L2PModel(
+                backbone=self.model,
+                num_classes=self.benchmark.n_classes,
+                pull_constraint_coeff=peft.pull_constraint_coeff,
+                prompt_pool=l2p.PromptPool(
+                    pool_size=peft.pool_size,
+                    prompt_length=peft.prompt_length,
+                    embed_dim=self.model.embed_dim,
+                    top_k=peft.top_k,
+                ),
+            )
         elif peft.type == "BALL":
             # Add BALL adapters
             factory = BALL(peft.config)
@@ -253,9 +271,9 @@ class Experiment:
         self._add_peft_adapters()
         self._add_plugins()
 
-    def _new_optimizer(self) -> torch.optim.Optimizer:
+    def _new_optimizer(self, parameters) -> torch.optim.Optimizer:
         return torch.optim.Adam(
-            filter(lambda p: p.requires_grad, self.model.parameters()), lr=self.cfg.lr
+            filter(lambda p: p.requires_grad, parameters), lr=self.cfg.lr
         )
 
     def save_checkpoint(self, filename: Path) -> None:
@@ -272,7 +290,7 @@ class Experiment:
     def get_strategy(self) -> SupervisedTemplate:
         base_kwargs = dict(
             model=self.model,
-            optimizer=self._new_optimizer(),
+            optimizer=self._new_optimizer(self.model.parameters()),
             train_mb_size=self.cfg.train_mb_size,
             eval_mb_size=self.cfg.eval_mb_size or self.cfg.train_mb_size,
             train_epochs=self.cfg.epochs,
