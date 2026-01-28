@@ -37,9 +37,9 @@ from torch import BoolTensor
 
 import bayescl.methods.l2p as l2p
 from bayescl import config
-from bayescl.methods.l2p import Backbone
 from bayescl.benchmark import get_benchmark
 from bayescl.methods.ball import BALLStrategy
+from bayescl.methods.l2p import Backbone
 from bayescl.methods.train_mask import TrainTaskMask
 from bayescl.metrics.ece import (
     ExpectedCalibrationError,

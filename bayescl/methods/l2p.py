@@ -6,8 +6,6 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from avalanche.training.plugins import SupervisedPlugin
-from beartype import beartype as typechecker
-from jaxtyping import Float, jaxtyped
 from torch import Tensor
 
 
@@ -77,7 +75,9 @@ class PromptPool(nn.Module):
         :return: A tuple of selected similarity scores and concatenated prompts.
         """
         if not (query.size(1) == key.size(1) == prompt_pool.size(2)):
-            raise ValueError("`query`, `key` and `prompt_pool` must have the same embedding size.")
+            raise ValueError(
+                "`query`, `key` and `prompt_pool` must have the same embedding size."
+            )
         if not (key.size(0) == prompt_pool.size(0)):
             raise ValueError("`key` and `prompt_pool` must have the same pool size.")
 
