@@ -3,9 +3,17 @@ label:
 
 peft:
   type: L2P
-  pool_size: 10
+  prompts_per_task: 10
   prompt_length: 5
-  top_k: 5
+  top_k: 2
   pull_constraint_coeff: 0.1
 
 lr: 0.01
+
+hpsearch:
+  n_trials: 15
+  params:
+    "peft.pull_constraint_coeff": {type: float, low: 0.0, high: 2.0, log: False}
+    "peft.top_k": {type: int, low: 1, high: 5}
+    "peft.prompt_length": {type: int, low: 1, high: 10}
+    "peft.prompts_per_task": {type: int, low: 5, high: 20}

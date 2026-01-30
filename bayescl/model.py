@@ -1,5 +1,6 @@
 from typing import override
 
+import torch
 from avalanche.models import SimpleMLP
 from torch import Tensor, nn
 from transformers import AutoModelForImageClassification
@@ -8,15 +9,16 @@ from transformers.models.dinov2.modeling_dinov2 import (
 )
 
 from bayescl.config import BasicModelConfig, Config, HuggingFaceModelConfig
-from bayescl.methods.l2p import Backbone
+from bayescl.methods.l2p import L2PViT
 
 
-class HuggingFaceAdapter(Backbone, nn.Module):
+class HuggingFaceAdapter(L2PViT, nn.Module):
     def __init__(self, model: nn.Module):
         super().__init__()
         self.model = model
         if isinstance(model, Dinov2ForImageClassification):
             self.embed_dim = model.dinov2.config.hidden_size  # type: ignore
+            self.vit = model.dinov2  # type: ignore
         else:
             raise NotImplementedError(f"Got unsupported model type: {type(model)}")
 
@@ -32,22 +34,34 @@ class HuggingFaceAdapter(Backbone, nn.Module):
         return self.model(x).logits
 
     @override
-    def embed_patches(self, pixel_values: Tensor) -> Tensor:
-        if isinstance(self.model, Dinov2ForImageClassification):
-            return self.model.dinov2.embeddings(pixel_values=pixel_values)
-        else:
-            raise NotImplementedError("embed_patches not implemented for this model.")
+    def get_embedding_size(self) -> int:
+        return self.embed_dim
 
     @override
-    def forward_encoder(self, patch_embeddings: Tensor) -> Tensor:
-        if isinstance(self.model, Dinov2ForImageClassification):
-            return self.model.dinov2.encoder(patch_embeddings).last_hidden_state  # type: ignore
-        else:
-            raise NotImplementedError("forward_encoder not implemented for this model.")
+    def get_patch_embed(self, pixels: Tensor) -> Tensor:
+        return self.vit.embeddings(pixels)
 
     @override
-    def forward_query(self, patch_embeddings: Tensor) -> Tensor:
-        return self.forward_encoder(patch_embeddings)[:, 0]
+    def forward_encoder(self, prompts: Tensor, patch_embed: Tensor) -> Tensor:
+        cls_token = patch_embed[:, :1, :]
+        other_patches = patch_embed[:, 1:, :]
+
+        # Add CLS position embedding to prompts
+        cls_pos_embedding = self.vit.embeddings.position_embeddings[:, :1]
+        prompts = prompts + cls_pos_embedding
+
+        embedding = torch.cat([cls_token, prompts, other_patches], dim=1)
+        sequence_output = self.vit.encoder(embedding).last_hidden_state
+        sequence_output = self.vit.layernorm(sequence_output)
+        return sequence_output
+
+    @override
+    @torch.no_grad()
+    def forward_query(self, patch_embedding: Tensor) -> Tensor:
+        # Return [CLS] token embedding
+        sequence_output = self.vit.encoder(patch_embedding).last_hidden_state
+        sequence_output = self.vit.layernorm(sequence_output)
+        return sequence_output[:, 0, :]
 
 
 def _get_basic_model(model_cfg: BasicModelConfig, num_classes: int) -> nn.Module:

@@ -121,7 +121,7 @@ hyperparameter search space and configurations common across datasets.
 
 To reproduce the hyperparameters search, run with `--hpsearch` flag:
 ```bash
-python main.py --hpsearch -c configs/${dataset}/${method}.yaml
+python main.py -c configs/${dataset}/${method}.yaml hpsearch
 ```
 This uses the optuna storage specified by `$OPTUNA_STORAGE` environment variable to
 store the results. You can use a local sqlite file, or a remote database such as

@@ -39,7 +39,7 @@ import bayescl.methods.l2p as l2p
 from bayescl import config
 from bayescl.benchmark import get_benchmark
 from bayescl.methods.ball import BALLStrategy
-from bayescl.methods.l2p import Backbone
+from bayescl.methods.l2p import L2PViT
 from bayescl.methods.train_mask import TrainTaskMask
 from bayescl.metrics.ece import (
     ExpectedCalibrationError,
@@ -168,20 +168,21 @@ class Experiment:
             )
             self.model.get_submodule(peft.head_module).requires_grad_(True)
         elif isinstance(peft, config.L2PConfig):
-            assert isinstance(self.model, Backbone)
+            assert isinstance(self.model, L2PViT)
             logger.info("Using L2P prompt-based method")
             del self.model.model.classifier  # type: ignore
             self.plugins += [l2p.L2PPlugin()]
             self.model = l2p.L2PModel(
-                backbone=self.model,
-                num_classes=self.benchmark.n_classes,
-                pull_constraint_coeff=peft.pull_constraint_coeff,
+                vit=self.model,
                 prompt_pool=l2p.PromptPool(
-                    pool_size=peft.pool_size,
+                    prompts_per_task=peft.prompts_per_task,
+                    embed_dim=self.model.get_embedding_size(),
+                    num_tasks=self.num_tasks,
                     prompt_length=peft.prompt_length,
-                    embed_dim=self.model.embed_dim,
                     top_k=peft.top_k,
                 ),
+                out_features=self.benchmark.n_classes,
+                pull_constraint_coeff=peft.pull_constraint_coeff,
             )
         elif peft.type == "BALL":
             # Add BALL adapters

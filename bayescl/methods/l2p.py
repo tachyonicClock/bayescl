@@ -1,192 +1,172 @@
 # https://github.com/ContinualAI/avalanche/blob/master/avalanche/models/prompt.py
 from abc import ABC, abstractmethod
-from typing import Any, Tuple
+from typing import Any, Optional, Tuple
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from avalanche.training.plugins import SupervisedPlugin
+from loguru import logger
 from torch import Tensor
 
 
-class Backbone(ABC):
+class L2PViT(ABC):
     """Abstract interface for vision transformer backbones used in L2P."""
 
-    embed_dim: int  # Embedding dimension of the backbone
-
     @abstractmethod
-    def embed_patches(self, pixel_values: Tensor) -> Tensor:
-        """Turn image pixel values into patch embeddings.
+    def get_embedding_size(self) -> int:
+        """Get the dimension of the patch embeddings.
 
-        :param pixel_values: A tensor image of shape (batch_size, channels, height, width)
-        :return: A tensor of shape (batch_size, num_patches, embed_dim)
+        :return: The embedding dimension.
         """
 
     @abstractmethod
-    def forward_encoder(self, patch_embeddings: Tensor) -> Tensor:
-        """Get final features from patch embeddings.
+    def get_patch_embed(self, pixel_values: Tensor) -> Tensor:
+        """Turn pixel values into patch embeddings.
 
-        :param patch_embeddings: A tensor of shape (batch_size, num_patches, embed_dim)
-        :return: A tensor of shape (batch_size, num_patches, embed_dim)
+        :param pixel_values: A tensor of shape (batch_size, channels, height, width)
+        :return: A tensor of shape (batch_size, num_patches + 1, embed_dim)
         """
 
     @abstractmethod
-    def forward_query(self, patch_embeddings: Tensor) -> Tensor:
-        """Get query features from patch embeddings for prompt selection.
+    def forward_encoder(self, prompts: Tensor, patch_embed: Tensor) -> Tensor:
+        """Encode the patch embeddings with the given prompts.
 
-        :param patch_embeddings: A tensor of shape (batch_size, num_patches, embed_dim)
+        :param prompts: A tensor of shape (batch_size, prompt_length, embed_dim)
+        :param patch_embed: A tensor of shape (batch_size, num_patches + 1, embed_dim)
+        :return: A tensor of shape (batch_size, num_patches + 1 + prompt_length, embed_dim)
+        """
+
+    @abstractmethod
+    def forward_query(self, patch_embed: Tensor) -> Tensor:
+        """Get the encoded query embedding from the patch embeddings.
+
+        :param patch_embed: A tensor of shape (batch_size, num_patches + 1, embed_dim)
         :return: A tensor of shape (batch_size, embed_dim)
         """
 
 
+def _prompt_lookup(
+    query: Tensor, keys: Tensor, prompts: Tensor, top_k: int
+) -> Tuple[Tensor, Tensor]:
+    """Find prompts with keys closest to the query.
+
+    :param query: Query of shape (batch_size, embedding_dimension)
+    :param keys: Keys of shape (pool_size, embedding_dimension)
+    :param prompts: Prompts of shape (pool_size, prompt_length, embedding_dimension)
+    :param top_k: Number of prompts to select
+    :return: Tuple containing:
+        - Selected prompts of shape (batch_size, top_k * prompt_length, embedding_dimension)
+        - Average cosine distance between selected keys and query.
+    """
+    batch_size, embedding_dimension = query.shape
+    pool_size, prompt_length, _ = prompts.shape
+    assert query.shape == (batch_size, embedding_dimension)
+    assert keys.shape == (pool_size, embedding_dimension)
+    assert prompts.shape == (pool_size, prompt_length, embedding_dimension)
+    assert top_k <= pool_size
+
+    cosine_distance = 1 - F.cosine_similarity(query.unsqueeze(1), keys, dim=-1)
+    _, idx = cosine_distance.topk(top_k, dim=1, largest=False)
+
+    selected = prompts[idx].view(batch_size, top_k * prompt_length, embedding_dimension)
+    return selected, cosine_distance[:, idx].mean()
+
+
 class PromptPool(nn.Module):
     def __init__(
-        self, pool_size: int, prompt_length: int, embed_dim: int, top_k: int
+        self,
+        prompts_per_task: int,
+        prompt_length: int,
+        embed_dim: int,
+        top_k: int,
+        num_tasks: int,
     ) -> None:
-        """Learning 2 Prompt Pool module.
-
-        :param pool_size: Number of prompts in the pool
-        :param prompt_length: Length of each prompt (number of tokens/patches)
-        :param embed_dim: Dimension of the embeddings
-        :param top_k: Number of top prompts to retrieve per query
-        """
         super().__init__()
-        self.pool_size = pool_size
+        self.prompts_per_task = prompts_per_task
         self.prompt_length = prompt_length
         self.embed_dim = embed_dim
         self.top_k = top_k
+        self.num_tasks = num_tasks
+        pool_size = prompts_per_task * num_tasks
 
         self.keys = nn.Parameter(torch.empty(pool_size, embed_dim))
         self.prompts = nn.Parameter(torch.empty(pool_size, prompt_length, embed_dim))
 
-        nn.init.uniform_(self.prompts, -1, 1)
         nn.init.uniform_(self.keys, -1, 1)
+        nn.init.uniform_(self.prompts, -1, 1)
 
-    @staticmethod
-    def lookup(
-        query: Tensor, key: Tensor, prompt_pool: Tensor, top_k: int
+    def forward(
+        self,
+        query: Tensor,
+        task_id: Optional[int] = None,
     ) -> Tuple[Tensor, Tensor]:
-        """Lookup prompts based on cosine similarity between query and keys.
-
-        :param query: Embedding to lookup (batch_size, embed_dim).
-        :param key: Keys to compare against (pool_size, embed_dim).
-        :param prompt_pool: Values to select (pool_size, prompt_length, embed_dim).
-        :param top_k: Number of top prompts to retrieve per query.
-        :return: A tuple of selected similarity scores and concatenated prompts.
-        """
-        if not (query.size(1) == key.size(1) == prompt_pool.size(2)):
-            raise ValueError(
-                "`query`, `key` and `prompt_pool` must have the same embedding size."
+        if task_id is not None:
+            start = task_id * self.prompts_per_task
+            end = (task_id + 1) * self.prompts_per_task
+            return _prompt_lookup(
+                query=query,
+                keys=self.keys[start:end],
+                prompts=self.prompts[start:end],
+                top_k=self.top_k,
             )
-        if not (key.size(0) == prompt_pool.size(0)):
-            raise ValueError("`key` and `prompt_pool` must have the same pool size.")
 
-        prompt_length = prompt_pool.size(1)
-        embed_dim = prompt_pool.size(2)
-        batch_size = query.size(0)
-
-        # Cosine similarity between each query and each key
-        key_norm = F.normalize(key, dim=1)
-        query_norm = F.normalize(query, dim=1)
-        similarity = query_norm @ key_norm.t()  # (batch, pool_size)
-
-        # Get top-k most similar keys per query then retrieve corresponding prompts
-        _, idx = torch.topk(similarity, top_k, dim=1)  # (batch, top_k)
-        prompts = prompt_pool[idx].view(batch_size, top_k * prompt_length, embed_dim)
-
-        # Surrogate loss to pull selected keys closer together
-        similarity_loss = torch.einsum("bkd,bd->", key_norm[idx], query_norm)
-        similarity_loss = similarity_loss / batch_size
-
-        # Return prompts and sum of similarity scores for selected keys
-        return similarity_loss, prompts
-
-    def forward(self, query: Tensor) -> Tuple[Tensor, Tensor]:
-        return self.lookup(
+        return _prompt_lookup(
             query=query,
-            key=self.keys,
-            prompt_pool=self.prompts,
+            keys=self.keys,
+            prompts=self.prompts,
             top_k=self.top_k,
         )
 
 
 class L2PModel(nn.Module):
-    loss_: Tensor
-
     def __init__(
         self,
-        backbone: Backbone,
-        num_classes: int,
-        pull_constraint_coeff: float,
+        vit: L2PViT,
         prompt_pool: PromptPool,
-    ) -> None:
-        """Learning 2 Prompt Module.
-
-        :param backbone: A backbone ViT model implementing the Backbone interface.
-        :param prompt_pool: A prompt pool module for retrieving prompts.
-        :param pull_constraint_coeff: Weight for the prompt loss term.
-        :param head: Classification head module.
-        """
+        out_features: int,
+        pull_constraint_coeff: float,
+    ):
         super().__init__()
-        if backbone.embed_dim != prompt_pool.embed_dim:
-            raise ValueError("Backbone and PromptPool embed_dim must match.")
+        if isinstance(vit, nn.Module):
+            vit = vit.eval().requires_grad_(False)
+        else:
+            raise ValueError("vit must be an instance of nn.Module.")
 
-        self.backbone = backbone
-        self.head: nn.Module = nn.Linear(prompt_pool.embed_dim, num_classes)
-        self.prompt_pool: PromptPool = prompt_pool
+        self.vit = vit
+        self.prompt_pool = prompt_pool
+        self.head = nn.Linear(vit.get_embedding_size(), out_features)
+        self.loss = 0
+        self.train_task = 0
         self.pull_constraint_coeff = pull_constraint_coeff
 
-        # Freeze backbone parameters to prevent catastrophic forgetting
-        if isinstance(self.backbone, nn.Module):
-            for param in self.backbone.parameters():
-                param.requires_grad = False
-        if isinstance(self.head, nn.Module):
-            for param in self.head.parameters():
-                param.requires_grad = True
-
     def forward(self, x: Tensor) -> Tensor:
-        """Forward pass with prompt querying and learning.
+        # First forward pass to get query
+        patch_embed = self.vit.get_patch_embed(x)
+        query = self.vit.forward_query(patch_embed)
+        task_id = self.train_task if self.training else None
+        prompts, cosine_distance = self.prompt_pool.forward(query, task_id=task_id)
+        self.loss = self.pull_constraint_coeff * cosine_distance.mean()
 
-        :param x: A tensor image of shape (batch_size, channels, height, width)
-        :return: A tensor of shape (batch_size, num_classes)
-        """
-        # Convert images to patch embeddings
-        patches = self.backbone.embed_patches(x)  # (batch_size, num_patches, embed_dim)
+        # Second forward pass this time with prompts
+        encoded_patches = self.vit.forward_encoder(prompts, patch_embed)
+        prompt_out_len = self.prompt_pool.top_k * self.prompt_pool.prompt_length
 
-        # Generate query for prompt selection
-        query = self.backbone.forward_query(patches)  # (batch_size, embed_dim)
-
-        # Retrieve relevant prompts from the pool
-        loss, prompts = self.prompt_pool.forward(query)
-
-        # Eq 5: Suurogate loss to pull selected keys closer together. Cosine similarity
-        # in [0, 1]
-        self.loss_ = self.pull_constraint_coeff * -loss
-
-        # Prepend selected prompts to input sequence
-        # Separate CLS token from other patches
-        cls_patch = patches[:, :1, :]  # (batch_size, 1, embed_dim)
-        other_patches = patches[:, 1:, :]  # (batch_size, num_patches-1, embed_dim)
-
-        # Create sequence: [CLS] + [prompts] + [other patches]
-        patches_with_prompts = torch.cat([cls_patch, prompts, other_patches], dim=1)
-
-        # Forward through frozen transformer encoder
-        encoded_patches = self.backbone.forward_encoder(patches_with_prompts)
-
-        # Extract features from prompt positions for classification
-        selected_prompt_length = self.prompt_pool.top_k * self.prompt_pool.prompt_length
-        features = encoded_patches[:, 1 : 1 + selected_prompt_length].mean(dim=1)
-        # Final classification
-        return self.head(features)  # (batch_size, num_classes)
+        # Trim [CLS] token and average prompt outputs
+        features = encoded_patches[:, 1 : 1 + prompt_out_len].mean(dim=1)
+        return self.head(features)
 
 
 class L2PPlugin(SupervisedPlugin):
     def before_backward(self, strategy: Any, *args, **kwargs) -> Any:
-        strategy.loss += strategy.model.loss_
+        strategy.loss += strategy.model.loss
 
     def after_backward(self, strategy: Any, *args, **kwargs) -> Any:
         assert isinstance(strategy.model, L2PModel)
-        assert strategy.model.loss_ is not None
+        assert strategy.model.loss is not None
         assert strategy.model.prompt_pool.keys.grad is not None
         assert strategy.model.prompt_pool.prompts.grad is not None
+
+    def before_training_exp(self, strategy: Any, *args, **kwargs) -> Any:
+        logger.info(f"Training task {strategy.clock.train_exp_counter}")
+        strategy.model.train_task = strategy.clock.train_exp_counter

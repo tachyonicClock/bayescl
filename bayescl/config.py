@@ -156,7 +156,7 @@ class L2PConfig(PEFTConfig):
     type: Literal["L2P"] = "L2P"
     model: HuggingFaceModelConfig = Field(HuggingFaceModelConfig())
     pull_constraint_coeff: float
-    pool_size: int
+    prompts_per_task: int
     prompt_length: int
     top_k: int
 
