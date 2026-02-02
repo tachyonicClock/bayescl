@@ -272,6 +272,7 @@ def log_to_logbook(
 @click.pass_obj
 def hpsearch(cfg: Config):
     cfg.scenario.validation = True
+    cfg.label.study = "hp"
     run_study(cfg)
 
 
