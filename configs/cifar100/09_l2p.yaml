@@ -1,4 +1,13 @@
+# bayescl/hp/cifar100/l2p a26939e
+# 82.21% Acc. 3.19% ECE
+# Selected best run based on highest accuracy from 15 trials
 include:
 - ../base.yaml
 - ../base/dataset/cifar100.yaml
 - ../base/method/09_l2p.yaml
+lr: 0.0061
+peft:
+  prompt_length: 3
+  prompts_per_task: 9
+  pull_constraint_coeff: 0.099
+  top_k: 4

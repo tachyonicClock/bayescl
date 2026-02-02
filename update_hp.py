@@ -21,6 +21,7 @@ METHODS = {
     "der": "06_der",
     "joint": "07_joint",
     "rwalk": "08_rwalk",
+    "l2p": "09_l2p",
 }
 
 STUDIES = [
@@ -32,6 +33,7 @@ STUDIES = [
     "bayescl/hp/cifar100/der",
     "bayescl/hp/cifar100/joint",
     "bayescl/hp/cifar100/rwalk",
+    "bayescl/hp/cifar100/l2p",
     "bayescl/hp/imagenetr/linear",
     "bayescl/hp/imagenetr/lora",
     "bayescl/hp/imagenetr/ball",
