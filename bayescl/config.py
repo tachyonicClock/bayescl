@@ -2,17 +2,19 @@ from os import environ
 from pathlib import Path
 from typing import Literal, Optional
 
-import torch
 from loguru import logger
 from omegaconf import DictConfig, OmegaConf
 from pydantic import BaseModel, ConfigDict, Field
 
-from bayescl.peft import BALLConfig
 from bayescl.util.optuna import HyperparameterSearch
+from bayescl.vbnn import VBNNConfig
 
 
 class BaseConfig(BaseModel):
     model_config: ConfigDict = {"extra": "forbid"}  # type: ignore
+
+    def kwargs(self) -> dict:
+        return self.model_dump(exclude={"type"})  # type: ignore
 
 
 # --- Scenario Configurations ---
@@ -47,7 +49,8 @@ class HuggingFaceModelConfig(BaseConfig):
     name: str = "facebook/dinov2-small"
     freeze_backbone: bool = True
     #: If adapters are used, regex to filter which modules to add adapters to.
-    adapter_filter: str = ".*(key|query)"
+    adapter_filter: str
+    head_module: str
 
 
 # --- Plugin Configurations ---
@@ -56,6 +59,11 @@ class HuggingFaceModelConfig(BaseConfig):
 class OutlierExposureConfig(BaseModel):
     strength: float = 1.0
     batch_size: Optional[int] = None
+
+
+class EWCConfig(BaseConfig):
+    ewc_lambda: float
+    decay_factor: float
 
 
 class RWalkConfig(BaseModel):
@@ -74,96 +82,75 @@ class RWalkConfig(BaseModel):
 # --- PEFT Configurations ---
 
 
-class PEFTConfig(BaseModel):
-    #: Name of the module containing the classification head
-    head_module: str = "model.classifier"
-    #: Optional checkpoint to load adapter weights from
-    checkpoint: Optional[Path] = None
-    #: Whether to save the adapter weights after training
-    save: bool = False
-
-
-class LoRAConfig(PEFTConfig):
+class LoRAConfig(BaseConfig):
     type: Literal["LoRA"] = "LoRA"
     r: int = 16
     lora_alpha: int = 1
     lora_dropout: float = 0.0
-    head_module: str = "model.classifier"
 
 
-class CLoRAConfig(PEFTConfig):
-    type: Literal["CLoRA"] = "CLoRA"
-    r: int = 4
-    lambda_: float = 1.0
-    head_module: str = "model.classifier"
-
-
-class InfLoRAConfig(PEFTConfig):
-    """InfLoRA: Interference-Free Low-Rank Adaptation for Continual Learning
-
-    Liang, Y.-S., & Li, W.-J. (2024). InfLoRA: Interference-Free Low-Rank Adaptation for
-    Continual Learning. 23638–23647.
-    """
-
-    type: Literal["InfLoRA"] = "InfLoRA"
-    r: int = 4
-    threshold: float = 0.95
-    """Also called epsilon in the paper. Controls how accurate the k-rank approximation
-    of the representation is. Default threshold is 0.95, see Table 1 in Liang & Li (2024).
-    """
-
-
-class BALL(PEFTConfig):
-    type: Literal["BALL"] = "BALL"
-    beta: float = 1.0
-    """Hyperparameter weighting the KL divergence loss."""
-    first_task_beta: Optional[float] = None
-    """If set, use a different beta for the first task."""
-    vbll: bool
-    """If True, enable Variational Bayesian Last Layer"""
-    train_samples: int
-    """Number of samples for each step of training."""
-    test_samples: int
-    """Number of samples for each step of testing."""
-    softmax_avg: bool = True
-    """If true apply softmax before averaging the logits over samples.
-    
-    This is theoretically more sound but empirically tends to perform worse.
-    """
-    config: BALLConfig
-
-
-# --- Strategy Configurations ---
-
-
-class DERConfig(PEFTConfig):
-    type: Literal["DER"] = "DER"
-    #: Number of samples in the replay memory
-    mem_size: int
-    #: Hyperparameter weighting the MSE loss
-    alpha: float
-    #: Hyperparameter weighting the CE loss, when more than 0, DER++ is used instead of DER
-    beta: float
-
-
-class GDumbConfig(PEFTConfig):
-    type: Literal["GDumb"] = "GDumb"
-    #: Number of samples in the replay memory
-    mem_size: int
-
-
-class EWCConfig(BaseConfig):
-    ewc_lambda: float
-    decay_factor: float
-
-
-class L2PConfig(PEFTConfig):
+class L2PConfig(BaseConfig):
     type: Literal["L2P"] = "L2P"
-    model: HuggingFaceModelConfig = Field(HuggingFaceModelConfig())
     pull_constraint_coeff: float
     prompts_per_task: int
     prompt_length: int
     top_k: int
+
+
+class BALLConfig(BaseConfig):
+    type: Literal["BALL"] = "BALL"
+    r: int = 4
+    """Rank of the LoRA adapters."""
+    lora_alpha: int = 1
+    """Scaling factor for the LoRA adapters."""
+    dropout: float = 0.0
+    """Dropout rate to use on the adapter inputs."""
+    vbnn: VBNNConfig
+    """Configuration for the underlying Bayesian Neural Network."""
+
+
+PEFTConfig = LoRAConfig | L2PConfig | BALLConfig
+
+# --- Strategy Configurations ---
+
+
+class NaiveConfig(BaseConfig):
+    type: Literal["Naive"] = "Naive"
+
+
+class DERConfig(BaseConfig):
+    type: Literal["DER"] = "DER"
+    mem_size: int
+    """Fixed memory size"""
+    alpha: float
+    """Hyperparameter weighting the MSE loss"""
+    beta: float
+    """Hyperparameter weighting the CE loss, when more than 0, DER++ is used instead of 
+    DER"""
+
+
+class GDumbConfig(BaseConfig):
+    type: Literal["GDumb"] = "GDumb"
+    mem_size: int
+    """Fixed memory size"""
+
+
+class VCLConfig(BaseConfig):
+    """Variational Continual Learning Training Strategy.
+
+    Requires a model or a PEFT module that implements Bayesian layers.
+    """
+
+    type: Literal["VCL"] = "VCL"
+    beta: float = 1.0
+    """Hyperparameter weighting the KL divergence loss."""
+    train_samples: int
+    """Number of samples for each step of training."""
+    test_samples: int
+    """Number of samples for each step of testing."""
+
+
+StrategyConfig = NaiveConfig | DERConfig | GDumbConfig | VCLConfig
 
 
 class Label(BaseConfig):
@@ -193,10 +180,8 @@ class Config(BaseConfig):
         discriminator="type",
     )
 
-    peft: Optional[LoRAConfig | BALL | CLoRAConfig | InfLoRAConfig | L2PConfig] = Field(
-        None,
-        discriminator="type",
-    )
+    peft: Optional[PEFTConfig] = Field(None, discriminator="type")
+    """Optional parameter-efficient fine-tuning configuration."""
 
     #: Parent directory containing datasets.
     dataset_root: str = environ.get("DATASETS", "./datasets")
@@ -205,7 +190,7 @@ class Config(BaseConfig):
 
     # Strategy
     #: Device to use for training (cuda or cpu)
-    device: str = "cuda" if torch.cuda.is_available() else "cpu"
+    device: str = "cuda"
     #: Learning rate for the optimizer
     lr: float = 0.001
     #: Mini-batch size for training
@@ -229,7 +214,7 @@ class Config(BaseConfig):
     #: Number of workers for data loading
     num_workers: int = 0
 
-    strategy: Optional[DERConfig | GDumbConfig] = Field(None, discriminator="type")
+    strategy: StrategyConfig = Field(NaiveConfig(), discriminator="type")
     """If None use naive strategy with configured plugins. If specified, use the given
     strategy with the configured plugins.
     """

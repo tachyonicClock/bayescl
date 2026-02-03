@@ -14,10 +14,10 @@ I found the following resources helpful for understanding and implementing VBNNs
 
 import math
 from dataclasses import dataclass
-from typing import Generator, Literal, Optional, Tuple
+from typing import Literal, Tuple
 
 import torch
-from bnn.nn.modules import FFGLinear, FFGMixin
+from bnn.nn.modules import FFGMixin, FCGMixin
 from torch import Tensor, nn
 
 
@@ -189,14 +189,6 @@ class VariationalLinear(nn.Module):
         return nn.functional.linear(x, weight, bias)
 
 
-def iterate_variational_parameters(
-    module: nn.Module,
-) -> Generator[Tuple[str, VariationalParameter], None, None]:
-    for name, submodule in module.named_modules():
-        if isinstance(submodule, VariationalParameter):
-            yield name, submodule
-
-
 def kl_divergence(module: nn.Module) -> Tensor:
     """Calculates the KL divergence loss for all variational parameters in the module.
 
@@ -217,67 +209,27 @@ def kl_divergence(module: nn.Module) -> Tensor:
     return kl
 
 
-@dataclass
-class FFGState:
-    weight_mean: Tensor
-    weight_sd: Tensor
-    bias_mean: Optional[Tensor]
-    bias_sd: Optional[Tensor]
-
-
 @torch.no_grad()
-def get_posterior(vb_layer: FFGMixin | VariationalParameter) -> FFGState:
-    if isinstance(vb_layer, VariationalParameter):
-        return FFGState(
-            weight_mean=vb_layer.mu,
-            weight_sd=vb_layer.sigma(),
-            bias_mean=None,
-            bias_sd=None,
-        )
-    elif isinstance(vb_layer, FFGMixin):
-        return FFGState(
-            weight_mean=vb_layer.weight_mean,
-            weight_sd=vb_layer.weight_sd,
-            bias_mean=vb_layer.bias_mean,
-            bias_sd=vb_layer.bias_sd,
-        )
-    else:
-        raise TypeError(
-            f"`vb_layer` must be {FFGLinear} or {VariationalParameter}, got {type(vb_layer)}"
-        )
-
-
-@torch.no_grad()
-def set_prior(vb_layer: FFGMixin | VariationalParameter, state: FFGState):
-    if isinstance(vb_layer, VariationalParameter):
-        assert isinstance(vb_layer.prior_mu, Tensor)
-        assert isinstance(vb_layer.prior_sigma, Tensor)
-        vb_layer.prior_mu.copy_(state.weight_mean)
-        vb_layer.prior_sigma.copy_(state.weight_sd)
-    elif isinstance(vb_layer, FFGMixin):
-        assert isinstance(vb_layer.prior_weight_mean, Tensor)
-        assert isinstance(vb_layer.prior_weight_sd, Tensor)
-        vb_layer.prior_weight_mean.copy_(state.weight_mean)
-        vb_layer.prior_weight_sd.copy_(state.weight_sd)
-
-        if (
-            vb_layer.has_bias
-            and state.bias_mean is not None
-            and state.bias_sd is not None
-        ):
-            assert isinstance(vb_layer.prior_bias_mean, Tensor)
-            assert isinstance(vb_layer.prior_bias_sd, Tensor)
-            vb_layer.prior_bias_mean.copy_(state.bias_mean)
-            vb_layer.prior_bias_sd.copy_(state.bias_sd)
-        elif vb_layer.has_bias:
-            raise ValueError("bias_mean and bias_sd must be provided if FFG has bias")
-    else:
-        raise TypeError("ffg must be FFGMixin or VariationalParameter")
-
-
 def posterior_to_prior(module: nn.Module):
     for submodule in module.modules():
         if isinstance(submodule, FFGMixin):
-            set_prior(submodule, get_posterior(submodule))
-        if isinstance(submodule, VariationalParameter):
-            set_prior(submodule, get_posterior(submodule))
+            assert isinstance(submodule.weight_mean, Tensor)
+            assert isinstance(submodule.weight_sd, Tensor)
+            assert isinstance(submodule.prior_weight_mean, Tensor)
+            assert isinstance(submodule.prior_weight_sd, Tensor)
+            submodule.prior_weight_mean.copy_(submodule.weight_mean)
+            submodule.prior_weight_sd.copy_(submodule.weight_sd)
+        elif isinstance(submodule, VariationalParameter):
+            assert isinstance(submodule.mu, Tensor)
+            assert isinstance(submodule.rho, Tensor)
+            assert isinstance(submodule.prior_mu, Tensor)
+            assert isinstance(submodule.prior_sigma, Tensor)
+            submodule.prior_mu.copy_(submodule.mu)
+            submodule.prior_sigma.copy_(submodule.sigma())
+        elif isinstance(submodule, FCGMixin):
+            assert isinstance(submodule.mean, Tensor)
+            assert isinstance(submodule.scale_tril, Tensor)
+            assert isinstance(submodule.prior_mean, Tensor)
+            assert isinstance(submodule.prior_scale_tril, Tensor)
+            submodule.prior_mean.copy_(submodule.mean)
+            submodule.prior_scale_tril.copy_(submodule.scale_tril)

@@ -15,7 +15,7 @@ from bayescl.vbnn import (
 )
 
 
-class BALLStrategy(Naive):
+class VCLStrategy(Naive):
     def __init__(
         self,
         *,
@@ -25,11 +25,9 @@ class BALLStrategy(Naive):
         mask: BoolTensor,
         optimizer_fn: Callable[[Any], torch.optim.Optimizer],
         writer: SummaryWriter,
-        first_task_beta: float | None,
-        softmax_avg: bool,
+        softmax_avg: bool = False,
         **kwargs,
     ):
-        assert "criterion" not in kwargs, "criterion is set by BALL"
         super().__init__(**kwargs)
         if train_samples < 1:
             raise ValueError("train_samples must be at least 1")
@@ -38,19 +36,11 @@ class BALLStrategy(Naive):
 
         self.optimizer_fn = optimizer_fn
         self.beta = beta
-        self.first_task_beta = first_task_beta
         self.softmax_avg = softmax_avg
         self.train_samples = train_samples
         self.test_samples = test_samples
         self.writer = writer
         self.mask = mask.to(self.device)
-
-        logger.info(
-            "Initialized `BALLStrategy` with"
-            f" beta={self.beta} train_samples={self.train_samples}"
-            f" test_samples={self.test_samples}"
-        )
-
         self.n_vbnn_param = sum(
             m.mu.numel()  # type: ignore
             for m in self.model.modules()
@@ -87,16 +77,16 @@ class BALLStrategy(Naive):
             kl_head += (self.mask[t] * head.bias.kl_divergences()).sum()
 
         # Use a different beta for the first task if specified
-        if t == 0 and self.first_task_beta is not None:
-            beta = self.first_task_beta
-        else:
-            beta = self.beta
+        # if t == 0 and self.first_task_beta is not None:
+        #     beta = self.first_task_beta
+        # else:
+        #     beta = self.beta
 
         # Scale the KL divergence by the number of samples in the dataset.
         # The idea is that the cross-entropy loss is an average over a mini-batch and
         # is therefore 1/dataset_size to small compared to the likelihood
         kl = (kl_encoder + kl_head) / len(self.experience.dataset)  # type: ignore
-        beta_kl = beta * kl
+        beta_kl = self.beta * kl
         loss = nll + beta_kl
 
         step = self.clock.train_iterations

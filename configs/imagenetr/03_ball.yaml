@@ -6,5 +6,5 @@ include:
 - ../base/dataset/imagenetr.yaml
 - ../base/method/03_ball.yaml
 lr: 0.00055
-peft:
+strategy:
   beta: 0.0028

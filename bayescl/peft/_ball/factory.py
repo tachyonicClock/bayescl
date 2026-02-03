@@ -1,8 +1,8 @@
 from torch import nn
 from typeguard import typechecked
 
+from bayescl.config import BALLConfig
 from bayescl.peft._ball import layer
-from bayescl.peft._ball.config import BALLConfig
 from bayescl.peft._base import AdapterFactory
 from bayescl.vbnn import VBNNConfig as VBNNConfig
 
@@ -11,12 +11,8 @@ class BALL(AdapterFactory):
     """A factory for creating BALL adapters."""
 
     @typechecked
-    def __init__(self, config: BALLConfig = BALLConfig()):
+    def __init__(self, config: BALLConfig) -> None:
         self.config = config
-
-    @staticmethod
-    def from_kwargs(**kwargs):
-        return BALL(BALLConfig(**kwargs))
 
     def _get_replacement(self, module: nn.Module) -> nn.Module:
         if isinstance(module, nn.Linear):

@@ -5,7 +5,7 @@ import torch.nn as nn
 from torch import Tensor
 from torch.nn import functional as F
 
-from bayescl.peft._ball.config import BALLConfig, VarianceReduction
+from bayescl.config import BALLConfig
 from bayescl.peft._base import AdapterBase
 from bayescl.vbnn import VariationalParameter
 
@@ -107,9 +107,4 @@ class BALLLinear(nn.Linear, BALLLayer):
             return self.forward_none(input)
 
         # Training mode: use the selected variance reduction method
-        if self.config.mode == VarianceReduction.LRT:
-            return self.forward_lrt(input)
-        elif self.config.mode == VarianceReduction.FLIPOUT:
-            return self.forward_flipout(input)
-        else:
-            return self.forward_none(input)
+        return self.forward_none(input)

@@ -39,9 +39,9 @@ from torch import BoolTensor
 import bayescl.methods.l2p as l2p
 from bayescl import config
 from bayescl.benchmark import get_benchmark
-from bayescl.methods.ball import BALLStrategy
 from bayescl.methods.l2p import L2PViT
 from bayescl.methods.train_mask import TrainTaskMask
+from bayescl.methods.vcl import VCLStrategy
 from bayescl.metrics.ece import (
     ExpectedCalibrationError,
 )
@@ -52,11 +52,8 @@ from bayescl.peft import (
     LoRA_Factory,
     RegexFilter,
     add_adapters,
-    iter_named_adapters,
     parameter_summary_str,
-    set_module,
 )
-from bayescl.vbnn import VariationalLinear
 
 
 def avalanche_class_schedule(
@@ -150,73 +147,47 @@ class Experiment:
         self.loggers.append(tb_logger)
         return tb_logger
 
-    def _add_peft_adapters(self):
+    def _build_peft(self):
         peft = self.cfg.peft
-        if not peft:
+        if peft is None:
             return
-        filter_regex = RegexFilter(self.cfg.model.adapter_filter)
+        model_config = self.cfg.model
+        if not isinstance(model_config, config.HuggingFaceModelConfig):
+            raise ValueError("PEFT is only supported for HuggingFace models.")
 
-        logger.info(f"Add PEFT adapter: {peft}")
-        if peft.type == "LoRA":
-            add_adapters(
-                self.model,
-                filter_regex,
-                LoRA_Factory(
-                    r=peft.r,
-                    lora_alpha=peft.lora_alpha,
-                    lora_dropout=peft.lora_dropout,
-                ),
-            )
-            self.model.get_submodule(peft.head_module).requires_grad_(True)
-        elif isinstance(peft, config.L2PConfig):
-            assert isinstance(self.model, L2PViT)
-            logger.info("Using L2P prompt-based method")
-            del self.model.model.classifier  # type: ignore
-            self.plugins += [l2p.L2PPlugin()]
-            self.model = l2p.L2PModel(
-                vit=self.model,
-                prompt_pool=l2p.PromptPool(
-                    prompts_per_task=peft.prompts_per_task,
-                    embed_dim=self.model.get_embedding_size(),
-                    num_tasks=self.num_tasks,
-                    prompt_length=peft.prompt_length,
-                    top_k=peft.top_k,
-                ),
-                out_features=self.benchmark.n_classes,
-                pull_constraint_coeff=peft.pull_constraint_coeff,
-            )
-        elif peft.type == "BALL":
-            # Add BALL adapters
-            factory = BALL(peft.config)
-            add_adapters(self.model, filter_regex, factory)
+        filter_regex = RegexFilter(model_config.adapter_filter)
 
-            if peft.vbll:
-                logger.info("Using variational bayesian last layer (VBLL)")
-                # Replace classifier with VBNN linear layer
-                linear = self.model.get_submodule(peft.head_module)
-                assert isinstance(linear, torch.nn.Linear)
-                new_linear = VariationalLinear(
-                    in_features=linear.in_features,
-                    out_features=linear.out_features,
-                    config=peft.config.vbnn,
-                )  # type: ignore
-                set_module(self.model, peft.head_module, new_linear)
-            else:
-                logger.info("Using standard last layer")
-                self.model.get_submodule(peft.head_module).requires_grad_(True)
+        match peft.type:
+            case "LoRA":
+                logger.info("Adding LoRA adapters")
+                factory = LoRA_Factory(**peft.kwargs())
+                add_adapters(self.model, filter_regex, factory)
+                self.model.get_submodule(model_config.head_module).requires_grad_(True)
+            case "L2P":
+                assert isinstance(self.model, L2PViT)
+                logger.info("Using L2P prompt-based method")
+                del self.model.model.classifier  # type: ignore
+                self.plugins += [l2p.L2PPlugin()]
+                self.model = l2p.L2PModel(
+                    vit=self.model,
+                    prompt_pool=l2p.PromptPool(
+                        prompts_per_task=peft.prompts_per_task,
+                        embed_dim=self.model.get_embedding_size(),
+                        num_tasks=self.num_tasks,
+                        prompt_length=peft.prompt_length,
+                        top_k=peft.top_k,
+                    ),
+                    out_features=self.benchmark.n_classes,
+                    pull_constraint_coeff=peft.pull_constraint_coeff,
+                )
+            case "BALL":
+                logger.info("Adding BALL adapters")
+                add_adapters(self.model, filter_regex, BALL(peft))
+                self.model.get_submodule(model_config.head_module).requires_grad_(True)
+            case _:
+                raise ValueError(f"Unsupported PEFT method: {peft.type}")
 
-        # Optionally load adapter weights from checkpoint
-        if peft.checkpoint is not None:
-            logger.info(f"Loading checkpoint from '{peft.checkpoint}'.")
-            state_dict = torch.load(peft.checkpoint, map_location="cpu")
-            _, unexpected = self.model.load_state_dict(state_dict, strict=False)
-            assert len(unexpected) == 0, f"Unexpected keys: {unexpected}"
-
-        logger.info("ADAPTERS:")
-        for name, _ in iter_named_adapters(self.model):
-            logger.info(f"{name}")
-
-    def _add_plugins(self):
+    def _build_plugins(self):
         if self.cfg.use_local_ce:
             logger.info("Add 'TrainTaskMask' plugin")
             self.plugins.append(TrainTaskMask(self.mask, self._new_optimizer))
@@ -240,7 +211,7 @@ class Experiment:
             )
         if self.cfg.ewc:
             logger.info("Add 'EWCPlugin' plugin")
-            self.plugins.append(EWCPlugin(**self.cfg.ewc.model_dump(), mode="online"))
+            self.plugins.append(EWCPlugin(**self.cfg.ewc.kwargs(), mode="online"))
 
         self.plugins.append(self.metrics_plugin)
 
@@ -273,8 +244,8 @@ class Experiment:
         self.eval_plugin: EvaluationPlugin = self._new_eval_plugin()
         self.metrics_plugin = MetricsPlugin(self.num_tasks, self.num_classes)
         self.model = get_model(cfg, self.benchmark.n_classes)
-        self._add_peft_adapters()
-        self._add_plugins()
+        self._build_peft()
+        self._build_plugins()
 
     def _new_optimizer(self, parameters) -> torch.optim.Optimizer:
         return torch.optim.Adam(
@@ -292,8 +263,9 @@ class Experiment:
         logger.info(f"Saving checkpoint to '{filename}' ({numel} parameters)")
         torch.save(state, filename)
 
-    def get_strategy(self) -> SupervisedTemplate:
-        base_kwargs = dict(
+    def _build_strategy(self) -> SupervisedTemplate:
+        strategy = self.cfg.strategy
+        kwargs = dict(
             model=self.model,
             optimizer=self._new_optimizer(self.model.parameters()),
             train_mb_size=self.cfg.train_mb_size,
@@ -303,46 +275,32 @@ class Experiment:
             device=self.cfg.device,
             plugins=self.plugins,
             eval_every=self.cfg.eval_every,
+            criterion=torch.nn.CrossEntropyLoss(),
+            **strategy.kwargs(),
         )
-
-        strategy = self.cfg.strategy
-        if self.cfg.peft and self.cfg.peft.type == "BALL":
-            assert strategy is None, "BALL sets its own strategy"
-            return BALLStrategy(
-                beta=self.cfg.peft.beta,
-                train_samples=self.cfg.peft.train_samples,
-                test_samples=self.cfg.peft.test_samples,
-                writer=self.tb_log.writer,
-                mask=self.mask,
-                optimizer_fn=self._new_optimizer,
-                first_task_beta=self.cfg.peft.first_task_beta,
-                softmax_avg=self.cfg.peft.softmax_avg,
-                **base_kwargs,
-            )
-        elif strategy is None:
-            return Naive(**base_kwargs)
-        elif isinstance(strategy, config.DERConfig):
-            logger.info(
-                f"DER(mem_size={strategy.mem_size}, alpha={strategy.alpha}, beta={strategy.beta})"
-            )
-            return DER(
-                mem_size=strategy.mem_size,
-                alpha=strategy.alpha,
-                beta=strategy.beta,
-                **base_kwargs,
-            )
-        elif isinstance(strategy, config.GDumbConfig):
-            logger.info(f"GDumb(mem_size={strategy.mem_size})")
-            return GDumb(
-                mem_size=strategy.mem_size,
-                criterion=torch.nn.CrossEntropyLoss(),
-                **base_kwargs,
-            )
-        raise ValueError(f"Unknown strategy: {strategy}")
+        match strategy.type:
+            case "Naive":
+                return Naive(**kwargs)  # type: ignore
+            case "VCL":
+                logger.info("Using Variational Continual Learning (VCL) strategy")
+                return VCLStrategy(
+                    mask=self.mask,
+                    writer=self.tb_log.writer,
+                    optimizer_fn=self._new_optimizer,
+                    **kwargs,  # type: ignore
+                )
+            case "DER":
+                logger.info("Using Dark Experience Replay (DER) strategy")
+                return DER(**kwargs)  # type: ignore
+            case "GDumb":
+                logger.info("Using GDumb strategy")
+                return GDumb(**kwargs)  # type: ignore
+            case _:
+                raise ValueError(f"Unsupported strategy: {strategy.type}")
 
     def run(self, trial: Trial | None = None) -> tuple[float, float]:
         self._preflight()
-        strategy = self.get_strategy()
+        strategy = self._build_strategy()
         strategy.mask = self.mask.to(self.cfg.device)  # type: ignore
 
         # TRAINING LOOP

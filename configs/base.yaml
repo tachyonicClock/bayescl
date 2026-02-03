@@ -11,6 +11,7 @@ model:
   type: huggingface
   name: facebook/dinov2-small
   adapter_filter: ".*(dense|fc1|fc2|key|query|value)"
+  head_module: "model.classifier"
 
 hpsearch:
   params:
