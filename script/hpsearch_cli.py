@@ -1,4 +1,3 @@
-
 DATASETS = [
     "cifar100",
     "domainnet",
@@ -19,14 +18,15 @@ METHODS = [
     "11_tball",
 ]
 
+
 def run_string(dataset, method):
-    label = f"{dataset[:5]}_{method[3:3+5]}"
+    label = f"{dataset[:5]}_{method[3 : 3 + 5]}"
     cli = [
         f"ts -G 1 -L {label:<11}",
         "notirun.sh",
         "python main.py",
-        "--hpsearch",
         f"-c configs/{dataset}/{method}.yaml",
+        "hpsearch",
     ]
     return " ".join(cli)
 

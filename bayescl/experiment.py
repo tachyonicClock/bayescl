@@ -25,6 +25,7 @@ from avalanche.logging import BaseLogger, InteractiveLogger, TensorboardLogger
 from avalanche.training import DER, GDumb, Naive, ReservoirSamplingBuffer
 from avalanche.training.plugins import (
     EvaluationPlugin,
+    EWCPlugin,
     ReplayPlugin,
     RWalkPlugin,
     SupervisedPlugin,
@@ -237,6 +238,9 @@ class Experiment:
                     storage_policy=ReservoirSamplingBuffer(self.cfg.replay),
                 )
             )
+        if self.cfg.ewc:
+            logger.info("Add 'EWCPlugin' plugin")
+            self.plugins.append(EWCPlugin(**self.cfg.ewc.model_dump(), mode="online"))
 
         self.plugins.append(self.metrics_plugin)
 

@@ -152,6 +152,11 @@ class GDumbConfig(PEFTConfig):
     mem_size: int
 
 
+class EWCConfig(BaseConfig):
+    ewc_lambda: float
+    decay_factor: float
+
+
 class L2PConfig(PEFTConfig):
     type: Literal["L2P"] = "L2P"
     model: HuggingFaceModelConfig = Field(HuggingFaceModelConfig())
@@ -237,6 +242,9 @@ class Config(BaseConfig):
 
     #: Use local cross entropy by masking the output layer during training
     use_local_ce: bool = True
+
+    ewc: Optional[EWCConfig] = None
+    """If not None, use EWC with the given configuration."""
 
     hpsearch: Optional[HyperparameterSearch] = None
 
