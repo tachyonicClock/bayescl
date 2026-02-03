@@ -39,9 +39,7 @@ class Scenario(BaseConfig):
 
 class BasicModelConfig(BaseConfig):
     type: Literal["basic"] = "basic"
-    name: str = "SimpleMLP"
-    #: If adapters are used, regex to filter which modules to add adapters to.
-    adapter_module_filter: str = ""
+    name: Literal["SimpleMLP", "SimpleFCGMLP"] = "SimpleMLP"
 
 
 class HuggingFaceModelConfig(BaseConfig):
@@ -148,6 +146,8 @@ class VCLConfig(BaseConfig):
     """Number of samples for each step of training."""
     test_samples: int
     """Number of samples for each step of testing."""
+    softmax_avg: bool
+    """If true, softmax then average, otherwise average then softmax."""
 
 
 StrategyConfig = NaiveConfig | DERConfig | GDumbConfig | VCLConfig

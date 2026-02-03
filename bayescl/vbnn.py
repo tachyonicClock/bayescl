@@ -17,7 +17,7 @@ from dataclasses import dataclass
 from typing import Literal, Tuple
 
 import torch
-from bnn.nn.modules import FFGMixin, FCGMixin
+from bnn.nn.modules import FCGMixin, FFGMixin, InducingMixin
 from torch import Tensor, nn
 
 
@@ -189,7 +189,7 @@ class VariationalLinear(nn.Module):
         return nn.functional.linear(x, weight, bias)
 
 
-def kl_divergence(module: nn.Module) -> Tensor:
+def kl_divergence(module: nn.Module) -> Tensor | float:
     """Calculates the KL divergence loss for all variational parameters in the module.
 
     >>> _ = torch.manual_seed(0)
@@ -201,12 +201,11 @@ def kl_divergence(module: nn.Module) -> Tensor:
     :return: Total KL divergence loss.
     """
     kl = sum(
-        m.kl_divergence()
+        m.kl_divergence()  # type: ignore
         for m in module.modules()
         if hasattr(m, "kl_divergence")  # type: ignore
     )
-    assert isinstance(kl, Tensor)
-    return kl
+    return kl  # type: ignore
 
 
 @torch.no_grad()
@@ -233,3 +232,7 @@ def posterior_to_prior(module: nn.Module):
             assert isinstance(submodule.prior_scale_tril, Tensor)
             submodule.prior_mean.copy_(submodule.mean)
             submodule.prior_scale_tril.copy_(submodule.scale_tril)
+        elif isinstance(submodule, InducingMixin):
+            assert isinstance(submodule.inducing_mean, Tensor)
+            assert isinstance(submodule.inducing_scale_tril, Tensor)
+            pass

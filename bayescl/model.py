@@ -10,6 +10,7 @@ from transformers.models.dinov2.modeling_dinov2 import (
 
 from bayescl.config import BasicModelConfig, Config, HuggingFaceModelConfig
 from bayescl.methods.l2p import L2PViT
+from bayescl.models.fcg import SimpleFCGMLP
 
 
 class HuggingFaceAdapter(L2PViT, nn.Module):
@@ -67,6 +68,10 @@ class HuggingFaceAdapter(L2PViT, nn.Module):
 def _get_basic_model(model_cfg: BasicModelConfig, num_classes: int) -> nn.Module:
     if model_cfg.name == "SimpleMLP":
         return SimpleMLP(num_classes=num_classes)
+    elif model_cfg.name == "SimpleFCGMLP":
+        return SimpleFCGMLP(
+            in_features=28 * 28, out_features=num_classes, hidden_features=16
+        )
     else:
         raise ValueError(f"Unsupported basic model: {model_cfg.name}")
 
