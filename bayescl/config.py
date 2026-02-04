@@ -107,7 +107,23 @@ class BALLConfig(BaseConfig):
     """Configuration for the underlying Bayesian Neural Network."""
 
 
-PEFTConfig = LoRAConfig | L2PConfig | BALLConfig
+class TBALLConfig(BaseConfig):
+    type: Literal["TBALL"] = "TBALL"
+    rank: int
+    """Rank of the TBALL adapters."""
+    alpha: float = 1.0
+    """Scaling factor for the TBALL adapters."""
+    prior_mean: float = 0.0
+    """Prior mean for the Bayesian layers."""
+    prior_weight_sd: float = 1.0
+    """Prior standard deviation for the weights."""
+    init_sd: float = 1e-4
+    """Standard deviation for initializing the variational parameters."""
+    nonlinearity_scale: float = 1.0
+    """Scale for the nonlinearity in the Bayesian layers."""
+
+
+PEFTConfig = LoRAConfig | L2PConfig | BALLConfig | TBALLConfig
 
 # --- Strategy Configurations ---
 
@@ -146,7 +162,7 @@ class VCLConfig(BaseConfig):
     """Number of samples for each step of training."""
     test_samples: int
     """Number of samples for each step of testing."""
-    softmax_avg: bool
+    softmax_avg: bool = False
     """If true, softmax then average, otherwise average then softmax."""
 
 

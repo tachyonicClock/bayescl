@@ -2,6 +2,8 @@ import os
 
 import matplotlib
 
+from bayescl.peft._tball.factory import TBALL
+
 matplotlib.use("Agg")
 
 import pickle
@@ -183,6 +185,10 @@ class Experiment:
             case "BALL":
                 logger.info("Adding BALL adapters")
                 add_adapters(self.model, filter_regex, BALL(peft))
+                self.model.get_submodule(model_config.head_module).requires_grad_(True)
+            case "TBALL":
+                logger.info("Adding TBALL adapters")
+                add_adapters(self.model, filter_regex, TBALL(peft))
                 self.model.get_submodule(model_config.head_module).requires_grad_(True)
             case _:
                 raise ValueError(f"Unsupported PEFT method: {peft.type}")

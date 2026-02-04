@@ -1,0 +1,23 @@
+label:
+  method: tball
+
+# BALL uses local CE but it is implemented internally so we turn this off here
+use_local_ce: False
+
+peft:
+  type: TBALL
+  rank: 10
+  init_sd: 0.01
+
+strategy:
+  type: VCL
+  beta: 1.0
+  train_samples: 1
+  test_samples: 5
+
+hpsearch:
+  n_trials: 15
+  params:
+    "strategy.beta": {type: float, low: 0.0001, high: 1.0, log: True}
+    "peft.init_sd": {type: float, low: 0.001, high: 1.0, log: True}
+    "peft.prior_weight_sd": {type: float, low: 0.01, high: 1.0, log: True}
