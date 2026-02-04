@@ -8,6 +8,7 @@ from torch import BoolTensor, Tensor
 from torch.nn.functional import nll_loss
 from torch.utils.tensorboard import SummaryWriter
 
+from bayescl.base import NumericError
 from bayescl.vbnn import (
     kl_divergence,
     posterior_to_prior,
@@ -62,8 +63,13 @@ class VCLStrategy(Naive):
         kl: Tensor = kl_divergence(self.model) / len(self.experience.dataset)  # type: ignore
 
         beta_kl = self._beta * kl
-        assert torch.isfinite(beta_kl), "KL divergence is NaN or Inf"
-        assert torch.isfinite(nll), "NLL loss is NaN or Inf"
+        if not torch.isfinite(beta_kl):
+            raise NumericError(
+                f"KL divergence is NaN or Inf: {kl.item()} (beta={self._beta})"
+            )
+        if not torch.isfinite(nll):
+            raise NumericError(f"NLL loss is NaN or Inf: {nll.item()}")
+
         loss = nll + beta_kl
 
         step = self.clock.train_iterations

@@ -3,6 +3,8 @@ from typing import Callable, List, Sequence
 
 import matplotlib
 
+from bayescl.base import NumericError
+
 matplotlib.use("Agg")
 
 import csv
@@ -64,6 +66,7 @@ def optimize_with_max_trials(
         objective,
         n_trials=n_trials,
         callbacks=callbacks,
+        catch=[NumericError],
         **kwargs,
     )
 
