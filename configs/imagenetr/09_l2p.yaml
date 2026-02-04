@@ -1,4 +1,13 @@
+# bayescl/hp/imagenetr/l2p 16a14e7
+# 70.18% Acc. 5.31% ECE
+# Selected best run based on highest accuracy from 15 trials
 include:
 - ../base.yaml
 - ../base/dataset/imagenetr.yaml
 - ../base/method/09_l2p.yaml
+lr: 0.0018
+peft:
+  prompt_length: 3
+  prompts_per_task: 9
+  pull_constraint_coeff: 1.3
+  top_k: 2
