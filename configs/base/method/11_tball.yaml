@@ -1,6 +1,5 @@
 label:
   method: tball
-  study: "bnn"
 
 # BALL uses local CE but it is implemented internally so we turn this off here
 use_local_ce: False

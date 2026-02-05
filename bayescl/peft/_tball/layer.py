@@ -9,11 +9,7 @@ from bayescl.peft._base import AdapterBase
 
 
 class BALLLayer(AdapterBase):
-    adapter_parameter_names = (
-        "bayes_core._scale_diag",
-        "bayes_core._scale_tril",
-        "bayes_core.mean",
-    )
+    adapter_parameter_names = None
     """Tunable parameters in BALL adapters."""
 
 
@@ -50,6 +46,11 @@ class TBALLLinear(BALLLayer, nn.Linear):
 
         # Bayesian core layer
         if config.bnn == "FCG":
+            self.adapter_parameter_names = (
+                "bayes_core._scale_diag",
+                "bayes_core._scale_tril",
+                "bayes_core.mean",
+            )
             self.bayes_core = FCGLinear(
                 config.rank,
                 config.rank,
@@ -60,6 +61,12 @@ class TBALLLinear(BALLLayer, nn.Linear):
                 nonlinearity_scale=config.nonlinearity_scale,
             )
         elif config.bnn == "FFG":
+            self.adapter_parameter_names = (
+                "bayes_core.weight_mean",
+                "bayes_core._weight_sd",
+                "bayes_core.bias_mean",
+                "bayes_core._bias_sd",
+            )
             self.bayes_core = FFGLinear(
                 config.rank,
                 config.rank,
