@@ -61,12 +61,15 @@ class TBALLLinear(BALLLayer, nn.Linear):
                 nonlinearity_scale=config.nonlinearity_scale,
             )
         elif config.bnn == "FFG":
-            self.adapter_parameter_names = (
+            self.adapter_parameter_names = [
                 "bayes_core.weight_mean",
                 "bayes_core._weight_sd",
-                "bayes_core.bias_mean",
-                "bayes_core._bias_sd",
-            )
+            ]
+            if config.bias:
+                self.adapter_parameter_names += [
+                    "bayes_core.bias_mean",
+                    "bayes_core._bias_sd",
+                ]
             self.bayes_core = FFGLinear(
                 config.rank,
                 config.rank,
