@@ -121,6 +121,10 @@ class TBALLConfig(BaseConfig):
     """Standard deviation for initializing the variational parameters."""
     nonlinearity_scale: float = 1.0
     """Scale for the nonlinearity in the Bayesian layers."""
+    bnn: Literal["FCG", "FFG"] = "FCG"
+    """Full covariance (FCG) or fully factorized Gaussian (FFG) Bayesian layers."""
+    bias: bool = False
+    """Whether to include bias in the Bayesian layers."""
 
 
 PEFTConfig = LoRAConfig | L2PConfig | BALLConfig | TBALLConfig

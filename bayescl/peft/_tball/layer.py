@@ -1,6 +1,6 @@
 import torch
 import torch.nn as nn
-from bnn.nn.modules import FCGLinear
+from bnn.nn.modules import FCGLinear, FFGLinear
 from torch import Tensor
 from torch.nn import functional as F
 
@@ -22,7 +22,7 @@ class TBALLLinear(BALLLayer, nn.Linear):
 
     project_down: Tensor
     """Random projection matrix to reduce input dimensionality."""
-    bayes_core: FCGLinear
+    bayes_core: FCGLinear | FFGLinear
     """The Bayesian core layer."""
     project_up: Tensor
     """Random projection matrix to restore output dimensionality."""
@@ -49,15 +49,28 @@ class TBALLLinear(BALLLayer, nn.Linear):
         self.register_buffer("project_up", project_up)
 
         # Bayesian core layer
-        self.bayes_core = FCGLinear(
-            config.rank,
-            config.rank,
-            bias=False,
-            prior_mean=config.prior_mean,
-            prior_weight_sd=config.prior_weight_sd,
-            init_sd=config.init_sd,
-            nonlinearity_scale=config.nonlinearity_scale,
-        )
+        if config.bnn == "FCG":
+            self.bayes_core = FCGLinear(
+                config.rank,
+                config.rank,
+                bias=config.bias,
+                prior_mean=config.prior_mean,
+                prior_weight_sd=config.prior_weight_sd,
+                init_sd=config.init_sd,
+                nonlinearity_scale=config.nonlinearity_scale,
+            )
+        elif config.bnn == "FFG":
+            self.bayes_core = FFGLinear(
+                config.rank,
+                config.rank,
+                bias=config.bias,
+                prior_mean=config.prior_mean,
+                prior_weight_sd=config.prior_weight_sd,
+                init_sd=config.init_sd,
+                nonlinearity_scale=config.nonlinearity_scale,
+            )
+        else:
+            raise ValueError(f"Unsupported BNN type: {config.bnn}")
 
     def forward(self, x: Tensor) -> Tensor:
         z = x @ self.project_down  # (batch_size, rank)

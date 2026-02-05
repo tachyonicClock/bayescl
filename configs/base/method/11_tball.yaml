@@ -1,5 +1,6 @@
 label:
   method: tball
+  study: "bnn"
 
 # BALL uses local CE but it is implemented internally so we turn this off here
 use_local_ce: False
@@ -7,7 +8,8 @@ use_local_ce: False
 peft:
   type: TBALL
   rank: 10
-  init_sd: 0.01
+  init_sd: 0.5
+  prior_weight_sd: 1.0
 
 strategy:
   type: VCL
@@ -18,6 +20,7 @@ strategy:
 hpsearch:
   n_trials: 15
   params:
-    "strategy.beta": {type: float, low: 0.0001, high: 1.0, log: True}
-    "peft.init_sd": {type: float, low: 0.01, high: 1.0, log: True}
-    "peft.prior_weight_sd": {type: float, low: 0.1, high: 1.0, log: True}
+    "strategy.beta": {type: float, low: 1e-5, high: 1.0, log: True}
+    "peft.bnn": {type: categorical, choices: ["FCG", "FFG"]}
+    "peft.alpha": {type: float, low: 0.5, high: 1.5, log: False}
+    "peft.bias": {type: categorical, choices: [true, false]}
