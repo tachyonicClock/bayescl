@@ -2,6 +2,7 @@ import os
 
 import matplotlib
 
+from bayescl.methods.mmce import MMCEPlugin
 from bayescl.peft._tball.factory import TBALL
 
 matplotlib.use("Agg")
@@ -218,6 +219,12 @@ class Experiment:
         if self.cfg.ewc:
             logger.info("Add 'EWCPlugin' plugin")
             self.plugins.append(EWCPlugin(**self.cfg.ewc.kwargs(), mode="online"))
+
+        if self.cfg.mmce:
+            logger.info("Add 'MMCEPlugin' plugin")
+            self.plugins.append(
+                MMCEPlugin(config=self.cfg.mmce, writer=self.tb_log.writer)
+            )
 
         self.plugins.append(self.metrics_plugin)
 

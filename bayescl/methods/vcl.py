@@ -79,37 +79,6 @@ class VCLStrategy(Naive):
 
         return log_pred_probs.exp(), loss
 
-        # pred_probs = 0
-        # nll = 0
-        # for k in range(self.train_samples):
-        #     y_hat = self.mask[t] * self.model(x)
-        #     pred_probs += y_hat.softmax(dim=-1)
-        #     nll += cross_entropy(y_hat, y)
-
-        # pred_probs /= self.train_samples
-        # nll /= self.train_samples
-
-        # # Scale the KL divergence by the number of samples in the dataset.
-        # # The idea is that the cross-entropy loss is an average over a mini-batch and
-        # # is therefore 1/dataset_size to small compared to the likelihood
-        # kl = kl_divergence(self.model) / len(self.experience.dataset)  # type: ignore
-        # beta_kl = self.beta * kl
-        # loss = nll + beta_kl
-
-        # step = self.clock.train_iterations
-        # self.writer.add_scalar("ball/nll", nll, step)
-        # self.writer.add_scalar("ball/kl", kl, step)
-        # self.writer.add_scalar("ball/beta_kl", beta_kl, step)
-        # return pred_probs, loss # type: ignore
-
-    # def _after_backward(self, **kwargs):
-    #     # Gradient clipping for variational parameters
-    #     torch.nn.utils.clip_grad_norm_(
-    #         [p for p in self.model.parameters() if p.requires_grad],
-    #         max_norm=1.0,
-    #     )
-    #     return super()._after_backward(**kwargs)
-
     def predict_step(
         self, batch: Tuple[Tensor, Tensor, Tensor]
     ) -> Tuple[Tensor, Tensor]:
