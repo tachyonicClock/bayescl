@@ -9,8 +9,8 @@ peft:
   rank: 10
   init_sd: 0.5
   prior_weight_sd: 1.0
-  bias: True
-  bnn: FCG
+  bias: False
+  bnn: FFG
 
 strategy:
   type: VCL
@@ -18,10 +18,8 @@ strategy:
   train_samples: 1
   test_samples: 5
 
-mmce:
-  weight: 1.0
-
 hpsearch:
   n_trials: 15
   params:
-    "mmce.weight": {type: float, low: 0.0, high: 1.0, log: False}
+    "strategy.beta": {type: float, low: 0.0, high: 2.0, log: False}
+    "peft.bnn": {type: categorical, choices: ["FFG", "FCG"]}

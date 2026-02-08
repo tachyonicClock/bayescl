@@ -4,7 +4,7 @@ from typeguard import typechecked
 from bayescl.config import TBALLConfig
 from bayescl.peft._base import AdapterFactory
 
-from .layer import TBALLLinear
+from .layer import TBALLConv2d, TBALLLinear
 
 
 class TBALL(AdapterFactory):
@@ -18,6 +18,18 @@ class TBALL(AdapterFactory):
         if isinstance(module, nn.Linear):
             return TBALLLinear(
                 module.in_features, module.out_features, config=self.config
+            )
+        elif isinstance(module, nn.Conv2d):
+            return TBALLConv2d(
+                module.in_channels,
+                module.out_channels,
+                module.kernel_size,
+                stride=module.stride,
+                padding=module.padding,
+                dilation=module.dilation,
+                groups=module.groups,
+                bias=module.bias is not None,
+                config=self.config,
             )
         else:
             raise ValueError(f"Unsupported layer type: {type(module)}")

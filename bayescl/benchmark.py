@@ -39,9 +39,13 @@ TEST_TRANSFORM = [
 COMMON_PRE_TRANSFORM = [
     T.ToTensor(),
 ]
-COMMON_POST_TRANSFORM = [
-    T.Normalize(mean=[0.0, 0.0, 0.0], std=[1.0, 1.0, 1.0]),
-]
+COMMON_POST_TRANSFORM = []
+
+# ImageNet normalization values, commonly used for other datasets as well
+STANDARDIZE = T.Normalize(
+    mean=[0.485, 0.456, 0.406],
+    std=[0.229, 0.224, 0.225],
+)
 
 
 def get_transforms(cfg: Config, dataset: str) -> Tuple[Transform, Transform]:
@@ -56,6 +60,10 @@ def get_transforms(cfg: Config, dataset: str) -> Tuple[Transform, Transform]:
 
     train_transform.extend(COMMON_POST_TRANSFORM)
     eval_transform.extend(COMMON_POST_TRANSFORM)
+
+    if cfg.standardize:
+        train_transform.append(STANDARDIZE)
+        eval_transform.append(STANDARDIZE)
 
     return (T.Compose(train_transform), T.Compose(eval_transform))
 

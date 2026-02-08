@@ -267,6 +267,9 @@ class Config(BaseConfig):
     checkpoint: bool = False
     """Whether to save a checkpoint after each experience/task."""
 
+    standardize: bool = False
+    """Whether to standardize the input data based on the training set statistics."""
+
 
 def _resolve_includes(base: Path, filenames: list[str]) -> DictConfig:
     if filenames:

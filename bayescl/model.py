@@ -7,19 +7,20 @@ from transformers import AutoModelForImageClassification
 from transformers.models.dinov2.modeling_dinov2 import (
     Dinov2ForImageClassification,
 )
+from transformers.models.resnet.modeling_resnet import ResNetForImageClassification
 
 from bayescl.config import BasicModelConfig, Config, HuggingFaceModelConfig
 from bayescl.methods.l2p import L2PViT
 from bayescl.models.fcg import SimpleFCGMLP
 
 
-class HuggingFaceAdapter(L2PViT, nn.Module):
+class ViTHuggingFaceAdapter(L2PViT, nn.Module):
     def __init__(self, model: nn.Module):
         super().__init__()
         self.model = model
         if isinstance(model, Dinov2ForImageClassification):
             self.embed_dim = model.dinov2.config.hidden_size  # type: ignore
-            self.vit = model.dinov2  # type: ignore
+            self.backbone = model.dinov2  # type: ignore
         else:
             raise NotImplementedError(f"Got unsupported model type: {type(model)}")
 
@@ -40,7 +41,7 @@ class HuggingFaceAdapter(L2PViT, nn.Module):
 
     @override
     def get_patch_embed(self, pixels: Tensor) -> Tensor:
-        return self.vit.embeddings(pixels)
+        return self.backbone.embeddings(pixels)
 
     @override
     def forward_encoder(self, prompts: Tensor, patch_embed: Tensor) -> Tensor:
@@ -48,21 +49,30 @@ class HuggingFaceAdapter(L2PViT, nn.Module):
         other_patches = patch_embed[:, 1:, :]
 
         # Add CLS position embedding to prompts
-        cls_pos_embedding = self.vit.embeddings.position_embeddings[:, :1]
+        cls_pos_embedding = self.backbone.embeddings.position_embeddings[:, :1]
         prompts = prompts + cls_pos_embedding
 
         embedding = torch.cat([cls_token, prompts, other_patches], dim=1)
-        sequence_output = self.vit.encoder(embedding).last_hidden_state
-        sequence_output = self.vit.layernorm(sequence_output)
+        sequence_output = self.backbone.encoder(embedding).last_hidden_state
+        sequence_output = self.backbone.layernorm(sequence_output)
         return sequence_output
 
     @override
     @torch.no_grad()
     def forward_query(self, patch_embedding: Tensor) -> Tensor:
         # Return [CLS] token embedding
-        sequence_output = self.vit.encoder(patch_embedding).last_hidden_state
-        sequence_output = self.vit.layernorm(sequence_output)
+        sequence_output = self.backbone.encoder(patch_embedding).last_hidden_state
+        sequence_output = self.backbone.layernorm(sequence_output)
         return sequence_output[:, 0, :]
+
+
+class ResNetHuggingFaceAdapter(nn.Module):
+    def __init__(self, model: nn.Module):
+        super().__init__()
+        self.model = model
+
+    def forward(self, x: Tensor) -> Tensor:
+        return self.model(x).logits
 
 
 def _get_basic_model(model_cfg: BasicModelConfig, num_classes: int) -> nn.Module:
@@ -88,7 +98,12 @@ def _get_huggingface_model(
         model.requires_grad_(False)  # Freeze the backbone
         model.classifier.requires_grad_(True)  # Unfreeze the classifier layer
 
-    return HuggingFaceAdapter(model)
+    if isinstance(model, ResNetForImageClassification):
+        return ResNetHuggingFaceAdapter(model)
+    elif isinstance(model, Dinov2ForImageClassification):
+        return ViTHuggingFaceAdapter(model)
+    else:
+        raise NotImplementedError(f"Got unsupported model type: {type(model)}")
 
 
 def get_model(cfg: Config, num_classes: int) -> nn.Module:

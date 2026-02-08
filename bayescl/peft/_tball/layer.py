@@ -1,15 +1,61 @@
+from typing import Tuple
+
 import torch
 import torch.nn as nn
-from bnn.nn.modules import FCGLinear, FFGLinear
+from bnn.nn.modules import FCGLinear, FCGMixin, FFGLinear, FFGMixin
 from torch import Tensor
 from torch.nn import functional as F
+from torch.nn.modules.utils import _pair
 
 from bayescl.config import TBALLConfig
 from bayescl.peft._base import AdapterBase
 
 
+class WeightModule(nn.Module):
+    def __init__(self, shape: Tuple[int, int]):
+        super().__init__()
+        self.weight = nn.Parameter(torch.zeros(*shape))
+        self.bias = None
+
+
+class FFGParameter(FFGMixin, WeightModule):
+    def __init__(
+        self,
+        shape: Tuple[int, int],
+        config: TBALLConfig,
+    ):
+        super().__init__(
+            shape,
+            prior_mean=config.prior_mean,
+            prior_weight_sd=config.prior_weight_sd,
+            init_sd=config.init_sd,
+            nonlinearity_scale=config.nonlinearity_scale,
+        )
+
+    def sample(self) -> Tensor:
+        return self.weight_mean + self.weight_sd * torch.randn_like(self.weight_mean)
+
+
+class FCGParameter(FCGMixin, WeightModule):
+    def __init__(
+        self,
+        shape: Tuple[int, int],
+        config: TBALLConfig,
+    ):
+        super().__init__(
+            shape,
+            prior_mean=config.prior_mean,
+            prior_weight_sd=config.prior_weight_sd,
+            init_sd=config.init_sd,
+            nonlinearity_scale=config.nonlinearity_scale,
+        )
+
+    def sample(self) -> Tensor:
+        return self.mean + self.scale_tril @ torch.randn_like(self.mean)
+
+
 class BALLLayer(AdapterBase):
-    adapter_parameter_names = None
+    adapter_parameter_names = ()
     """Tunable parameters in BALL adapters."""
 
 
@@ -61,15 +107,16 @@ class TBALLLinear(BALLLayer, nn.Linear):
                 nonlinearity_scale=config.nonlinearity_scale,
             )
         elif config.bnn == "FFG":
-            self.adapter_parameter_names = [
+            self.adapter_parameter_names = (
                 "bayes_core.weight_mean",
                 "bayes_core._weight_sd",
-            ]
+            )
             if config.bias:
-                self.adapter_parameter_names += [
+                self.adapter_parameter_names = (
                     "bayes_core.bias_mean",
                     "bayes_core._bias_sd",
-                ]
+                    *self.adapter_parameter_names,
+                )
             self.bayes_core = FFGLinear(
                 config.rank,
                 config.rank,
@@ -87,3 +134,68 @@ class TBALLLinear(BALLLayer, nn.Linear):
         z = self.bayes_core(z)  # (batch_size, rank)
         z = z @ self.project_up  # (batch_size, out_features)
         return F.linear(x, self.weight, self.bias) + z * self._scaling
+
+
+class TBALLConv2d(BALLLayer, nn.Conv2d):
+    """A Bayesian Adaptation Layer using the TBALL method for Conv2d layers."""
+
+    tball_A: Tensor
+    """Random projection matrix to reduce input dimensionality."""
+    tball_C: Tensor
+    """Random projection matrix to restore output dimensionality."""
+    tball_B: FFGParameter | FCGParameter
+    """The Bayesian core layer."""
+
+    def __init__(
+        self,
+        in_channels: int,
+        out_channels: int,
+        kernel_size,
+        config: TBALLConfig,
+        **kwargs,
+    ):
+        nn.Conv2d.__init__(self, in_channels, out_channels, kernel_size, **kwargs)
+        BALLLayer.__init__(self)
+        if config.bias:
+            raise NotImplementedError("TBALLConv2d does not support bias yet")
+
+        self._scaling = config.alpha / config.rank
+
+        # Random projection matrices
+        kh, kw = _pair(kernel_size)
+        assert kh == kw, "Only square kernels are supported for TBALLConv2d"
+        ks = kh
+        groups = self.groups
+        rank_ks = config.rank * ks
+        tball_A = torch.empty(rank_ks, in_channels * ks)  # A
+        tball_C = torch.empty(out_channels // groups * ks, rank_ks)  # B
+        # Use orthogonal initialization because it preserves norms
+        nn.init.orthogonal_(tball_A)
+        nn.init.orthogonal_(tball_C)
+        self.register_buffer("tball_A", tball_A)
+        self.register_buffer("tball_C", tball_C)
+
+        # Bayesian core layer
+        if config.bnn == "FCG":
+            self.adapter_parameter_names = (
+                "tball_B._scale_diag",
+                "tball_B._scale_tril",
+                "tball_B.mean",
+            )
+            self.tball_B = FCGParameter((rank_ks, rank_ks), config)
+        elif config.bnn == "FFG":
+            self.adapter_parameter_names = (
+                "tball_B.weight_mean",
+                "tball_B._weight_sd",
+            )
+            self.tball_B = FFGParameter((rank_ks, rank_ks), config)
+
+        else:
+            raise ValueError(f"Unsupported BNN type: {config.bnn}")
+
+    def forward(self, x: Tensor) -> Tensor:
+        weight_delta = self.tball_C @ self.tball_B.sample() @ self.tball_A
+        weight = self.weight + weight_delta.view_as(self.weight) * self._scaling
+        return F.conv2d(
+            x, weight, self.bias, self.stride, self.padding, self.dilation, self.groups
+        )

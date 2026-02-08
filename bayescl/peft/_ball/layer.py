@@ -4,6 +4,7 @@ import torch
 import torch.nn as nn
 from torch import Tensor
 from torch.nn import functional as F
+from torch.nn.modules.utils import _pair
 
 from bayescl.config import BALLConfig
 from bayescl.peft._base import AdapterBase
@@ -108,3 +109,39 @@ class BALLLinear(nn.Linear, BALLLayer):
 
         # Training mode: use the selected variance reduction method
         return self.forward_none(input)
+
+
+class BALLConv2d(BALLLayer, nn.Conv2d):
+    """A Bayesian Adaptation Layer using the TBALL method for Conv2d layers."""
+
+    def __init__(
+        self,
+        in_channels: int,
+        out_channels: int,
+        kernel_size,
+        config: BALLConfig,
+        **kwargs,
+    ):
+        nn.Conv2d.__init__(self, in_channels, out_channels, kernel_size, **kwargs)
+        BALLLayer.__init__(self)
+
+        # Random projection matrices
+        kh, kw = _pair(kernel_size)
+        assert kh == kw, "Only square kernels are supported for TBALLConv2d"
+        ks = kh
+        groups = self.groups
+        rank_ks = config.r * ks
+
+        self.ball_A = VariationalParameter((rank_ks, in_channels * ks), config.vbnn)
+        self.ball_B = VariationalParameter(
+            (out_channels // groups * ks, rank_ks), config.vbnn
+        )
+        self.scaling = config.lora_alpha / config.r
+
+    def forward(self, x: Tensor) -> Tensor:
+        weight_delta = self.ball_B.forward() @ self.ball_A.forward()
+        weight_delta = weight_delta * self.scaling
+        weight = self.weight + weight_delta.view_as(self.weight)
+        return F.conv2d(
+            x, weight, self.bias, self.stride, self.padding, self.dilation, self.groups
+        )

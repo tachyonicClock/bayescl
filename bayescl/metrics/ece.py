@@ -25,41 +25,54 @@ class ExpectedCalibrationError(PluginMetric[float]):
 
     def after_eval_iteration(self, strategy) -> None:
         # ECE all
+        task = strategy.clock.train_exp_counter
         self.ece_all.update(strategy.mb_output, strategy.mb_y)  # type: ignore
 
         # ECE past
-        if self.eval_exp_counter < strategy.clock.train_exp_counter:
+        if self.eval_exp_counter < task:
             self.ece_past.update(strategy.mb_output, strategy.mb_y)  # type: ignore
 
         # ECE present
-        if self.eval_exp_counter == strategy.clock.train_exp_counter:
+        if self.eval_exp_counter == task:
             self.ece_present.update(strategy.mb_output, strategy.mb_y)  # type: ignore
 
         # ECE future
-        if self.eval_exp_counter > strategy.clock.train_exp_counter:
+        if self.eval_exp_counter > task:
             self.ece_future.update(strategy.mb_output, strategy.mb_y)  # type: ignore
 
     def after_eval(self, strategy) -> MetricResult:
+        task = strategy.clock.train_exp_counter
         i = strategy.clock.train_iterations
         result = []
-        result.append(MetricValue(self, "ECE/all", self.ece_all.compute().item(), i))
+        result.append(
+            MetricValue(self, f"ECE/{task}/all", self.ece_all.compute().item(), i)
+        )
 
         # Empty at the end of the final task
         if len(self.ece_present.confidences) != 0:
             result.append(
-                MetricValue(self, "ECE/present", self.ece_present.compute().item(), i)
+                MetricValue(
+                    self,
+                    f"ECE/{task:02d}/present",
+                    self.ece_present.compute().item(),
+                    i,
+                )
             )
 
         # Empty if no past tasks
         if len(self.ece_past.confidences) != 0:
             result.append(
-                MetricValue(self, "ECE/past", self.ece_past.compute().item(), i)
+                MetricValue(
+                    self, f"ECE/{task:02d}/past", self.ece_past.compute().item(), i
+                )
             )
 
         # Empty if no future tasks
         if len(self.ece_future.confidences) != 0:
             result.append(
-                MetricValue(self, "ECE/future", self.ece_future.compute().item(), i)
+                MetricValue(
+                    self, f"ECE/{task:02d}/future", self.ece_future.compute().item(), i
+                )
             )
 
         self.reset()

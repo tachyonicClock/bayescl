@@ -19,6 +19,18 @@ class BALL(AdapterFactory):
             return layer.BALLLinear(
                 module.in_features, module.out_features, config=self.config
             )
+        elif isinstance(module, nn.Conv2d):
+            return layer.BALLConv2d(
+                module.in_channels,
+                module.out_channels,
+                module.kernel_size,
+                stride=module.stride,
+                padding=module.padding,
+                dilation=module.dilation,
+                groups=module.groups,
+                bias=module.bias is not None,
+                config=self.config,
+            )
         else:
             raise ValueError(f"Unsupported layer type: {type(module)}")
 

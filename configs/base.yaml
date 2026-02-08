@@ -9,9 +9,11 @@ num_workers: 4
 
 model:
   type: huggingface
-  name: facebook/dinov2-small
-  adapter_filter: ".*(dense|fc1|fc2|key|query|value)"
+  name: microsoft/resnet-18
+  adapter_filter: ".*layer\\.[0-9]\\.convolution"
   head_module: "model.classifier"
+
+standardize: True
 
 hpsearch:
   params:

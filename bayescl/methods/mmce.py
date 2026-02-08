@@ -1,10 +1,13 @@
-from torch import Tensor
+from typing import Any
+
 import torch
 import torch.nn.functional as F
 from avalanche.training.plugins import SupervisedPlugin
-from typing import Any
-from bayescl.config import MMCEConfig
+from torch import Tensor
 from torch.utils.tensorboard import SummaryWriter
+
+from bayescl.config import MMCEConfig
+
 
 def calibration_mmce_w_loss(logits: Tensor, correct_labels: Tensor) -> Tensor:
     """Function to compute the MMCE_w loss in PyTorch.
@@ -22,9 +25,9 @@ def calibration_mmce_w_loss(logits: Tensor, correct_labels: Tensor) -> Tensor:
 
     # 2. Create mask for correct predictions
     correct_mask = torch.eq(predicted_labels, correct_labels)
-    
+
     # 3. Separate probabilities into correct and incorrect sets
-    # Note: The original TF code uses top_k with masking to extract these. 
+    # Note: The original TF code uses top_k with masking to extract these.
     # In PyTorch, boolean indexing is more direct and equivalent.
     correct_prob = predicted_probs_max[correct_mask]
     incorrect_prob = predicted_probs_max[~correct_mask]
@@ -34,7 +37,7 @@ def calibration_mmce_w_loss(logits: Tensor, correct_labels: Tensor) -> Tensor:
     n = incorrect_prob.size(0)
 
     # 4. Handle Edge Cases
-    # The original code forces the result to 0 if either m or n is 0 
+    # The original code forces the result to 0 if either m or n is 0
     # (via cond_k * cond_k_p logic). We handle this explicitly here.
     if m == 0 or n == 0:
         return torch.tensor(0.0, device=logits.device)
@@ -75,7 +78,9 @@ def calibration_mmce_w_loss(logits: Tensor, correct_labels: Tensor) -> Tensor:
     # 8. Compute Output Values (Means of kernel * weights)
     correct_correct_vals = (correct_kernel * sampling_weights_correct).mean()
     incorrect_incorrect_vals = (incorrect_kernel * sampling_weights_incorrect).mean()
-    correct_incorrect_vals = (correct_incorrect_kernel * sampling_correct_incorrect).mean()
+    correct_incorrect_vals = (
+        correct_incorrect_kernel * sampling_correct_incorrect
+    ).mean()
 
     # 9. Compute MMD Error
     # Note: We add epsilon to denominators to match the stability epsilon in TF code

@@ -188,3 +188,18 @@ ts -G 1 -L cifar_tball notirun.sh python main.py -c configs/cifar100/11_tball.ya
 ts -G 1 -L domai_tball notirun.sh python main.py -c configs/domainnet/11_tball.yaml hpsearch
 ts -G 1 -L image_tball notirun.sh python main.py -c configs/imagenetr/11_tball.yaml hpsearch
 ```
+
+
+
+```
+ts -G 1 -L cifar_rwalk notirun.sh python main.py -c configs/cifar100/08_rwalk.yaml hpsearch
+ts -G 1 -L cifar_rwalk notirun.sh python main.py -c configs/cifar100/08_rwalk.yaml hpsearch
+
+ts -G 1 -L cifar_ball  notirun.sh python main.py -c configs/cifar100/03_ball.yaml hpsearch
+ts -G 1 -L cifar_ball  notirun.sh python main.py -c configs/cifar100/03_ball.yaml hpsearch
+
+ts -G 1 -L cifar_tball notirun.sh python main.py -c configs/cifar100/11_tball.yaml hpsearch
+ts -G 1 -L cifar_tball notirun.sh python main.py -c configs/cifar100/11_tball.yaml hpsearch
+```
+
+

@@ -5,4 +5,5 @@ scenario:
 label:
   scenario: cifar100
 
-epochs: 20
+epochs: 30
+eval_every: 10
