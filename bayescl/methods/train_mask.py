@@ -18,4 +18,4 @@ class TrainTaskMask(SupervisedPlugin):
 
     def after_forward(self, strategy: Any, *args, **kwargs) -> Any:
         t = strategy.clock.train_exp_counter
-        strategy.mb_output[:, ~self.mask[t]] = -torch.inf
+        strategy.mb_output = self.mask[t] * strategy.mb_output
