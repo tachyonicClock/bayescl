@@ -44,34 +44,30 @@ class ExpectedCalibrationError(PluginMetric[float]):
         task = strategy.clock.train_exp_counter
         i = strategy.clock.train_iterations
         result = []
+        prefix = f"ECE/{task:02d}/"
         result.append(
-            MetricValue(self, f"ECE/{task}/all", self.ece_all.compute().item(), i)
+            MetricValue(self, prefix + "all", self.ece_all.compute().item(), i)
         )
 
         # Empty at the end of the final task
         if len(self.ece_present.confidences) != 0:
             result.append(
                 MetricValue(
-                    self,
-                    f"ECE/{task:02d}/present",
-                    self.ece_present.compute().item(),
-                    i,
+                    self, prefix + "present", self.ece_present.compute().item(), i
                 )
             )
 
         # Empty if no past tasks
         if len(self.ece_past.confidences) != 0:
             result.append(
-                MetricValue(
-                    self, f"ECE/{task:02d}/past", self.ece_past.compute().item(), i
-                )
+                MetricValue(self, prefix + "past", self.ece_past.compute().item(), i)
             )
 
         # Empty if no future tasks
         if len(self.ece_future.confidences) != 0:
             result.append(
                 MetricValue(
-                    self, f"ECE/{task:02d}/future", self.ece_future.compute().item(), i
+                    self, prefix + "future", self.ece_future.compute().item(), i
                 )
             )
 

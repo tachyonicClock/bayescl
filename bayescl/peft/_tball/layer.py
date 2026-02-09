@@ -51,7 +51,8 @@ class FCGParameter(FCGMixin, WeightModule):
         )
 
     def sample(self) -> Tensor:
-        return self.mean + self.scale_tril @ torch.randn_like(self.mean)
+        sample = self.mean + self.scale_tril @ torch.randn_like(self.mean)
+        return sample.view_as(self.weight)
 
 
 class BALLLayer(AdapterBase):

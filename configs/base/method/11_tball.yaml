@@ -10,7 +10,7 @@ peft:
   init_sd: 0.5
   prior_weight_sd: 1.0
   bias: False
-  bnn: FFG
+  bnn: FCG
 
 strategy:
   type: VCL
