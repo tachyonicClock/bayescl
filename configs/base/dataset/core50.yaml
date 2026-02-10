@@ -1,0 +1,8 @@
+scenario:
+  dataset: CORe50
+  n_tasks: 10
+  shuffle: false
+label:
+  scenario: core50
+
+epochs: 16 # 1h budget

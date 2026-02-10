@@ -1,8 +1,0 @@
-scenario:
-  dataset: CIFAR100
-  n_tasks: 1
-  shuffle: false
-label:
-  scenario: offline_cifar
-
-epochs: 20

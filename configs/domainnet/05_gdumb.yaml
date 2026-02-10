@@ -1,8 +1,0 @@
-# bayescl/hp/domainnet/gdumb 88eba84
-# 62.28% Acc. 3.73% ECE
-# Selected best run based on highest accuracy from 15 trials
-include:
-- ../base.yaml
-- ../base/dataset/domainnet.yaml
-- ../base/method/05_gdumb.yaml
-lr: 0.0012

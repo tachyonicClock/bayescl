@@ -1,4 +1,4 @@
 include:
 - ../base.yaml
-- ../base/dataset/domainnet.yaml
+- ../base/dataset/core50.yaml
 - ../base/method/10_ewc.yaml

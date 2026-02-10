@@ -1,0 +1,4 @@
+include:
+- ../base.yaml
+- ../base/dataset/core50.yaml
+- ../base/method/08_rwalk.yaml

@@ -1,0 +1,4 @@
+include:
+- ../base.yaml
+- ../base/dataset/core50.yaml
+- ../base/method/03_ball.yaml

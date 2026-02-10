@@ -5,4 +5,4 @@ scenario:
 label:
   scenario: imagenetr
 
-epochs: 50
+epochs: 60 # 1h budget

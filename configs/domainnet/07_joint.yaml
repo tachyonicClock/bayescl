@@ -1,8 +1,0 @@
-# bayescl/hp/domainnet/joint 88eba84
-# 75.27% Acc. 1.70% ECE
-# Selected best run based on highest accuracy from 15 trials
-include:
-- ../base.yaml
-- ../base/dataset/domainnet.yaml
-- ../base/method/07_joint.yaml
-lr: 0.00033

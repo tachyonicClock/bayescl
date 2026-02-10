@@ -8,6 +8,7 @@ from avalanche.benchmarks import (
     CLScenario,
     nc_benchmark,
 )
+from avalanche.benchmarks.datasets import CORe50Dataset
 from loguru import logger
 from PIL import Image
 from torch.utils.data import Dataset, Subset
@@ -221,6 +222,41 @@ def SplitCIFAR100(
             CIFAR100(dataset_root, train=True, transform=eval_transform), test_perm
         )
 
+    return nc_benchmark(
+        train_dataset=train_dataset,  # type: ignore
+        test_dataset=test_dataset,  # type: ignore
+        n_experiences=n_experiences,
+        task_labels=return_task_id,
+        seed=seed,
+        shuffle=shuffle,
+    )
+
+
+def SplitCORe50(
+    dataset_root: str | Path = datasets_path(),
+    n_experiences: int = 5,
+    train_transform: Callable[..., Any] | None = None,
+    eval_transform: Callable[..., Any] | None = None,
+    seed: int | None = None,
+    return_task_id: bool = False,
+    shuffle: bool = True,
+    validation_set: float = 0.0,
+) -> CLScenario:
+    if validation_set <= 0.0:
+        train_dataset = CORe50Dataset(
+            dataset_root, train=True, transform=train_transform
+        )  # type: ignore
+        test_dataset = CORe50Dataset(
+            dataset_root, train=False, transform=eval_transform
+        )  # type: ignore
+    else:
+        train_dataset = CORe50Dataset(
+            dataset_root, train=True, transform=train_transform
+        )
+        test_dataset = CORe50Dataset(dataset_root, train=True, transform=eval_transform)
+        train_perm, test_perm = valid_split_indices(len(train_dataset), validation_set)
+        train_dataset = Subset(train_dataset, train_perm)
+        test_dataset = Subset(test_dataset, test_perm)
     return nc_benchmark(
         train_dataset=train_dataset,  # type: ignore
         test_dataset=test_dataset,  # type: ignore

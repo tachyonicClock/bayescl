@@ -1,8 +1,0 @@
-# bayescl/hp/domainnet/lora 88eba84
-# 74.77% Acc. 1.63% ECE
-# Selected best run based on highest accuracy from 15 trials
-include:
-- ../base.yaml
-- ../base/dataset/domainnet.yaml
-- ../base/method/02_lora.yaml
-lr: 0.00025

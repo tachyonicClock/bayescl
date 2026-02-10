@@ -22,5 +22,5 @@ hpsearch:
     "scenario.validation": {type: constant, value: True}
 
   sampler: QMC
-  n_trials: 15
+  n_trials: 10
   direction: [maximize, minimize]

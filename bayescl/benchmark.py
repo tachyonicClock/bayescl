@@ -6,7 +6,7 @@ from loguru import logger
 from torchvision import transforms as T
 
 from bayescl.config import Config
-from bayescl.datasets import SplitCIFAR100, SplitDomainNet, SplitImageNetR
+from bayescl.datasets import SplitCIFAR100, SplitCORe50, SplitDomainNet, SplitImageNetR
 
 Transform = Callable[[Any], Any]
 
@@ -24,7 +24,7 @@ TRAIN_TRANSFORMS = {
         T.RandomHorizontalFlip(),
     ],
     "CORe50": [
-        T.RandomResizedCrop(128),
+        T.RandomResizedCrop(224),
         T.RandomHorizontalFlip(),
     ],
     "TinyImageNet": [
@@ -70,6 +70,7 @@ def get_transforms(cfg: Config, dataset: str) -> Tuple[Transform, Transform]:
 
 def get_benchmark(cfg: Config) -> NCScenario:
     logger.info(f"Setting up '{cfg.scenario.dataset}' benchmark")
+    validation_set = 0.1 if cfg.scenario.validation else 0
     train_transform, eval_transform = get_transforms(cfg, cfg.scenario.dataset)
     if cfg.scenario.dataset == "MNIST":
         return SplitMNIST(
@@ -88,7 +89,7 @@ def get_benchmark(cfg: Config) -> NCScenario:
             eval_transform=eval_transform,
             return_task_id=True,
             shuffle=cfg.scenario.shuffle,
-            validation_set=0.1 if cfg.scenario.validation else 0,
+            validation_set=validation_set,
         )
     elif cfg.scenario.dataset == "ImageNetR":
         return SplitImageNetR(  # type: ignore
@@ -98,7 +99,7 @@ def get_benchmark(cfg: Config) -> NCScenario:
             eval_transform=eval_transform,
             return_task_id=True,
             shuffle=cfg.scenario.shuffle,
-            validation_set=0.1 if cfg.scenario.validation else 0,
+            validation_set=validation_set,
         )
     elif cfg.scenario.dataset == "DomainNet":
         return SplitDomainNet(  # type: ignore
@@ -108,7 +109,16 @@ def get_benchmark(cfg: Config) -> NCScenario:
             eval_transform=eval_transform,
             return_task_id=True,
             shuffle=cfg.scenario.shuffle,
-            validation_set=0.1 if cfg.scenario.validation else 0,
+            validation_set=validation_set,
         )
-
+    elif cfg.scenario.dataset == "CORe50":
+        return SplitCORe50(  # type: ignore
+            dataset_root=cfg.dataset_root,
+            n_experiences=cfg.scenario.n_tasks,
+            train_transform=train_transform,
+            eval_transform=eval_transform,
+            return_task_id=True,
+            shuffle=cfg.scenario.shuffle,
+            validation_set=validation_set,
+        )
     raise ValueError(f"Unsupported scenario: {cfg.scenario}")
