@@ -8,10 +8,11 @@ from avalanche.benchmarks import (
     CLScenario,
     nc_benchmark,
 )
-from avalanche.benchmarks.datasets import CORe50Dataset
+
+# from avalanche.benchmarks.datasets import CORe50Dataset
 from loguru import logger
 from PIL import Image
-from torch.utils.data import Dataset, Subset
+from torch.utils.data import Dataset, Subset, ConcatDataset
 from torchvision.datasets import CIFAR100, ImageFolder
 
 
@@ -81,6 +82,30 @@ class TinyImageNet(ImageFolder):
         split: Literal["train", "val", "test"] = "train",
     ):
         super().__init__(Path(root) / "tiny-imagenet-200" / split, transform)
+
+
+class CORe50Dataset(ConcatDataset):
+    SESSIONS = {
+        "test": [3, 7, 10],
+        "train": [1, 2, 5, 6, 8, 9],
+        "valid": [11, 4],
+        "train&valid": [1, 2, 4, 5, 6, 8, 9, 11],
+    }
+
+    def __init__(
+        self,
+        root: str | Path,
+        split: Literal["train", "train&valid", "valid", "test"],
+        transform: Callable[..., Any] | None = None,
+    ):
+        self.root = Path(root) / "core50_128x128"
+        self.transform = transform
+
+        self.sessions = []
+        for s in self.SESSIONS[split]:
+            self.sessions.append(ImageFolder(self.root / f"s{s}", transform))
+
+        super().__init__(self.sessions)
 
 
 def valid_split_indices(
@@ -267,23 +292,21 @@ def SplitCORe50(
     seed: int | None = None,
     return_task_id: bool = False,
     shuffle: bool = True,
-    validation_set: float = 0.0,
+    validation_set: bool = False,
 ) -> CLScenario:
-    if validation_set <= 0.0:
-        train_dataset = CORe50Dataset(
-            dataset_root, train=True, transform=train_transform
-        )  # type: ignore
-        test_dataset = CORe50Dataset(
-            dataset_root, train=False, transform=eval_transform
-        )  # type: ignore
+    if validation_set:
+        train_dataset = CORe50Dataset(dataset_root, "train", train_transform)
+        test_dataset = CORe50Dataset(dataset_root, "valid", eval_transform)
     else:
-        train_dataset = CORe50Dataset(
-            dataset_root, train=True, transform=train_transform
-        )
-        test_dataset = CORe50Dataset(dataset_root, train=True, transform=eval_transform)
-        train_perm, test_perm = valid_split_indices(len(train_dataset), validation_set)
-        train_dataset = Subset(train_dataset, train_perm)
-        test_dataset = Subset(test_dataset, test_perm)
+        train_dataset = CORe50Dataset(dataset_root, "train&valid", train_transform)
+        test_dataset = CORe50Dataset(dataset_root, "test", eval_transform)
+
+    # Default core50 test dataset is quite large so we downsample it
+    test_n = 10_000
+    rng = torch.Generator().manual_seed(0)
+    test_indices = torch.randperm(len(test_dataset), generator=rng).int()[:test_n]
+    test_dataset = Subset(test_dataset, test_indices)  # type: ignore
+
     return nc_benchmark(
         train_dataset=train_dataset,  # type: ignore
         test_dataset=test_dataset,  # type: ignore
@@ -312,14 +335,20 @@ def SplitCUB200_2011(
 
     # Constant split for train/test set
     train_perm, test_perm = class_balanced_split(train_dataset.targets, eval_set, 1)  # type: ignore
-    logger.info(f"Created (train & valid)/test split with {len(train_perm)} train and {len(test_perm)} test samples")
+    logger.info(
+        f"Created (train & valid)/test split with {len(train_perm)} train and {len(test_perm)} test samples"
+    )
     train_dataset = Subset(train_dataset, train_perm)
     valid_dataset = Subset(valid_dataset, train_perm)
-    test_dataset  = Subset(test_dataset, test_perm)
+    test_dataset = Subset(test_dataset, test_perm)
 
     if validation_set > 0.0:
-        train_perm, valid_perm = valid_split_indices(len(train_dataset), validation_set, 2)
-        logger.info(f"Created train/valid split with {len(train_perm)} train and {len(valid_perm)} valid samples")
+        train_perm, valid_perm = valid_split_indices(
+            len(train_dataset), validation_set, 2
+        )
+        logger.info(
+            f"Created train/valid split with {len(train_perm)} train and {len(valid_perm)} valid samples"
+        )
         train_dataset = Subset(train_dataset, train_perm)
         # REPLACE test dataset with valid dataset for evaluation during training
         test_dataset = Subset(valid_dataset, valid_perm)
@@ -332,7 +361,3 @@ def SplitCUB200_2011(
         seed=seed,
         shuffle=shuffle,
     )
-
-
-
-

@@ -6,7 +6,13 @@ from loguru import logger
 from torchvision import transforms as T
 
 from bayescl.config import Config
-from bayescl.datasets import SplitCIFAR100, SplitCORe50, SplitDomainNet, SplitImageNetR, SplitCUB200_2011
+from bayescl.datasets import (
+    SplitCIFAR100,
+    SplitCORe50,
+    SplitDomainNet,
+    SplitImageNetR,
+    SplitCUB200_2011,
+)
 
 Transform = Callable[[Any], Any]
 
@@ -123,7 +129,7 @@ def get_benchmark(cfg: Config) -> NCScenario:
             eval_transform=eval_transform,
             return_task_id=True,
             shuffle=cfg.scenario.shuffle,
-            validation_set=validation_set,
+            validation_set=cfg.scenario.validation,
         )
     elif cfg.scenario.dataset == "CUB200_2011":
         return SplitCUB200_2011(  # type: ignore
