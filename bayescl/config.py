@@ -28,6 +28,7 @@ class Scenario(BaseConfig):
         "ImageNetR",
         "DomainNet",
         "CORe50",
+        "CUB200_2011",
     ] = "MNIST"
     n_tasks: int = 5
     shuffle: bool = True

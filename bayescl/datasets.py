@@ -84,14 +84,41 @@ class TinyImageNet(ImageFolder):
 
 
 def valid_split_indices(
-    n: int, validation_set: float
+    n: int,
+    validation_set: float,
+    seed: int = 0,
 ) -> tuple[Sequence[int], Sequence[int]]:
     assert 0.0 < validation_set < 1.0
-    indices = torch.randperm(n, generator=torch.Generator().manual_seed(0)).int()
+    indices = torch.randperm(n, generator=torch.Generator().manual_seed(seed)).int()
     n_valid = int(n * validation_set)
     train_indices, valid_indices = indices[n_valid:], indices[:n_valid]
     logger.info(
         f"Splitting {n} samples into {len(train_indices)} train and {len(valid_indices)} valid"
+    )
+    return train_indices, valid_indices  # type: ignore
+
+
+def class_balanced_split(
+    targets: Sequence[int],
+    split_size: float,
+    seed: int = 0,
+) -> tuple[Sequence[int], Sequence[int]]:
+    assert 0.0 < split_size < 1.0
+    targets = torch.tensor(targets).int()  # type: ignore
+    classes = torch.unique(targets)
+    train_indices = []
+    valid_indices = []
+    rng = torch.Generator().manual_seed(seed)
+    for c in classes:
+        class_indices = torch.where(targets == c)[0]
+        class_indices = class_indices[torch.randperm(len(class_indices), generator=rng)]
+        n_valid = int(len(class_indices) * split_size)
+        valid_indices.append(class_indices[:n_valid])
+        train_indices.append(class_indices[n_valid:])
+    train_indices = torch.cat(train_indices)
+    valid_indices = torch.cat(valid_indices)
+    logger.info(
+        f"Splitting {len(targets)} samples into {len(train_indices)} train and {len(valid_indices)} valid with class balance"
     )
     return train_indices, valid_indices  # type: ignore
 
@@ -265,3 +292,47 @@ def SplitCORe50(
         seed=seed,
         shuffle=shuffle,
     )
+
+
+def SplitCUB200_2011(
+    dataset_root: str | Path = datasets_path(),
+    n_experiences: int = 10,
+    train_transform: Callable[..., Any] | None = None,
+    eval_transform: Callable[..., Any] | None = None,
+    seed: int | None = None,
+    return_task_id: bool = False,
+    shuffle: bool = True,
+    validation_set: float = 0.0,
+):
+    root = Path(dataset_root) / "CUB_200_2011/CUB_200_2011/images"
+    eval_set = 0.1
+    train_dataset = ImageFolder(root, train_transform)
+    valid_dataset = ImageFolder(root, eval_transform)
+    test_dataset = ImageFolder(root, eval_transform)
+
+    # Constant split for train/test set
+    train_perm, test_perm = class_balanced_split(train_dataset.targets, eval_set, 1)  # type: ignore
+    logger.info(f"Created (train & valid)/test split with {len(train_perm)} train and {len(test_perm)} test samples")
+    train_dataset = Subset(train_dataset, train_perm)
+    valid_dataset = Subset(valid_dataset, train_perm)
+    test_dataset  = Subset(test_dataset, test_perm)
+
+    if validation_set > 0.0:
+        train_perm, valid_perm = valid_split_indices(len(train_dataset), validation_set, 2)
+        logger.info(f"Created train/valid split with {len(train_perm)} train and {len(valid_perm)} valid samples")
+        train_dataset = Subset(train_dataset, train_perm)
+        # REPLACE test dataset with valid dataset for evaluation during training
+        test_dataset = Subset(valid_dataset, valid_perm)
+
+    return nc_benchmark(
+        train_dataset=train_dataset,  # type: ignore
+        test_dataset=test_dataset,  # type: ignore
+        n_experiences=n_experiences,
+        task_labels=return_task_id,
+        seed=seed,
+        shuffle=shuffle,
+    )
+
+
+
+
