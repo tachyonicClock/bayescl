@@ -1,6 +1,6 @@
 scenario:
   dataset: CORe50
-  n_tasks: 25
+  n_tasks: 10
   shuffle: false
 label:
   scenario: core50
