@@ -112,6 +112,8 @@ class BALLConfig(BaseConfig):
     """Dropout rate to use on the adapter inputs."""
     vbnn: VBNNConfig
     """Configuration for the underlying Bayesian Neural Network."""
+    bll: bool = False
+    """Whether to use Bayesian layers for the output layer."""
 
 
 class TBALLConfig(BaseConfig):
@@ -175,6 +177,8 @@ class VCLConfig(BaseConfig):
     """Number of samples for each step of testing."""
     softmax_avg: bool = False
     """If true, softmax then average, otherwise average then softmax."""
+    train_mask: bool = True
+    """Should a mask be used during training"""
 
 
 StrategyConfig = NaiveConfig | DERConfig | GDumbConfig | VCLConfig

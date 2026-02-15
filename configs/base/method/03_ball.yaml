@@ -20,6 +20,5 @@ strategy:
   test_samples: 5
 
 hpsearch:
-  n_trials: 15
   params:
     "strategy.beta": {type: float, low: 0.0, high: 2.0, log: False}

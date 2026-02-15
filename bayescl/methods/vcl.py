@@ -9,6 +9,7 @@ from torch.nn.functional import nll_loss
 from torch.utils.tensorboard import SummaryWriter
 
 from bayescl.base import NumericError
+from bayescl.config import VCLConfig
 from bayescl.vbnn import (
     kl_divergence,
     posterior_to_prior,
@@ -21,29 +22,30 @@ class VCLStrategy(Naive):
     def __init__(
         self,
         *,
-        beta: float,
-        train_samples: int,
-        test_samples: int,
+        config: VCLConfig,
         mask: BoolTensor,
         optimizer_fn: Callable[[Any], torch.optim.Optimizer],
         writer: SummaryWriter,
-        softmax_avg: bool,
         **kwargs,
     ):
         del kwargs["criterion"]  # VCL uses its own criterion
         super().__init__(**kwargs)
-        if train_samples < 1:
+        if config.train_samples < 1:
             raise ValueError("train_samples must be at least 1")
-        if test_samples < 1:
+        if config.test_samples < 1:
             raise ValueError("test_samples must be at least 1")
 
         self._optimizer_fn = optimizer_fn
-        self._beta = beta
-        self._softmax_avg = softmax_avg
-        self._train_samples = train_samples
-        self._test_samples = test_samples
+        self._beta = config.beta
+        self._softmax_avg = config.softmax_avg
+        self._train_samples = config.train_samples
+        self._test_samples = config.test_samples
         self._writer = writer
         self._mask = mask.to(self.device)
+
+        if not config.train_mask:
+            for t in range(1, mask.shape[0]):
+                self._mask[t] = self._mask[t] | self._mask[t - 1]
 
     def training_step(
         self, batch: Tuple[Tensor, Tensor, Tensor]
@@ -52,7 +54,8 @@ class VCLStrategy(Naive):
         mask = self._mask[self.clock.train_exp_counter]
         x, y, _ = batch
 
-        ys_hat = torch.stack([mask * self.model(x) for _ in range(self._train_samples)])
+        ys_hat = torch.stack([self.model(x) for _ in range(self._train_samples)])
+        ys_hat[:, :, ~mask] = float("-inf")
         if self._softmax_avg:
             log_pred_probs = ys_hat.log_softmax(dim=-1).logsumexp(dim=0)
             log_pred_probs = log_pred_probs - math.log(self._train_samples)

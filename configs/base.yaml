@@ -11,7 +11,7 @@ model:
   type: huggingface
   name: microsoft/resnet-18
   adapter_filter: ".*layer\\.[0-9]\\.convolution"
-  head_module: "model.classifier"
+  head_module: "model.classifier.1"
 
 standardize: True
 

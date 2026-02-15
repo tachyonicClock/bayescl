@@ -16,6 +16,8 @@ METHODS = [
     "09_l2p",
     "10_ewc",
     "11_tball",
+    "12_rball",
+    "13_rtball",
 ]
 
 
@@ -25,8 +27,8 @@ def run_string(dataset, method):
         f"ts -G 1 -L {label:<11}",
         "notirun.sh",
         "python main.py",
-        f"-c configs/{dataset}/{method}.yaml",
-        "hpsearch",
+        f"-c configs/{dataset}/{method}.yaml".rjust(35),
+        "hpsearch hp",
     ]
     return " ".join(cli)
 

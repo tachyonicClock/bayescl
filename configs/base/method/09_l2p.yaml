@@ -11,7 +11,6 @@ peft:
 lr: 0.01
 
 hpsearch:
-  n_trials: 15
   params:
     "peft.pull_constraint_coeff": {type: float, low: 0.0, high: 2.0, log: False}
     "peft.top_k": {type: int, low: 1, high: 5}

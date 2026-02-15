@@ -236,3 +236,10 @@ def posterior_to_prior(module: nn.Module):
             assert isinstance(submodule.inducing_mean, Tensor)
             assert isinstance(submodule.inducing_scale_tril, Tensor)
             pass
+
+
+def replace_head(parent: nn.Module, name: str, config: VBNNConfig):
+    head = parent.get_submodule(name)
+    assert isinstance(head, nn.Linear), f"{head}"
+    new_head = VariationalLinear(head.in_features, head.out_features, config=config)
+    parent.set_submodule(name, new_head)

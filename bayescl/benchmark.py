@@ -9,9 +9,9 @@ from bayescl.config import Config
 from bayescl.datasets import (
     SplitCIFAR100,
     SplitCORe50,
+    SplitCUB200_2011,
     SplitDomainNet,
     SplitImageNetR,
-    SplitCUB200_2011,
 )
 
 Transform = Callable[[Any], Any]

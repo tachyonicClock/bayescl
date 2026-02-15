@@ -12,7 +12,7 @@ from avalanche.benchmarks import (
 # from avalanche.benchmarks.datasets import CORe50Dataset
 from loguru import logger
 from PIL import Image
-from torch.utils.data import Dataset, Subset, ConcatDataset
+from torch.utils.data import ConcatDataset, Dataset, Subset
 from torchvision.datasets import CIFAR100, ImageFolder
 
 

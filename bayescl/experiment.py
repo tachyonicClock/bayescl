@@ -4,6 +4,7 @@ import matplotlib
 
 from bayescl.methods.mmce import MMCEPlugin
 from bayescl.peft._tball.factory import TBALL
+from bayescl.vbnn import replace_head
 
 matplotlib.use("Agg")
 
@@ -187,6 +188,8 @@ class Experiment:
                 logger.info("Adding BALL adapters")
                 add_adapters(self.model, filter_regex, BALL(peft))
                 self.model.get_submodule(model_config.head_module).requires_grad_(True)
+                if peft.bll:
+                    replace_head(self.model, model_config.head_module, config=peft.vbnn)
             case "TBALL":
                 logger.info("Adding TBALL adapters")
                 add_adapters(self.model, filter_regex, TBALL(peft))
@@ -289,25 +292,26 @@ class Experiment:
             plugins=self.plugins,
             eval_every=self.cfg.eval_every,
             criterion=torch.nn.CrossEntropyLoss(),
-            **strategy.kwargs(),
         )
         match strategy.type:
             case "Naive":
                 return Naive(**kwargs)  # type: ignore
             case "VCL":
+                assert isinstance(strategy, config.VCLConfig)
                 logger.info("Using Variational Continual Learning (VCL) strategy")
                 return VCLStrategy(
+                    config=strategy,
                     mask=self.mask,
                     writer=self.tb_log.writer,
                     optimizer_fn=self._new_optimizer,
-                    **kwargs,  # type: ignore
+                    **kwargs,
                 )
             case "DER":
                 logger.info("Using Dark Experience Replay (DER) strategy")
-                return DER(**kwargs)  # type: ignore
+                return DER(**kwargs, **strategy.kwargs())  # type: ignore
             case "GDumb":
                 logger.info("Using GDumb strategy")
-                return GDumb(**kwargs)  # type: ignore
+                return GDumb(**kwargs, **strategy.kwargs())  # type: ignore
             case _:
                 raise ValueError(f"Unsupported strategy: {strategy.type}")
 
