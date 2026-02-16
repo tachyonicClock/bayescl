@@ -367,3 +367,6 @@ class Experiment:
             if isinstance(value, (float, int)):
                 logger.info(f"{key}: {value:.4f}")
         return metrics["accuracy_seen_avg"], metrics["ece_seen_avg"]
+
+    def count_parameters(self):
+        print(parameter_summary_str(self.model))

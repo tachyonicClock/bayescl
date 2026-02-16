@@ -1,6 +1,6 @@
 DATASETS = [
     "cifar100",
-    "domainnet",
+    "core50",
     "imagenetr",
 ]
 

@@ -280,5 +280,12 @@ def hpsearch(cfg: Config, name: str):
     run_study(cfg)
 
 
+@cli.command()
+@click.pass_obj
+def count_parameters(cfg: Config):
+    experiment = Experiment(cfg)
+    experiment.count_parameters()
+
+
 if __name__ == "__main__":
     cli()

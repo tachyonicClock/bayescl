@@ -105,13 +105,17 @@ def parameter_summary_str(module: nn.Module) -> str:
     """Print a summary of the number of parameters in the module."""
     total_params = sum(p.numel() for p in module.parameters())
     trainable_params = sum(p.numel() for p in module.parameters() if p.requires_grad)
+    buffers = sum(p.numel() for p in module.buffers())
+    frozen_params = total_params - trainable_params
     adapter_params = count_adapter_parameters(module)
 
-    fmt_int = ">10_"
+    fmt_int = ">10,"
     fmt_percent = ">9.2f"
     return (
         f"Total:       {total_params:{fmt_int}}\n"
         f"Trainable:   {trainable_params:{fmt_int}}\n"
+        f"Frozen:      {frozen_params:{fmt_int}}\n"
+        f"Buffers:     {buffers:{fmt_int}}\n"
         f"Adapter:     {adapter_params:{fmt_int}}\n"
         f"Non-adapter: {(total_params - adapter_params):{fmt_int}}\n"
         f"Adapter %:   {(adapter_params / total_params * 100):{fmt_percent}}%\n"

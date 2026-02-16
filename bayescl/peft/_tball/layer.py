@@ -170,11 +170,12 @@ class TBALLConv2d(BALLLayer, nn.Conv2d):
         rank_ks = config.rank * ks
         tball_A = torch.empty(rank_ks, in_channels * ks)  # A
         tball_C = torch.empty(out_channels // groups * ks, rank_ks)  # B
+
         # Use orthogonal initialization because it preserves norms
         nn.init.orthogonal_(tball_A)
         nn.init.orthogonal_(tball_C)
-        self.register_buffer("tball_A", tball_A)
-        self.register_buffer("tball_C", tball_C)
+        self.tball_A = nn.Parameter(tball_A, requires_grad=False)
+        self.tball_C = nn.Parameter(tball_C, requires_grad=False)
 
         # Bayesian core layer
         if config.bnn == "FCG":
