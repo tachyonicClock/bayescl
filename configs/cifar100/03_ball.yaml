@@ -1,10 +1,11 @@
-# bayescl/hp/cifar100/ball 88eba84
-# 88.10% Acc. 1.34% ECE
-# Selected best run based on highest accuracy from 15 trials
+# bayescl/hp/cifar100/ball 9867fb2
+# 61.98% Acc. 3.72% ECE
+# Score 79.13% (ACC+(1-ECE))/2
+# Selected best run based on highest score 10 trials
 include:
 - ../base.yaml
 - ../base/dataset/cifar100.yaml
 - ../base/method/03_ball.yaml
-lr: 0.00074
+lr: 0.00066
 strategy:
-  beta: 0.61
+  beta: 1.9

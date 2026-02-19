@@ -1,11 +1,12 @@
-# bayescl/hp/imagenetr/der 88eba84
-# 82.81% Acc. 5.18% ECE
-# Selected best run based on highest accuracy from 15 trials
+# bayescl/hp/imagenetr/der 9867fb2
+# 58.82% Acc. 4.30% ECE
+# Score 77.26% (ACC+(1-ECE))/2
+# Selected best run based on highest score 8 trials
 include:
 - ../base.yaml
 - ../base/dataset/imagenetr.yaml
 - ../base/method/06_der.yaml
-lr: 0.00012
+lr: 0.00029
 strategy:
-  alpha: 0.26
-  beta: 0.26
+  alpha: 0.25
+  beta: 0.73

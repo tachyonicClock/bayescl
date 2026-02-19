@@ -1,11 +1,12 @@
-# bayescl/hp/cifar100/der 88eba84
-# 90.17% Acc. 2.12% ECE
-# Selected best run based on highest accuracy from 15 trials
+# bayescl/hp/cifar100/der 9867fb2
+# 74.02% Acc. 3.54% ECE
+# Score 85.24% (ACC+(1-ECE))/2
+# Selected best run based on highest score 10 trials
 include:
 - ../base.yaml
 - ../base/dataset/cifar100.yaml
 - ../base/method/06_der.yaml
-lr: 0.0002
+lr: 0.00021
 strategy:
-  alpha: 0.48
-  beta: 0.76
+  alpha: 0.62
+  beta: 0.88

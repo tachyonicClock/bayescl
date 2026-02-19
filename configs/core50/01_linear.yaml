@@ -1,4 +1,9 @@
+# bayescl/hp/core50/linear 9867fb2
+# 53.14% Acc. 4.55% ECE
+# Score 74.30% (ACC+(1-ECE))/2
+# Selected best run based on highest score 10 trials
 include:
 - ../base.yaml
 - ../base/dataset/core50.yaml
 - ../base/method/01_linear.yaml
+lr: 0.00044

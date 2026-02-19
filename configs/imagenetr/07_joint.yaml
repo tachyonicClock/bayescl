@@ -1,8 +1,9 @@
-# bayescl/hp/imagenetr/joint 88eba84
-# 84.54% Acc. 1.28% ECE
-# Selected best run based on highest accuracy from 15 trials
+# bayescl/hp/imagenetr/joint 9867fb2
+# 63.00% Acc. 1.98% ECE
+# Score 80.51% (ACC+(1-ECE))/2
+# Selected best run based on highest score 10 trials
 include:
 - ../base.yaml
 - ../base/dataset/imagenetr.yaml
 - ../base/method/07_joint.yaml
-lr: 0.00012
+lr: 0.00015
