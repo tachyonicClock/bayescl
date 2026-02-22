@@ -160,116 +160,20 @@ def cli(
     default=False,
     help="Run in validation mode",
 )
-@click.option(
-    "--from-study",
-    is_flag=True,
-    default=False,
-    help="Use the best configuration found by optuna.",
-)
-@click.option(
-    "--n-trials",
-    "-n",
-    type=int,
-    default=1,
-    help="Repeat with different seeds.",
-)
+@click.argument("name", type=str, default="manual")
+@click.argument("seed", type=int, default=0)
 @click.pass_obj
 def run(
     cfg: Config,
+    name: str,
+    seed: int,
     validate: bool,
-    from_study: bool,
-    n_trials: int = 1,
 ):
     cfg.scenario.validation = validate
-    git_commit_hash = commit_short_hash()
-    git_message = commit_message()
-
-    study = None
-    if from_study:
-        study = optuna.load_study(
-            study_name=get_optuna_study_name(cfg),
-            storage=environ["OPTUNA_STORAGE"],
-        )
-        best_trial = min(study.best_trials, key=lambda t: t.values[1])
-
-        logger.info(f"Using best configuration from study {study.study_name}")
-        logger.info(f"Using best trial #{best_trial.number} from study '{study}'")
-        logger.info(f"  Values: {best_trial.values}")
-        for key, value in best_trial.params.items():
-            logger.info(f"  {key}: {value}")
-            obj_dot_notation_set(key, cfg, value)
-
-    accuracy_seen_avgs, ece_seen_avgs = [], []
-    for i in range(n_trials):
-        cfg.seed = cfg.seed + i
-        if n_trials > 1:
-            cfg.label.run = f"run_{i:04d}"
-        accuracy_seen_avg, ece_seen_avg = Experiment(cfg).run()
-        accuracy_seen_avgs.append(accuracy_seen_avg)
-        ece_seen_avgs.append(ece_seen_avg)
-
-    if from_study and study is not None:
-        log_to_logbook(
-            cfg,
-            study._study_id,
-            accuracy_seen_avgs,
-            ece_seen_avgs,
-            git_commit_hash,
-            git_message,
-        )
-
-
-def log_to_logbook(
-    cfg: Config,
-    optuna_id: int,
-    accuracy_seen_avgs: Sequence[float],
-    ece_seen_avgs: Sequence[float],
-    git_commit_hash: str,
-    git_message: str,
-):
-    filename = Path(
-        f"~/logbooks/{cfg.label.scenario}_{cfg.label.method}.csv"
-    ).expanduser()
-    filename.parent.mkdir(parents=True, exist_ok=True)
-
-    with open(filename, "a") as f:
-        writer = csv.writer(
-            f,
-            strict=True,
-        )
-        # if empty file, write header
-        if f.tell() == 0:
-            writer.writerow(
-                [
-                    "scenario",
-                    "method",
-                    "study",
-                    "optuna_id",
-                    "git_commit",
-                    "n_trials",
-                    "accuracy_mean",
-                    "accuracy_std",
-                    "ece_mean",
-                    "ece_std",
-                    "git_message",
-                ]
-            )
-        writer.writerow(
-            [
-                cfg.label.scenario,
-                cfg.label.method,
-                cfg.label.study,
-                f"{optuna_id:06d}",
-                git_commit_hash,
-                len(accuracy_seen_avgs),
-                f"{np.mean(accuracy_seen_avgs) * 100:0.4f}",
-                f"{np.std(accuracy_seen_avgs) * 100:0.4f}",
-                f"{np.mean(ece_seen_avgs) * 100:0.4f}",
-                f"{np.std(ece_seen_avgs) * 100:0.4f}",
-                git_message,
-            ]
-        )
-
+    cfg.seed = seed
+    cfg.label.study = name
+    cfg.label.run   = f"{seed:02d}"
+    Experiment(cfg).run()
 
 @cli.command()
 @click.pass_obj

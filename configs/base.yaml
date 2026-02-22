@@ -1,6 +1,3 @@
-label:
-  study: manual
-
 lr: 0.001
 
 train_mb_size: 128
