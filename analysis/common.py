@@ -7,13 +7,13 @@ OFFLINE = {"joint"}
 
 #: Maps method names to their display labels.
 METHOD_TO_LABEL = {
-    'joint': "Offline LoRA",
-    'linear': "Linear",
-    'rwalk': "RWalk",
-    'ewc': "EWC",
-    'lora': "LoRA",
-    'ball': "BALL",
-    'tball': "TBALL",
+    "joint": "Offline LoRA",
+    "linear": "Linear",
+    "rwalk": "RWalk",
+    "ewc": "EWC",
+    "lora": "LoRA",
+    "ball": "BALL",
+    "tball": "TBALL",
 }
 
 METHOD_TO_MARKER = {
@@ -25,13 +25,13 @@ METHOD_TO_LINESTYLE = {
 }
 
 COLORS = {
-    'tball': xgfs_normal12(0),
-    'linear': xgfs_normal12(1),
-    'joint': xgfs_normal12(2),
-    'rwalk': xgfs_normal12(3),
-    'ball': xgfs_normal12(4),
-    'ewc': xgfs_normal12(5),
-    'lora': xgfs_normal12(6),
+    "tball": xgfs_normal12(0),
+    "linear": xgfs_normal12(1),
+    "joint": xgfs_normal12(2),
+    "rwalk": xgfs_normal12(3),
+    "ball": xgfs_normal12(4),
+    "ewc": xgfs_normal12(5),
+    "lora": xgfs_normal12(6),
 }
 
 #: Maps dataset names to their display labels.
@@ -74,13 +74,13 @@ BACKBONES = {
 REPLAY_METHODS = {"replay", "gdumb", "der"}
 
 PLOT_METHODS = [
-    'joint',
-    'linear',
-    'rwalk',
-    'ewc',
-    'lora',
-    'ball',
-    'tball',
+    "joint",
+    "linear",
+    "rwalk",
+    "ewc",
+    "lora",
+    "ball",
+    "tball",
 ]
 
 

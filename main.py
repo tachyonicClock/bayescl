@@ -1,5 +1,4 @@
-from pathlib import Path
-from typing import Callable, List, Sequence
+from typing import Callable, List
 
 import matplotlib
 
@@ -7,18 +6,16 @@ from bayescl.base import NumericError
 
 matplotlib.use("Agg")
 
-import csv
 from os import environ
 
 import click
-import numpy as np
 import optuna
 from loguru import logger
 
 from bayescl.config import Config, from_configs
 from bayescl.experiment import Experiment
 from bayescl.util.git import commit_message, commit_short_hash, is_git_status_clean
-from bayescl.util.optuna import obj_dot_notation_set, optuna_suggest
+from bayescl.util.optuna import optuna_suggest
 
 OPTUNA_PROJECT_PREFIX = "bayescl"
 
@@ -172,8 +169,9 @@ def run(
     cfg.scenario.validation = validate
     cfg.seed = seed
     cfg.label.study = name
-    cfg.label.run   = f"{seed:02d}"
+    cfg.label.run = f"{seed:02d}"
     Experiment(cfg).run()
+
 
 @cli.command()
 @click.pass_obj

@@ -160,7 +160,9 @@ class Experiment:
             raise ValueError("PEFT is only supported for HuggingFace models.")
 
         filter_regex = RegexFilter(model_config.adapter_filter)
-        torch.manual_seed(self.cfg.seed + 7808) # Make recreating the random projections in T-BALL easy.
+        torch.manual_seed(
+            self.cfg.seed + 7808
+        )  # Make recreating the random projections in T-BALL easy.
 
         match peft.type:
             case "LoRA":

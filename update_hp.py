@@ -25,7 +25,7 @@ METHODS = {
     "joint": "07_joint",
     "rwalk": "08_rwalk",
     "l2p": "09_l2p",
-    "tball": "11_tball"
+    "tball": "11_tball",
 }
 
 STUDIES = [
@@ -68,9 +68,11 @@ def float_representer(dumper, value):
     text = f"{value:.2g}"
     return dumper.represent_scalar("tag:yaml.org,2002:float", text)
 
+
 def score(values: Tuple[float, float]) -> float:
     acc, ece = values
     return (acc + (1 - ece)) / 2
+
 
 yaml.add_representer(float, float_representer)
 
@@ -87,7 +89,9 @@ for study_name in STUDIES:
         print(f"Study '{study_name}' not found, skipping...")
         continue
 
-    trials = [t for t in study.trials if t.state == optuna.trial.TrialState.COMPLETE][:MAX_TRIALS]
+    trials = [t for t in study.trials if t.state == optuna.trial.TrialState.COMPLETE][
+        :MAX_TRIALS
+    ]
 
     # select the trial with the best ECE (second value in the values tuple)
     best_trial = max(trials, key=lambda t: score(t.values))

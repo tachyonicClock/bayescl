@@ -1,3 +1,4 @@
+import os
 import pickle
 import tarfile
 from dataclasses import asdict, dataclass
@@ -15,7 +16,6 @@ from calibration import (
 )
 from torch import Tensor
 from torchmetrics.utilities.compute import normalize_logits_if_needed
-import os
 
 DATASET_NAME_MAP = {
     # "ImageNet_R": "imagenetr",
@@ -125,14 +125,17 @@ def extract_bayescl(
                 yield dataset, method, run_id, metrics
 
 
-def from_logs(filename: Path) -> Generator[Tuple[str, str, str, Dict[str, Any]], None, None]:
+def from_logs(
+    filename: Path,
+) -> Generator[Tuple[str, str, str, Dict[str, Any]], None, None]:
     # log/test/cifar100/ball/00/metrics.pkl
     # log/test/cifar100/ball/00/raw_data.pkl
     for root, _, files in os.walk(filename):
         if "metrics.pkl" in files and "raw_data.pkl" in files:
-            with open(os.path.join(root, "metrics.pkl"), "rb") as f_metrics, open(
-                os.path.join(root, "raw_data.pkl"), "rb"
-            ) as f_raw_data:
+            with (
+                open(os.path.join(root, "metrics.pkl"), "rb") as f_metrics,
+                open(os.path.join(root, "raw_data.pkl"), "rb") as f_raw_data,
+            ):
                 metrics = pickle.load(f_metrics)
                 raw_data = pickle.load(f_raw_data)
                 metrics.update(raw_data)
@@ -142,6 +145,7 @@ def from_logs(filename: Path) -> Generator[Tuple[str, str, str, Dict[str, Any]],
                 method = parts[3]
                 run_id = parts[4]
                 yield dataset, method, run_id, metrics
+
 
 def get_final_proba_and_targets(data) -> Tuple[Tensor, Tensor]:
     n_tasks = max(train_id for (train_id, _) in data["y_logit"].keys()) + 1
@@ -275,5 +279,9 @@ for dataset, method, run_id, data in from_logs("log/test"):
         calibration_records.append(record)
 
 dataclass_to_df(summary_records).to_parquet("analysis/dataframe/summary.parquet")
-dataclass_to_df(time_series_records).to_parquet("analysis/dataframe/time_series.parquet")
-dataclass_to_df(calibration_records).to_parquet("analysis/dataframe/calibration.parquet")
+dataclass_to_df(time_series_records).to_parquet(
+    "analysis/dataframe/time_series.parquet"
+)
+dataclass_to_df(calibration_records).to_parquet(
+    "analysis/dataframe/calibration.parquet"
+)
