@@ -54,8 +54,7 @@ class VCLStrategy(Naive):
         mask = self._mask[self.clock.train_exp_counter]
         x, y, _ = batch
 
-        ys_hat = torch.stack([self.model(x) for _ in range(self._train_samples)])
-        ys_hat[:, :, ~mask] = float("-inf")
+        ys_hat = torch.stack([mask * self.model(x) for _ in range(self._train_samples)])
         if self._softmax_avg:
             log_pred_probs = ys_hat.log_softmax(dim=-1).logsumexp(dim=0)
             log_pred_probs = log_pred_probs - math.log(self._train_samples)
