@@ -7,75 +7,38 @@ OFFLINE = {"joint"}
 
 #: Maps method names to their display labels.
 METHOD_TO_LABEL = {
-    "joint": "Offline LoRA",
-    "sprompts_coda": r"CODA-P",
-    "sprompts_dual": r"DualPrompt",
-    "InfLoRA": r"InfLoRA",
-    "sprompts_l2p": r"L2P",
-    "replay": "Replay",
-    "gdumb": "GDumb",
-    "der": "DER",
-    "lora": "LoRA",
-    "linear": "Linear",
-    "rwalk": "RWalk",
-    "ball": "BALL",
+    'joint': "Offline LoRA",
+    'linear': "Linear",
+    'rwalk': "RWalk",
+    'ewc': "EWC",
+    'lora': "LoRA",
+    'ball': "BALL",
+    'tball': "TBALL",
 }
 
 METHOD_TO_MARKER = {
-    # PEFT methods
-    "sprompts_coda": "s",
-    "sprompts_dual": "s",
-    "InfLoRA": "s",
-    "sprompts_l2p": "s",
-    # Replay methods
-    "replay": "x",
-    "gdumb": "x",
-    "der": "x",
-    # Replay-free methods
-    "lora": ".",
-    "linear": ".",
-    "rwalk": ".",
-    "ball": ".",
     None: ".",
 }
 
 METHOD_TO_LINESTYLE = {
-    # PEFT methods
-    "sprompts_coda": "-",
-    "sprompts_dual": "-",
-    "InfLoRA": "-",
-    "sprompts_l2p": "-",
-    # Replay methods
-    "replay": "--",
-    "gdumb": "--",
-    "der": "--",
-    # Replay-free methods
-    "lora": ":",
-    "linear": ":",
-    "rwalk": ":",
-    "ball": ":",
     None: "-",
 }
 
 COLORS = {
-    "rwalk": xgfs_normal12(3),
-    "replay": xgfs_normal12(10),
-    "lora": xgfs_normal12(2),
-    "linear": xgfs_normal12(8),
-    "sprompts_l2p": xgfs_normal12(7),
-    # "joint": xgfs_normal12(0),
-    "InfLoRA": xgfs_normal12(6),
-    "sprompts_dual": xgfs_normal12(5),
-    "der": xgfs_normal12(9),
-    "sprompts_coda": xgfs_normal12(4),
-    "gdumb": xgfs_normal12(11),
-    "ball": xgfs_normal12(1),
+    'tball': xgfs_normal12(0),
+    'linear': xgfs_normal12(1),
+    'joint': xgfs_normal12(2),
+    'rwalk': xgfs_normal12(3),
+    'ball': xgfs_normal12(4),
+    'ewc': xgfs_normal12(5),
+    'lora': xgfs_normal12(6),
 }
 
 #: Maps dataset names to their display labels.
 DATASET_TO_LABEL = {
     "cifar100": "iCIFAR100/10",
-    "domainnet": "iDomainNet345/5",
+    # "domainnet": "iDomainNet345/5",
+    "core50": "iCore50/10",
     "imagenetr": "iImageNet-R200/10",
 }
 
@@ -111,17 +74,13 @@ BACKBONES = {
 REPLAY_METHODS = {"replay", "gdumb", "der"}
 
 PLOT_METHODS = [
-    "sprompts_coda",
-    "sprompts_dual",
-    "InfLoRA",
-    "sprompts_l2p",
-    "replay",
-    "gdumb",
-    "der",
-    "lora",
-    "linear",
-    "rwalk",
-    "ball",
+    'joint',
+    'linear',
+    'rwalk',
+    'ewc',
+    'lora',
+    'ball',
+    'tball',
 ]
 
 
