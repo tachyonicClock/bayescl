@@ -132,7 +132,9 @@ class SDLoRAConv2d(nn.Conv2d, SDLoRA):
         self.A[task].requires_grad = True
         self.B[task].requires_grad = True
 
-    def conv2d(self, input: torch.Tensor, weight: torch.Tensor, bias=None) -> torch.Tensor:
+    def conv2d(
+        self, input: torch.Tensor, weight: torch.Tensor, bias=None
+    ) -> torch.Tensor:
         return nn.functional.conv2d(
             input,
             weight,
@@ -154,6 +156,8 @@ class SDLoRAConv2d(nn.Conv2d, SDLoRA):
             W_k = W_k.view(self.weight.shape)
 
             # Normalize the matrix using the Frobenius norm
+            # TODO: Recomputing the norm every forward pass is inefficient for previous
+            # A,B matricies that are constants.
             direction = W_k / (torch.norm(W_k, p="fro") + 1e-8)
 
             # Scale by magnitude parameter and add to output
