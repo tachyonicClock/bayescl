@@ -16,6 +16,7 @@ from ._create import (
     set_module,
 )
 from ._lora.factory import LoRA_Factory
+from ._sd_lora.factory import SDLoRA
 
 __all__ = [
     "AdapterBase",
@@ -33,4 +34,5 @@ __all__ = [
     "CLoRAConfig",
     "parameter_summary_str",
     "inflora",
+    "SDLoRA",
 ]

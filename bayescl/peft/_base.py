@@ -10,6 +10,7 @@ class AdapterBase:
     This is used to identify parameters that should be treated as adapter
     parameters, which have different behavior (e.g., requiring gradients).
     """
+    adapter_modules: tuple[str, ...] = ()
 
 
 class AdapterFactory(Protocol):

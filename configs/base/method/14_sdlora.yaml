@@ -1,0 +1,6 @@
+label:
+  method: sdlora
+
+peft:
+  type: SDLoRA
+  rank_per_task: 2

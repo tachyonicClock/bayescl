@@ -79,6 +79,11 @@ def iter_adapter_parameters(
         if isinstance(submodule, nn.Module):
             for name in submodule.adapter_parameter_names:
                 yield f"{prefix}.{name}", submodule.get_parameter(name)
+            for name in submodule.adapter_modules:
+                child_module = submodule.get_submodule(name)
+                if isinstance(child_module, nn.Module):
+                    for param_name, param in child_module.named_parameters():
+                        yield f"{prefix}.{name}.{param_name}", param
 
 
 def only_adapters_require_grad(module: nn.Module) -> None:

@@ -1,24 +1,25 @@
 DATASETS = [
-    "cifar100",
+    # "cifar100",
     "core50",
     "imagenetr",
 ]
 METHODS = [
-    "01_linear",
-    "02_lora",
+    # "01_linear",
+    # "02_lora",
     "03_ball",
     # "04_replay",
     # "05_gdumb",
     # "06_der",
-    "07_joint",
-    "08_rwalk",
+    # "07_joint",
+    # "08_rwalk",
     # "09_l2p",
-    "10_ewc",
+    # "10_ewc",
     "11_tball",
     # "12_rball",
     # "13_rtball",
 ]
 N_RUNS = 5
+
 
 def run_string(trial: int, dataset: str, method: str):
     label = f"{dataset[:5]}_{method[3 : 3 + 5]}"
@@ -31,6 +32,7 @@ def run_string(trial: int, dataset: str, method: str):
         f"run test {trial}",
     ]
     return " ".join(cli)
+
 
 for trial in range(N_RUNS):
     for dataset in DATASETS:

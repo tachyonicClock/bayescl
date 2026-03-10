@@ -136,7 +136,12 @@ class TBALLConfig(BaseConfig):
     """Whether to include bias in the Bayesian layers."""
 
 
-PEFTConfig = LoRAConfig | L2PConfig | BALLConfig | TBALLConfig
+class SDLoRAConfig(BaseConfig):
+    type: Literal["SDLoRA"] = "SDLoRA"
+    rank_per_task: int
+
+
+PEFTConfig = LoRAConfig | L2PConfig | BALLConfig | TBALLConfig | SDLoRAConfig
 
 # --- Strategy Configurations ---
 
