@@ -8,8 +8,10 @@ from pydantic import BaseModel, Field
 
 from bayescl.base import BaseConfig
 from bayescl.methods.clora import CLoRAConfig
+from bayescl.peft._ball.config import BALLConfig
+from bayescl.peft._sd_lora.config import SDLoRAConfig
+from bayescl.peft._tball.config import TBALLConfig
 from bayescl.util.optuna import HyperparameterSearch
-from bayescl.vbnn import VBNNConfig
 
 # --- Scenario Configurations ---
 
@@ -96,20 +98,6 @@ class L2PConfig(BaseConfig):
     top_k: int
 
 
-class BALLConfig(BaseConfig):
-    type: Literal["BALL"] = "BALL"
-    r: int = 4
-    """Rank of the LoRA adapters."""
-    lora_alpha: int = 1
-    """Scaling factor for the LoRA adapters."""
-    dropout: float = 0.0
-    """Dropout rate to use on the adapter inputs."""
-    vbnn: VBNNConfig
-    """Configuration for the underlying Bayesian Neural Network."""
-    bll: bool = False
-    """Whether to use Bayesian layers for the output layer."""
-
-
 class TBALLConfig(BaseConfig):
     type: Literal["TBALL"] = "TBALL"
     rank: int
@@ -128,11 +116,6 @@ class TBALLConfig(BaseConfig):
     """Full covariance (FCG) or fully factorized Gaussian (FFG) Bayesian layers."""
     bias: bool = False
     """Whether to include bias in the Bayesian layers."""
-
-
-class SDLoRAConfig(BaseConfig):
-    type: Literal["SDLoRA"] = "SDLoRA"
-    rank_per_task: int
 
 
 PEFTConfig = (

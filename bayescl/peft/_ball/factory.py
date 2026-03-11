@@ -1,10 +1,11 @@
 from torch import nn
 from typeguard import typechecked
 
-from bayescl.config import BALLConfig
 from bayescl.peft._ball import layer
 from bayescl.peft._base import AdapterFactory
 from bayescl.vbnn import VBNNConfig as VBNNConfig
+
+from .config import BALLConfig
 
 
 class BALL(AdapterFactory):

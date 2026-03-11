@@ -1,9 +1,9 @@
 from torch import nn
 from typeguard import typechecked
 
-from bayescl.config import TBALLConfig
 from bayescl.peft._base import AdapterFactory
 
+from .config import TBALLConfig
 from .layer import TBALLConv2d, TBALLLinear
 
 

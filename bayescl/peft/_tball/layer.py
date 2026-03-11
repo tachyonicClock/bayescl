@@ -7,8 +7,9 @@ from torch import Tensor
 from torch.nn import functional as F
 from torch.nn.modules.utils import _pair
 
-from bayescl.config import TBALLConfig
 from bayescl.peft._base import AdapterBase
+
+from .config import TBALLConfig
 
 
 class WeightModule(nn.Module):

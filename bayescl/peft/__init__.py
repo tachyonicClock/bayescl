@@ -3,8 +3,6 @@
 from . import inflora
 from ._ball.factory import BALL
 from ._base import AdapterBase, AdapterFactory
-from ._clora.config import CLoRAConfig
-from ._clora.factory import CLoRA
 from ._create import (
     RegexFilter,
     add_adapters,
@@ -30,8 +28,6 @@ __all__ = [
     "set_module",
     "LoRA_Factory",
     "BALL",
-    "CLoRA",
-    "CLoRAConfig",
     "parameter_summary_str",
     "inflora",
     "SDLoRA",

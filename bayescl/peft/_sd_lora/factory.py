@@ -1,8 +1,8 @@
 from torch import nn
 
-from bayescl.config import SDLoRAConfig
 from bayescl.peft._base import AdapterFactory
 
+from .config import SDLoRAConfig
 from .layer import SDLoRAConv2d, SDLoRALinear
 
 

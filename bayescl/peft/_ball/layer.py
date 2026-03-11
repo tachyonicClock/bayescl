@@ -6,9 +6,10 @@ from torch import Tensor
 from torch.nn import functional as F
 from torch.nn.modules.utils import _pair
 
-from bayescl.config import BALLConfig
 from bayescl.peft._base import AdapterBase
 from bayescl.vbnn import VariationalParameter
+
+from .config import BALLConfig
 
 
 class BALLLayer(AdapterBase):
