@@ -8,8 +8,7 @@ from bayescl.peft._base import AdapterBase
 
 
 class SDLoRA(AdapterBase):
-    adapter_modules = ("A", "B")
-    adapter_parameter_names = ("M",)
+    adapter_parameter_names = ("M", "A_t", "B_t")
 
 
 class SDLoRALinear(nn.Linear, SDLoRA):
@@ -80,7 +79,10 @@ class SDLoRALinear(nn.Linear, SDLoRA):
         return h_prime
 
 
-class SDLoRAConv2d(nn.Conv2d, SDLoRA):
+
+class SDLoRAConv2d(nn.Conv2d):
+    AB: torch.Tensor  # Cache for frozen directions of previous tasks
+
     def __init__(
         self,
         in_channels: int,
@@ -96,71 +98,67 @@ class SDLoRAConv2d(nn.Conv2d, SDLoRA):
             kernel_size,
             **kwargs,
         )
-
         kh, kw = _pair(kernel_size)
-        assert kh == kw, "Only square kernels are supported for SDLoRAConv2d"
-        ks = kh
         r = rank_per_task
-        groups = self.groups
-        self.A = nn.ParameterList(
-            [
-                nn.Parameter(torch.zeros((r * ks, in_channels * ks)))
-                for _ in range(n_tasks)
-            ]
-        )
-        self.B = nn.ParameterList(
-            [
-                nn.Parameter(torch.zeros((out_channels // groups * ks, r * ks)))
-                for _ in range(n_tasks)
-            ]
-        )
-        self.M = nn.Parameter(torch.zeros((n_tasks, 1)))
-        self.task: int = 0
+        in_c_per_group = in_channels // self.groups
+        
+        # Current task trainable direction (A_t and B_t)
+        self.A_t = nn.Parameter(torch.empty((r, in_c_per_group * kh * kw)))
+        self.B_t = nn.Parameter(torch.empty((out_channels, r)))
 
-        # Initialize the LoRA parameters
-        for A_k, B_k in zip(self.A, self.B):
-            nn.init.kaiming_uniform_(A_k, a=math.sqrt(5))
-            nn.init.zeros_(B_k)
-        nn.init.ones_(self.M)
+        # Cache for frozen directions of previous tasks
+        # Use register_buffer instead of Parameter(requires_grad=False)
+        self.register_buffer("AB", torch.zeros(n_tasks, *self.weight.shape))
 
-        self.set_task(0)
+        # Magnitude parameters for each task
+        # Page 5: "...the learned magnitudes, all initialized to ones..."
+        self.M = nn.Parameter(torch.ones((n_tasks, 1)))
 
+        self.task_idx = 0
+        self._init_lora_params()
+
+    def _init_lora_params(self):
+        nn.init.normal_(self.A_t)
+        nn.init.normal_(self.B_t)
+
+    @torch.no_grad()
     def set_task(self, task: int):
-        self.task = task
-        self.A.requires_grad_(False)
-        self.B.requires_grad_(False)
-        self.A[task].requires_grad = True
-        self.B[task].requires_grad = True
+        # Capture the finished direction from the task just completed
+        W_finished = self.B_t @ self.A_t
+        direction = W_finished / (torch.norm(W_finished, p="fro") + 1e-8)
+        self.AB[self.task_idx] = direction.view_as(self.weight)
+        
+        # Reset A and B for the new task
+        self._init_lora_params()
+        self.task_idx = task
 
-    def conv2d(
-        self, input: torch.Tensor, weight: torch.Tensor, bias=None
-    ) -> torch.Tensor:
+    def forward(self, input: torch.Tensor) -> torch.Tensor:       
+        # Start with the frozen pre-trained weights
+        W_eff = self.weight.clone()
+        
+        # Add past tasks' frozen directions scaled by their updated magnitudes
+        if self.task_idx > 0:
+            # Reshape M for broadcasting: (task_idx, 1, 1, 1, 1)
+            past_magnitudes = self.M[:self.task_idx].view(-1, 1, 1, 1, 1)
+            past_directions = self.AB[:self.task_idx]
+            
+            # Sum across the task dimension (dim=0)
+            W_eff = W_eff + (past_magnitudes * past_directions).sum(dim=0)
+        
+        # Add the current task's normalized direction scaled by its magnitude
+        W_t = self.B_t @ self.A_t
+        W_t_normalized = W_t / (torch.norm(W_t, p="fro") + 1e-8)
+        
+        # Ensure broadcasting matches the weight dimensions
+        current_magnitude = self.M[self.task_idx].view(1, 1, 1, 1)
+        W_eff = W_eff + current_magnitude * W_t_normalized.view_as(self.weight)
+
         return nn.functional.conv2d(
             input,
-            weight,
-            bias,
+            W_eff,
+            self.bias,
             stride=self.stride,
             padding=self.padding,
             dilation=self.dilation,
             groups=self.groups,
         )
-
-    def forward(self, input: torch.Tensor) -> torch.Tensor:
-        h_prime = self.conv2d(input, self.weight, self.bias)
-
-        for k in range(self.task + 1):
-            A_k, B_k, alpha_k = self.A[k], self.B[k], self.M[k]
-
-            # Compute Adaptation Matrix
-            W_k = B_k @ A_k
-            W_k = W_k.view(self.weight.shape)
-
-            # Normalize the matrix using the Frobenius norm
-            # TODO: Recomputing the norm every forward pass is inefficient for previous
-            # A,B matricies that are constants.
-            direction = W_k / (torch.norm(W_k, p="fro") + 1e-8)
-
-            # Scale by magnitude parameter and add to output
-            h_prime += alpha_k * self.conv2d(input, direction)
-
-        return h_prime
