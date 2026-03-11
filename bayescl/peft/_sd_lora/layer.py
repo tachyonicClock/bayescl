@@ -79,7 +79,6 @@ class SDLoRALinear(nn.Linear, SDLoRA):
         return h_prime
 
 
-
 class SDLoRAConv2d(nn.Conv2d):
     AB: torch.Tensor  # Cache for frozen directions of previous tasks
 
@@ -101,7 +100,7 @@ class SDLoRAConv2d(nn.Conv2d):
         kh, kw = _pair(kernel_size)
         r = rank_per_task
         in_c_per_group = in_channels // self.groups
-        
+
         # Current task trainable direction (A_t and B_t)
         self.A_t = nn.Parameter(torch.empty((r, in_c_per_group * kh * kw)))
         self.B_t = nn.Parameter(torch.empty((out_channels, r)))
@@ -127,28 +126,28 @@ class SDLoRAConv2d(nn.Conv2d):
         W_finished = self.B_t @ self.A_t
         direction = W_finished / (torch.norm(W_finished, p="fro") + 1e-8)
         self.AB[self.task_idx] = direction.view_as(self.weight)
-        
+
         # Reset A and B for the new task
         self._init_lora_params()
         self.task_idx = task
 
-    def forward(self, input: torch.Tensor) -> torch.Tensor:       
+    def forward(self, input: torch.Tensor) -> torch.Tensor:
         # Start with the frozen pre-trained weights
         W_eff = self.weight.clone()
-        
+
         # Add past tasks' frozen directions scaled by their updated magnitudes
         if self.task_idx > 0:
             # Reshape M for broadcasting: (task_idx, 1, 1, 1, 1)
-            past_magnitudes = self.M[:self.task_idx].view(-1, 1, 1, 1, 1)
-            past_directions = self.AB[:self.task_idx]
-            
+            past_magnitudes = self.M[: self.task_idx].view(-1, 1, 1, 1, 1)
+            past_directions = self.AB[: self.task_idx]
+
             # Sum across the task dimension (dim=0)
             W_eff = W_eff + (past_magnitudes * past_directions).sum(dim=0)
-        
+
         # Add the current task's normalized direction scaled by its magnitude
         W_t = self.B_t @ self.A_t
         W_t_normalized = W_t / (torch.norm(W_t, p="fro") + 1e-8)
-        
+
         # Ensure broadcasting matches the weight dimensions
         current_magnitude = self.M[self.task_idx].view(1, 1, 1, 1)
         W_eff = W_eff + current_magnitude * W_t_normalized.view_as(self.weight)

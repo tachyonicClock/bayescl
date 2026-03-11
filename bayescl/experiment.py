@@ -2,6 +2,7 @@ import os
 
 import matplotlib
 
+from bayescl.methods.clora import CLoRAAdapterFactory, CLoRAPlugin
 from bayescl.methods.mmce import MMCEPlugin
 from bayescl.methods.sdlora import SDLoRAPlugin
 from bayescl.peft._tball.factory import TBALL
@@ -203,6 +204,11 @@ class Experiment:
             case "TBALL":
                 logger.info("Adding TBALL adapters")
                 add_adapters(self.model, filter_regex, TBALL(peft))
+                self.model.get_submodule(model_config.head_module).requires_grad_(True)
+            case "CLoRA":
+                logger.info("Adding CLoRA adapters and plugin")
+                add_adapters(self.model, filter_regex, CLoRAAdapterFactory(peft))
+                self.plugins.append(CLoRAPlugin(peft, self.tb_log.writer))
                 self.model.get_submodule(model_config.head_module).requires_grad_(True)
             case _:
                 raise ValueError(f"Unsupported PEFT method: {peft.type}")

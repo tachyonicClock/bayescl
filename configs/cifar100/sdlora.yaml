@@ -1,4 +1,9 @@
+# bayescl/hp/cifar100/sdlora 4b2f370
+# 54.52% Acc. 2.93% ECE
+# Score 75.80% (ACC+(1-ECE))/2
+# Selected best run based on highest score 10 trials
 include:
 - ../base.yaml
 - ../base/dataset/cifar100.yaml
 - ../base/method/sdlora.yaml
+lr: 0.0017

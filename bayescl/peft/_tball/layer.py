@@ -93,7 +93,7 @@ class TBALLLinear(BALLLayer, nn.Linear):
 
         # Bayesian core layer
         if config.bnn == "FCG":
-            self.adapter_parameter_names = (
+            self.adapter_parameters = (
                 "bayes_core._scale_diag",
                 "bayes_core._scale_tril",
                 "bayes_core.mean",
@@ -108,15 +108,15 @@ class TBALLLinear(BALLLayer, nn.Linear):
                 nonlinearity_scale=config.nonlinearity_scale,
             )
         elif config.bnn == "FFG":
-            self.adapter_parameter_names = (
+            self.adapter_parameters = (
                 "bayes_core.weight_mean",
                 "bayes_core._weight_sd",
             )
             if config.bias:
-                self.adapter_parameter_names = (
+                self.adapter_parameters = (
                     "bayes_core.bias_mean",
                     "bayes_core._bias_sd",
-                    *self.adapter_parameter_names,
+                    *self.adapter_parameters,
                 )
             self.bayes_core = FFGLinear(
                 config.rank,
@@ -179,14 +179,14 @@ class TBALLConv2d(BALLLayer, nn.Conv2d):
 
         # Bayesian core layer
         if config.bnn == "FCG":
-            self.adapter_parameter_names = (
+            self.adapter_parameters = (
                 "tball_B._scale_diag",
                 "tball_B._scale_tril",
                 "tball_B.mean",
             )
             self.tball_B = FCGParameter((rank_ks, rank_ks), config)
         elif config.bnn == "FFG":
-            self.adapter_parameter_names = (
+            self.adapter_parameters = (
                 "tball_B.weight_mean",
                 "tball_B._weight_sd",
             )

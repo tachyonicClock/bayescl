@@ -4,18 +4,12 @@ from typing import Literal, Optional
 
 from loguru import logger
 from omegaconf import DictConfig, OmegaConf
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, Field
 
+from bayescl.base import BaseConfig
+from bayescl.methods.clora import CLoRAConfig
 from bayescl.util.optuna import HyperparameterSearch
 from bayescl.vbnn import VBNNConfig
-
-
-class BaseConfig(BaseModel):
-    model_config: ConfigDict = {"extra": "forbid"}  # type: ignore
-
-    def kwargs(self) -> dict:
-        return self.model_dump(exclude={"type"})  # type: ignore
-
 
 # --- Scenario Configurations ---
 
@@ -141,7 +135,9 @@ class SDLoRAConfig(BaseConfig):
     rank_per_task: int
 
 
-PEFTConfig = LoRAConfig | L2PConfig | BALLConfig | TBALLConfig | SDLoRAConfig
+PEFTConfig = (
+    LoRAConfig | L2PConfig | BALLConfig | TBALLConfig | SDLoRAConfig | CLoRAConfig
+)
 
 # --- Strategy Configurations ---
 
