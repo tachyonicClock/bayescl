@@ -5,7 +5,7 @@
 include:
 - ../base.yaml
 - ../base/dataset/core50.yaml
-- ../base/method/11_tball.yaml
+- ../base/method/tball.yaml
 lr: 0.00089
 peft:
   bnn: FFG

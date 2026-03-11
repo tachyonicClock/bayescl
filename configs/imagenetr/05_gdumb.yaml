@@ -1,9 +1,0 @@
-# bayescl/hp/imagenetr/gdumb 9867fb2
-# 51.34% Acc. 3.99% ECE
-# Score 73.68% (ACC+(1-ECE))/2
-# Selected best run based on highest score 9 trials
-include:
-- ../base.yaml
-- ../base/dataset/imagenetr.yaml
-- ../base/method/05_gdumb.yaml
-lr: 0.00038

@@ -1,4 +1,0 @@
-include:
-- ../base.yaml
-- ../base/dataset/imagenetr.yaml
-- ../base/method/10_ewc.yaml

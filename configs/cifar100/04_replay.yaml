@@ -1,9 +1,0 @@
-# bayescl/hp/cifar100/replay 9867fb2
-# 71.48% Acc. 5.03% ECE
-# Score 83.23% (ACC+(1-ECE))/2
-# Selected best run based on highest score 10 trials
-include:
-- ../base.yaml
-- ../base/dataset/cifar100.yaml
-- ../base/method/04_replay.yaml
-lr: 0.00012

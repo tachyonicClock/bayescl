@@ -5,7 +5,7 @@
 include:
 - ../base.yaml
 - ../base/dataset/core50.yaml
-- ../base/method/08_rwalk.yaml
+- ../base/method/rwalk.yaml
 lr: 0.002
 rwalk:
   ewc_alpha: 0.76

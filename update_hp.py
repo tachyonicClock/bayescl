@@ -80,8 +80,7 @@ yaml.add_representer(float, float_representer)
 for study_name in STUDIES:
     _, _, f_dataset, o_method = study_name.split("/")
     # f_dataset = DATASETS[o_dataset]
-    f_method = METHODS[o_method]
-    filename = Path(f"configs/{f_dataset}/{f_method}.yaml")
+    filename = Path(f"configs/{f_dataset}/{o_method}.yaml")
 
     try:
         study = optuna.load_study(study_name=study_name, storage=STORAGE)
@@ -108,7 +107,7 @@ for study_name in STUDIES:
         "include": [
             "../base.yaml",
             f"../base/dataset/{f_dataset}.yaml",
-            f"../base/method/{f_method}.yaml",
+            f"../base/method/{o_method}.yaml",
         ]
     }
 

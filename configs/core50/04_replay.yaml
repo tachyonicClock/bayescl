@@ -1,9 +1,0 @@
-# bayescl/hp/core50/replay 9867fb2
-# 53.08% Acc. 27.63% ECE
-# Score 62.73% (ACC+(1-ECE))/2
-# Selected best run based on highest score 10 trials
-include:
-- ../base.yaml
-- ../base/dataset/core50.yaml
-- ../base/method/04_replay.yaml
-lr: 0.00015

@@ -1,0 +1,9 @@
+# bayescl/hp/imagenetr/lora 9867fb2
+# 29.46% Acc. 7.89% ECE
+# Score 60.78% (ACC+(1-ECE))/2
+# Selected best run based on highest score 10 trials
+include:
+- ../base.yaml
+- ../base/dataset/imagenetr.yaml
+- ../base/method/lora.yaml
+lr: 0.00015

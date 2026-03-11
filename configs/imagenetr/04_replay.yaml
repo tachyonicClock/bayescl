@@ -1,9 +1,0 @@
-# bayescl/hp/imagenetr/replay 9867fb2
-# 59.34% Acc. 5.11% ECE
-# Score 77.12% (ACC+(1-ECE))/2
-# Selected best run based on highest score 9 trials
-include:
-- ../base.yaml
-- ../base/dataset/imagenetr.yaml
-- ../base/method/04_replay.yaml
-lr: 0.0001

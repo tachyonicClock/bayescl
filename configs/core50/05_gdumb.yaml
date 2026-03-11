@@ -1,9 +1,0 @@
-# bayescl/hp/core50/gdumb 9867fb2
-# 77.26% Acc. 2.53% ECE
-# Score 87.37% (ACC+(1-ECE))/2
-# Selected best run based on highest score 9 trials
-include:
-- ../base.yaml
-- ../base/dataset/core50.yaml
-- ../base/method/05_gdumb.yaml
-lr: 0.00078

@@ -5,5 +5,5 @@
 include:
 - ../base.yaml
 - ../base/dataset/cifar100.yaml
-- ../base/method/07_joint.yaml
+- ../base/method/joint.yaml
 lr: 0.00019

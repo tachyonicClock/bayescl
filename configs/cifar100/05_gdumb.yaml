@@ -1,9 +1,0 @@
-# bayescl/hp/cifar100/gdumb 9867fb2
-# 66.28% Acc. 2.32% ECE
-# Score 81.98% (ACC+(1-ECE))/2
-# Selected best run based on highest score 10 trials
-include:
-- ../base.yaml
-- ../base/dataset/cifar100.yaml
-- ../base/method/05_gdumb.yaml
-lr: 0.00064
