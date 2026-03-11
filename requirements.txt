@@ -16,3 +16,5 @@ matplotlib
 loguru
 seaborn
 typeguard
+
+psycopg[binary]
