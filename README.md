@@ -150,55 +150,31 @@ ts -G 1 -L image_lora  notirun.sh  python main.py -f -c   configs/imagenetr/02_l
 ```
 
 ```bash
-ts -G 1 -L cifar_linea notirun.sh python main.py  -c configs/cifar100/01_linear.yaml hpsearch hp
-ts -G 1 -L core5_linea notirun.sh python main.py    -c configs/core50/01_linear.yaml hpsearch hp
-ts -G 1 -L image_linea notirun.sh python main.py -c configs/imagenetr/01_linear.yaml hpsearch hp
+ts -G 1 -L cifar_ball  notirun.sh python main.py       -c configs/cifar100/ball.yaml hpsearch hp
+ts -G 1 -L core5_ball  notirun.sh python main.py         -c configs/core50/ball.yaml hpsearch hp
+ts -G 1 -L image_ball  notirun.sh python main.py      -c configs/imagenetr/ball.yaml hpsearch hp
 
-ts -G 1 -L cifar_lora  notirun.sh python main.py    -c configs/cifar100/02_lora.yaml hpsearch hp
-ts -G 1 -L core5_lora  notirun.sh python main.py      -c configs/core50/02_lora.yaml hpsearch hp
-ts -G 1 -L image_lora  notirun.sh python main.py   -c configs/imagenetr/02_lora.yaml hpsearch hp
+ts -G 1 -L cifar_ewc   notirun.sh python main.py        -c configs/cifar100/ewc.yaml hpsearch hp
+ts -G 1 -L core5_ewc   notirun.sh python main.py          -c configs/core50/ewc.yaml hpsearch hp
+ts -G 1 -L image_ewc   notirun.sh python main.py       -c configs/imagenetr/ewc.yaml hpsearch hp
 
-ts -G 1 -L cifar_ball  notirun.sh python main.py    -c configs/cifar100/03_ball.yaml hpsearch hp
-ts -G 1 -L core5_ball  notirun.sh python main.py      -c configs/core50/03_ball.yaml hpsearch hp
-ts -G 1 -L image_ball  notirun.sh python main.py   -c configs/imagenetr/03_ball.yaml hpsearch hp
+ts -G 1 -L cifar_joint notirun.sh python main.py      -c configs/cifar100/joint.yaml hpsearch hp
+ts -G 1 -L core5_joint notirun.sh python main.py        -c configs/core50/joint.yaml hpsearch hp
+ts -G 1 -L image_joint notirun.sh python main.py     -c configs/imagenetr/joint.yaml hpsearch hp
 
-ts -G 1 -L cifar_repla notirun.sh python main.py  -c configs/cifar100/04_replay.yaml hpsearch hp
-ts -G 1 -L core5_repla notirun.sh python main.py    -c configs/core50/04_replay.yaml hpsearch hp
-ts -G 1 -L image_repla notirun.sh python main.py -c configs/imagenetr/04_replay.yaml hpsearch hp
+ts -G 1 -L cifar_lora  notirun.sh python main.py       -c configs/cifar100/lora.yaml hpsearch hp
+ts -G 1 -L core5_lora  notirun.sh python main.py         -c configs/core50/lora.yaml hpsearch hp
+ts -G 1 -L image_lora  notirun.sh python main.py      -c configs/imagenetr/lora.yaml hpsearch hp
 
-ts -G 1 -L cifar_gdumb notirun.sh python main.py   -c configs/cifar100/05_gdumb.yaml hpsearch hp
-ts -G 1 -L core5_gdumb notirun.sh python main.py     -c configs/core50/05_gdumb.yaml hpsearch hp
-ts -G 1 -L image_gdumb notirun.sh python main.py  -c configs/imagenetr/05_gdumb.yaml hpsearch hp
+ts -G 1 -L cifar_rwalk notirun.sh python main.py      -c configs/cifar100/rwalk.yaml hpsearch hp
+ts -G 1 -L core5_rwalk notirun.sh python main.py        -c configs/core50/rwalk.yaml hpsearch hp
+ts -G 1 -L image_rwalk notirun.sh python main.py     -c configs/imagenetr/rwalk.yaml hpsearch hp
 
-ts -G 1 -L cifar_der   notirun.sh python main.py     -c configs/cifar100/06_der.yaml hpsearch hp
-ts -G 1 -L core5_der   notirun.sh python main.py       -c configs/core50/06_der.yaml hpsearch hp
-ts -G 1 -L image_der   notirun.sh python main.py    -c configs/imagenetr/06_der.yaml hpsearch hp
+ts -G 1 -L cifar_sdlor notirun.sh python main.py     -c configs/cifar100/sdlora.yaml hpsearch hp
+ts -G 1 -L core5_sdlor notirun.sh python main.py       -c configs/core50/sdlora.yaml hpsearch hp
+ts -G 1 -L image_sdlor notirun.sh python main.py    -c configs/imagenetr/sdlora.yaml hpsearch hp
 
-ts -G 1 -L cifar_joint notirun.sh python main.py   -c configs/cifar100/07_joint.yaml hpsearch hp
-ts -G 1 -L core5_joint notirun.sh python main.py     -c configs/core50/07_joint.yaml hpsearch hp
-ts -G 1 -L image_joint notirun.sh python main.py  -c configs/imagenetr/07_joint.yaml hpsearch hp
-
-ts -G 1 -L cifar_rwalk notirun.sh python main.py   -c configs/cifar100/08_rwalk.yaml hpsearch hp
-ts -G 1 -L core5_rwalk notirun.sh python main.py     -c configs/core50/08_rwalk.yaml hpsearch hp
-ts -G 1 -L image_rwalk notirun.sh python main.py  -c configs/imagenetr/08_rwalk.yaml hpsearch hp
-
-ts -G 1 -L cifar_l2p   notirun.sh python main.py     -c configs/cifar100/09_l2p.yaml hpsearch hp
-ts -G 1 -L core5_l2p   notirun.sh python main.py       -c configs/core50/09_l2p.yaml hpsearch hp
-ts -G 1 -L image_l2p   notirun.sh python main.py    -c configs/imagenetr/09_l2p.yaml hpsearch hp
-
-ts -G 1 -L cifar_ewc   notirun.sh python main.py     -c configs/cifar100/10_ewc.yaml hpsearch hp
-ts -G 1 -L core5_ewc   notirun.sh python main.py       -c configs/core50/10_ewc.yaml hpsearch hp
-ts -G 1 -L image_ewc   notirun.sh python main.py    -c configs/imagenetr/10_ewc.yaml hpsearch hp
-
-ts -G 1 -L cifar_tball notirun.sh python main.py   -c configs/cifar100/11_tball.yaml hpsearch hp
-ts -G 1 -L core5_tball notirun.sh python main.py     -c configs/core50/11_tball.yaml hpsearch hp
-ts -G 1 -L image_tball notirun.sh python main.py  -c configs/imagenetr/11_tball.yaml hpsearch hp
-
-ts -G 1 -L cifar_rball notirun.sh python main.py   -c configs/cifar100/12_rball.yaml hpsearch hp
-ts -G 1 -L core5_rball notirun.sh python main.py     -c configs/core50/12_rball.yaml hpsearch hp
-ts -G 1 -L image_rball notirun.sh python main.py  -c configs/imagenetr/12_rball.yaml hpsearch hp
-
-ts -G 1 -L cifar_rtbal notirun.sh python main.py  -c configs/cifar100/13_rtball.yaml hpsearch hp
-ts -G 1 -L core5_rtbal notirun.sh python main.py    -c configs/core50/13_rtball.yaml hpsearch hp
-ts -G 1 -L image_rtbal notirun.sh python main.py -c configs/imagenetr/13_rtball.yaml hpsearch hp
+ts -G 1 -L cifar_tball notirun.sh python main.py      -c configs/cifar100/tball.yaml hpsearch hp
+ts -G 1 -L core5_tball notirun.sh python main.py        -c configs/core50/tball.yaml hpsearch hp
+ts -G 1 -L image_tball notirun.sh python main.py     -c configs/imagenetr/tball.yaml hpsearch hp
 ```
