@@ -7,9 +7,10 @@ from omegaconf import DictConfig, OmegaConf
 from pydantic import BaseModel, Field
 
 from bayescl.base import BaseConfig
-from bayescl.methods.clora import CLoRAConfig
-from bayescl.methods.sdlora import SDLoRAConfig
 from bayescl.methods.ball import BALLConfig
+from bayescl.methods.clora import CLoRAConfig
+from bayescl.methods.lora import LoRAConfig
+from bayescl.methods.sdlora import SDLoRAConfig
 from bayescl.methods.tball import TBALLConfig
 from bayescl.util.optuna import HyperparameterSearch
 
@@ -81,13 +82,6 @@ class MMCEConfig(BaseModel):
 
 
 # --- PEFT Configurations ---
-
-
-class LoRAConfig(BaseConfig):
-    type: Literal["LoRA"] = "LoRA"
-    r: int = 16
-    lora_alpha: int = 1
-    lora_dropout: float = 0.0
 
 
 class L2PConfig(BaseConfig):

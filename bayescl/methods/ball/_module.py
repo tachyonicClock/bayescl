@@ -21,6 +21,7 @@ class BALLLayer(AdapterBase):
         "ball_B.rho",
     )
 
+
 def forward_lrt(x: Tensor, weight_mean: Tensor, weight_sd: Tensor) -> Tensor:
     """Local reparameterization trick forward pass."""
     mean = x @ weight_mean.T
@@ -46,7 +47,9 @@ class BALLLinear(nn.Linear, BALLLayer):
         self.ball_A = VariationalParameter((config.r, in_features), config.vbnn)
         self.ball_B = VariationalParameter((out_features, config.r), config.vbnn)
         self.scaling = config.lora_alpha / config.r
-        self.dropout = nn.Dropout(config.dropout) if config.dropout > 0 else nn.Identity()
+        self.dropout = (
+            nn.Dropout(config.dropout) if config.dropout > 0 else nn.Identity()
+        )
         nn.init.kaiming_uniform_(self.ball_A.mu, a=math.sqrt(5))
         nn.init.zeros_(self.ball_B.mu)
 
@@ -76,7 +79,9 @@ class BALLLinear(nn.Linear, BALLLayer):
 class BALLConv2d(BALLLayer, nn.Conv2d):
     """A Bayesian Adaptation Layer using the BALL method for Conv2d layers."""
 
-    def __init__(self, in_channels, out_channels, kernel_size, config: BALLConfig, **kwargs):
+    def __init__(
+        self, in_channels, out_channels, kernel_size, config: BALLConfig, **kwargs
+    ):
         nn.Conv2d.__init__(self, in_channels, out_channels, kernel_size, **kwargs)
         BALLLayer.__init__(self)
         kh, kw = _pair(kernel_size)
@@ -85,14 +90,18 @@ class BALLConv2d(BALLLayer, nn.Conv2d):
         groups = self.groups
         rank_ks = config.r * ks
         self.ball_A = VariationalParameter((rank_ks, in_channels * ks), config.vbnn)
-        self.ball_B = VariationalParameter((out_channels // groups * ks, rank_ks), config.vbnn)
+        self.ball_B = VariationalParameter(
+            (out_channels // groups * ks, rank_ks), config.vbnn
+        )
         self.scaling = config.lora_alpha / config.r
 
     def forward(self, x: Tensor) -> Tensor:
         weight_delta = self.ball_B.forward() @ self.ball_A.forward()
         weight_delta = weight_delta * self.scaling
         weight = self.weight + weight_delta.view_as(self.weight)
-        return F.conv2d(x, weight, self.bias, self.stride, self.padding, self.dilation, self.groups)
+        return F.conv2d(
+            x, weight, self.bias, self.stride, self.padding, self.dilation, self.groups
+        )
 
 
 class BALLAdapterFactory(AdapterFactory):

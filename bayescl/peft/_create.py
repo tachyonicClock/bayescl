@@ -71,11 +71,7 @@ def iter_named_adapters(
 def iter_adapter_parameters(
     module: nn.Module,
 ) -> Generator[Tuple[str, nn.Parameter], None, None]:
-    """Iterate over all parameters in adapters.
-
-    See :attr:`AdapterBase.adapter_parameter_names` for what is considered an
-    adapter parameter.
-    """
+    """Iterate over all parameters in adapters."""
     for prefix, submodule in iter_named_adapters(module):
         if isinstance(submodule, nn.Module):
             for name in submodule.adapter_parameters:

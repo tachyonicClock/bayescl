@@ -11,7 +11,6 @@ from ._create import (
     parameter_summary_str,
     set_module,
 )
-from ._lora.factory import LoRA_Factory
 
 __all__ = [
     "AdapterBase",
@@ -23,6 +22,5 @@ __all__ = [
     "only_adapters_require_grad",
     "iter_adapter_parameters",
     "set_module",
-    "LoRA_Factory",
     "parameter_summary_str",
 ]

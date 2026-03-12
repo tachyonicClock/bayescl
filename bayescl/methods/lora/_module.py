@@ -10,11 +10,13 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.nn.modules.utils import _pair
 
-from bayescl.peft._base import AdapterBase
+from bayescl.peft._base import AdapterBase, AdapterFactory
+
+from ._config import LoRAConfig
 
 
 class LoRALayer(AdapterBase):
-    adapter_parameter_names = ("lora_A", "lora_B")
+    adapter_parameters = ("lora_A", "lora_B")
 
     def __init__(
         self,
@@ -272,3 +274,58 @@ class Conv2d(ConvLoRA):
 class Conv1d(ConvLoRA):
     def __init__(self, *args, **kwargs):
         super(Conv1d, self).__init__(nn.Conv1d, *args, **kwargs)
+
+
+class LoRAAdapterFactory(AdapterFactory):
+    def __init__(self, config: LoRAConfig) -> None:
+        self.config = config
+
+    def _get_replacement(self, module: nn.Module) -> AdapterBase | nn.Module:
+        match module:
+            case nn.Linear():
+                return Linear(
+                    module.in_features,
+                    module.out_features,
+                    r=self.config.r,
+                    lora_alpha=self.config.lora_alpha,
+                    lora_dropout=self.config.lora_dropout,
+                    merge_weights=False,
+                )
+            case nn.Conv1d():
+                return Conv1d(
+                    module.in_channels,
+                    module.out_channels,
+                    module.kernel_size,
+                    stride=module.stride,
+                    padding=module.padding,
+                    dilation=module.dilation,
+                    groups=module.groups,
+                    bias=module.bias is not None,
+                    r=self.config.r,
+                    lora_alpha=self.config.lora_alpha,
+                    lora_dropout=self.config.lora_dropout,
+                    merge_weights=False,
+                )
+            case nn.Conv2d():
+                return Conv2d(
+                    module.in_channels,
+                    module.out_channels,
+                    module.kernel_size,
+                    stride=module.stride,
+                    padding=module.padding,
+                    dilation=module.dilation,
+                    groups=module.groups,
+                    bias=module.bias is not None,
+                    r=self.config.r,
+                    lora_alpha=self.config.lora_alpha,
+                    lora_dropout=self.config.lora_dropout,
+                    merge_weights=False,
+                )
+            case _:
+                raise ValueError(f"Unsupported layer type: {type(module)}")
+
+    def __call__(self, module: nn.Module) -> AdapterBase | nn.Module:
+        replacement = self._get_replacement(module)
+        if isinstance(replacement, nn.Module):
+            replacement.load_state_dict(module.state_dict(), strict=False)
+        return replacement

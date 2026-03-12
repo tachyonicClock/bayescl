@@ -101,7 +101,10 @@ def test_ball():
     batch_size = 4
     x = torch.randn(batch_size, in_features)
     model = cast(
-        BALLLinear, BALLAdapterFactory(BALLConfig(r=2, vbnn=VBNNConfig()))(torch.nn.Linear(in_features, out_features))
+        BALLLinear,
+        BALLAdapterFactory(BALLConfig(r=2, vbnn=VBNNConfig()))(
+            torch.nn.Linear(in_features, out_features)
+        ),
     )
     only_adapters_require_grad(model)
 
