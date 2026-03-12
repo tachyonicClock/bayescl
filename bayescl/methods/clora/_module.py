@@ -48,7 +48,9 @@ class CLoRAConv2d(nn.Conv2d, CLoRAModule):
     ) -> None:
         super().__init__(in_channels, out_channels, kernel_size, **kwargs)
         r = config.rank
-        assert self.kernel_size[0] == self.kernel_size[1], "Only square kernels are supported"
+        assert self.kernel_size[0] == self.kernel_size[1], (
+            "Only square kernels are supported"
+        )
         ks = self.kernel_size[0]
 
         shape_A = (r * ks, in_channels * ks)
