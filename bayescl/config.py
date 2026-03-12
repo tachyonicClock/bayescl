@@ -76,11 +76,6 @@ class RWalkConfig(BaseModel):
     """Specify the iterations interval in which the parameter scores are updated."""
 
 
-class MMCEConfig(BaseModel):
-    weight: float = 1.0
-    """Weight of the MMCE loss term."""
-
-
 # --- PEFT Configurations ---
 
 
@@ -219,9 +214,6 @@ class Config(BaseConfig):
 
     ewc: Optional[EWCConfig] = None
     """If not None, use EWC with the given configuration."""
-
-    mmce: Optional[MMCEConfig] = None
-    """If not None, use MMCE with the given configuration."""
 
     hpsearch: Optional[HyperparameterSearch] = None
 

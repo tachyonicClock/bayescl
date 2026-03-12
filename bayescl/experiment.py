@@ -3,7 +3,6 @@ import os
 import matplotlib
 
 from bayescl.methods.clora import CLoRAAdapterFactory, CLoRAPlugin
-from bayescl.methods.mmce import MMCEPlugin
 from bayescl.methods.sdlora import SDLoRAAdapterFactory, SDLoRAPlugin
 from bayescl.methods.tball import TBALLAdapterFactory
 from bayescl.vbnn import replace_head
@@ -239,12 +238,6 @@ class Experiment:
         if self.cfg.ewc:
             logger.info("Add 'EWCPlugin' plugin")
             self.plugins.append(EWCPlugin(**self.cfg.ewc.kwargs(), mode="online"))
-
-        if self.cfg.mmce:
-            logger.info("Add 'MMCEPlugin' plugin")
-            self.plugins.append(
-                MMCEPlugin(config=self.cfg.mmce, writer=self.tb_log.writer)
-            )
 
         self.plugins.append(self.metrics_plugin)
 
