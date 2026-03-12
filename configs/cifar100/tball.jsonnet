@@ -7,9 +7,6 @@ local method = import '../base/method/tball.jsonnet';
 
 dataset + method + {
   lr: 0.0025,
-  peft+: {
-    bnn: 'FFG',
-  },
   strategy+: {
     beta: 0.62,
   },
