@@ -6,10 +6,11 @@ from bnn.nn.modules import FCGLinear, FCGMixin, FFGLinear, FFGMixin
 from torch import Tensor
 from torch.nn import functional as F
 from torch.nn.modules.utils import _pair
+from typeguard import typechecked
 
-from bayescl.peft._base import AdapterBase
+from bayescl.peft._base import AdapterBase, AdapterFactory
 
-from .config import TBALLConfig
+from ._config import TBALLConfig
 
 
 class WeightModule(nn.Module):
@@ -57,8 +58,7 @@ class FCGParameter(FCGMixin, WeightModule):
 
 
 class BALLLayer(AdapterBase):
-    adapter_parameter_names = ()
-    """Tunable parameters in BALL adapters."""
+    pass
 
 
 class TBALLLinear(BALLLayer, nn.Linear):
@@ -192,7 +192,6 @@ class TBALLConv2d(BALLLayer, nn.Conv2d):
                 "tball_B._weight_sd",
             )
             self.tball_B = FFGParameter((rank_ks, rank_ks), config)
-
         else:
             raise ValueError(f"Unsupported BNN type: {config.bnn}")
 
@@ -202,3 +201,38 @@ class TBALLConv2d(BALLLayer, nn.Conv2d):
         return F.conv2d(
             x, weight, self.bias, self.stride, self.padding, self.dilation, self.groups
         )
+
+
+class TBALLAdapterFactory(AdapterFactory):
+    """A factory for creating TBALL adapters."""
+
+    @typechecked
+    def __init__(self, config: TBALLConfig) -> None:
+        self.config = config
+
+    def _get_replacement(self, module: nn.Module) -> nn.Module:
+        if isinstance(module, nn.Linear):
+            return TBALLLinear(
+                module.in_features, module.out_features, config=self.config
+            )
+        elif isinstance(module, nn.Conv2d):
+            return TBALLConv2d(
+                module.in_channels,
+                module.out_channels,
+                module.kernel_size,  # type: ignore[arg-type]
+                stride=module.stride,
+                padding=module.padding,
+                dilation=module.dilation,
+                groups=module.groups,
+                bias=module.bias is not None,
+                config=self.config,
+            )
+        else:
+            raise ValueError(f"Unsupported layer type: {type(module)}")
+
+    def __call__(self, module: nn.Module) -> nn.Module:
+        """Create an adapter for a given module."""
+        replacement = self._get_replacement(module)
+        if isinstance(replacement, nn.Module):
+            replacement.load_state_dict(module.state_dict(), strict=False)
+        return replacement

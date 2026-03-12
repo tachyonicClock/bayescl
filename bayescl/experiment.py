@@ -5,7 +5,7 @@ import matplotlib
 from bayescl.methods.clora import CLoRAAdapterFactory, CLoRAPlugin
 from bayescl.methods.mmce import MMCEPlugin
 from bayescl.methods.sdlora import SDLoRAAdapterFactory, SDLoRAPlugin
-from bayescl.peft._tball.factory import TBALL
+from bayescl.methods.tball import TBALLAdapterFactory
 from bayescl.vbnn import replace_head
 
 matplotlib.use("Agg")
@@ -204,7 +204,7 @@ class Experiment:
                 self.plugins.append(SDLoRAPlugin())
             case "TBALL":
                 logger.info("Adding TBALL adapters")
-                add_adapters(self.model, filter_regex, TBALL(peft))
+                add_adapters(self.model, filter_regex, TBALLAdapterFactory(peft))
                 self.model.get_submodule(model_config.head_module).requires_grad_(True)
             case "CLoRA":
                 logger.info("Adding CLoRA adapters and plugin")
