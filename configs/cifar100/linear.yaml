@@ -1,9 +1,0 @@
-# bayescl/hp/cifar100/linear 9867fb2
-# 56.03% Acc. 2.73% ECE
-# Score 76.65% (ACC+(1-ECE))/2
-# Selected best run based on highest score 10 trials
-include:
-- ../base.yaml
-- ../base/dataset/cifar100.yaml
-- ../base/method/linear.yaml
-lr: 0.0016

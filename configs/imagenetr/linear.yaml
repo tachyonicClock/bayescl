@@ -1,9 +1,0 @@
-# bayescl/hp/imagenetr/linear 9867fb2
-# 48.28% Acc. 5.05% ECE
-# Score 71.61% (ACC+(1-ECE))/2
-# Selected best run based on highest score 10 trials
-include:
-- ../base.yaml
-- ../base/dataset/imagenetr.yaml
-- ../base/method/linear.yaml
-lr: 0.00063

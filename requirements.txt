@@ -1,4 +1,5 @@
 avalanche-lib
+jsonnet
 omegaconf
 pydantic
 transformers

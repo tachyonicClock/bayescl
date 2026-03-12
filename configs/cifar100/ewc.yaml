@@ -1,4 +1,0 @@
-include:
-- ../base.yaml
-- ../base/dataset/cifar100.yaml
-- ../base/method/ewc.yaml

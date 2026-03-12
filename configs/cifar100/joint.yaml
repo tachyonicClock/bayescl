@@ -1,9 +1,0 @@
-# bayescl/hp/cifar100/joint 9867fb2
-# 74.96% Acc. 1.00% ECE
-# Score 86.98% (ACC+(1-ECE))/2
-# Selected best run based on highest score 7 trials
-include:
-- ../base.yaml
-- ../base/dataset/cifar100.yaml
-- ../base/method/joint.yaml
-lr: 0.00019

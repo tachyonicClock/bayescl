@@ -1,0 +1,32 @@
+{
+  label+: {
+    method: 'ball',
+  },
+
+  // BALL uses local CE but it is implemented internally so we turn this off here
+  use_local_ce: false,
+
+  peft: {
+    type: 'BALL',
+    r: 10,
+    vbnn: {
+      prior_mean: 0.0,
+      prior_sd: 1.0,
+      init_sd: 0.001,
+      init_sd_sd: 1e-5,
+    },
+  },
+
+  strategy: {
+    type: 'VCL',
+    beta: 1.0,
+    train_samples: 1,
+    test_samples: 5,
+  },
+
+  hpsearch+: {
+    params+: {
+      'strategy.beta': { type: 'float', low: 0.0, high: 2.0, log: false },
+    },
+  },
+}

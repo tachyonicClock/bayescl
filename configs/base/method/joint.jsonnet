@@ -1,0 +1,15 @@
+{
+  label+: {
+    method: 'joint',
+  },
+
+  peft: {
+    type: 'LoRA',
+    r: 10,
+  },
+
+  scenario+: {
+    // Train only on all data at once (no continual learning)
+    n_tasks: 1,
+  },
+}

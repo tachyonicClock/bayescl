@@ -158,41 +158,36 @@ class Experiment:
         if not isinstance(model_config, config.HuggingFaceModelConfig):
             raise ValueError("PEFT is only supported for HuggingFace models.")
 
-        filter_regex = RegexFilter(model_config.adapter_filter)
-        torch.manual_seed(
-            self.cfg.seed + 7808
-        )  # Make recreating the random projections in T-BALL easy.
+        regex_filter = RegexFilter(model_config.adapter_filter)
+        # Make recreating the random projections in T-BALL easy.
+        torch.manual_seed(self.cfg.seed + 7808)
 
         match peft.type:
             case "LoRA":
                 logger.info("Adding LoRA adapters")
-                factory = LoRAAdapterFactory(peft)
-                add_adapters(self.model, filter_regex, factory)
-                self.model.get_submodule(model_config.head_module).requires_grad_(True)
+                add_adapters(self.model, regex_filter, LoRAAdapterFactory(peft))
             case "BALL":
                 logger.info("Adding BALL adapters")
-                add_adapters(self.model, filter_regex, BALLAdapterFactory(peft))
-                self.model.get_submodule(model_config.head_module).requires_grad_(True)
+                add_adapters(self.model, regex_filter, BALLAdapterFactory(peft))
                 if peft.bll:
                     replace_head(self.model, model_config.head_module, config=peft.vbnn)
             case "SDLoRA":
                 logger.info("Adding SD-LoRA adapters")
-                add_adapters(
-                    self.model, filter_regex, SDLoRAAdapterFactory(self.num_tasks, peft)
-                )
-                self.model.get_submodule(model_config.head_module).requires_grad_(True)
+                factory = SDLoRAAdapterFactory(self.num_tasks, peft)
+                add_adapters(self.model, regex_filter, factory)
                 self.plugins.append(SDLoRAPlugin())
             case "TBALL":
                 logger.info("Adding TBALL adapters")
-                add_adapters(self.model, filter_regex, TBALLAdapterFactory(peft))
-                self.model.get_submodule(model_config.head_module).requires_grad_(True)
+                add_adapters(self.model, regex_filter, TBALLAdapterFactory(peft))
             case "CLoRA":
                 logger.info("Adding CLoRA adapters and plugin")
-                add_adapters(self.model, filter_regex, CLoRAAdapterFactory(peft))
+                add_adapters(self.model, regex_filter, CLoRAAdapterFactory(peft))
                 self.plugins.append(CLoRAPlugin(peft, self.tb_log.writer))
-                self.model.get_submodule(model_config.head_module).requires_grad_(True)
             case _:
                 raise ValueError(f"Unsupported PEFT method: {peft.type}")
+            
+        self.model.get_submodule(model_config.head_module).requires_grad_(True)
+        
 
     def _build_plugins(self):
         if self.cfg.use_local_ce:

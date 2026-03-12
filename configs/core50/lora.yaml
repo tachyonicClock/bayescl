@@ -1,9 +1,0 @@
-# bayescl/hp/core50/lora 9867fb2
-# 28.37% Acc. 26.80% ECE
-# Score 50.78% (ACC+(1-ECE))/2
-# Selected best run based on highest score 10 trials
-include:
-- ../base.yaml
-- ../base/dataset/core50.yaml
-- ../base/method/lora.yaml
-lr: 0.00013

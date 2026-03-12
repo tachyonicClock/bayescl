@@ -227,14 +227,13 @@ class Config(BaseConfig):
     """Whether to standardize the input data based on the training set statistics."""
 
 
-def _resolve_includes(base: Path, filenames: list[str]) -> DictConfig:
-    if filenames:
-        logger.info(f"Including configs {filenames}")
-        config = OmegaConf.merge(*(OmegaConf.load(base / f) for f in filenames))
-        assert config.get("include") is None, "Nested includes are not supported"
-        return config  # type: ignore
-    else:
-        return DictConfig({})
+def _load_config_file(file: Path) -> DictConfig:
+    import json
+
+    import _jsonnet
+
+    json_str = _jsonnet.evaluate_file(str(file))
+    return OmegaConf.create(json.loads(json_str))  # type: ignore
 
 
 def from_configs(
@@ -244,9 +243,7 @@ def from_configs(
     for file in config_filenames:
         file = Path(file)
         logger.info(f"Updating config from {file}")
-        config = OmegaConf.merge(config, OmegaConf.load(file))  # type: ignore
-        included = _resolve_includes(file.parent, config.get("include", []))  # type: ignore
-        config = OmegaConf.merge(included, config)
+        config = OmegaConf.merge(config, _load_config_file(file))
     if dotlist is not None:
         logger.info(f"Updating config from command line args: {dotlist}")
         config = OmegaConf.merge(config, OmegaConf.from_dotlist(dotlist))
