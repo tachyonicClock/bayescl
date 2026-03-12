@@ -1,0 +1,35 @@
+// {{study_name}} {{git_hash}} {{study_id}}
+// Accuracy: {{ "%.2f" | format(accuracy * 100) }} %
+// ECE:      {{ "%.2f" | format(ece * 100) }} %
+// Score:    {{ "%.2f" | format(score * 100) }} %
+// Selected best run based on highest score {{ n_trials }} trials
+local dataset = import '../base/dataset/{{dataset}}.jsonnet';
+local method = import '../base/method/{{method}}.jsonnet';
+
+{% macro render_value(value) -%}
+{%- if value is mapping -%}
+{{ render_object(value) }}
+{%- elif value is boolean -%}
+{{ 'true' if value else 'false' }}
+{%- elif value is number -%}
+{{ '%.3g' | format(value) }}
+{%- elif value is none -%}
+null
+{%- else -%}
+{{ value | tojson }}
+{%- endif -%}
+{%- endmacro -%}
+
+{%- macro render_object(obj) -%}
+{
+{%- for key, value in obj.items() %}
+    {{ key }}+: {{ render_value(value) }}{{ ',' if not loop.last else '' }}
+{%- endfor %}
+}
+{%- endmacro -%}
+
+dataset + method + {
+{%- for key, value in hyperparameters.items() %}
+    {{ key }}+: {{ render_value(value) }}{{ ',' if not loop.last else '' }}
+{%- endfor %}
+}
