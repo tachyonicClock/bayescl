@@ -154,6 +154,10 @@ ts -G 1 -L cifar_ball  notirun.sh python main.py       -c configs/cifar100/ball.
 ts -G 1 -L core5_ball  notirun.sh python main.py         -c configs/core50/ball.yaml hpsearch hp
 ts -G 1 -L image_ball  notirun.sh python main.py      -c configs/imagenetr/ball.yaml hpsearch hp
 
+ts -G 1 -L cifar_clora notirun.sh python main.py      -c configs/cifar100/clora.yaml hpsearch hp
+ts -G 1 -L core5_clora notirun.sh python main.py        -c configs/core50/clora.yaml hpsearch hp
+ts -G 1 -L image_clora notirun.sh python main.py     -c configs/imagenetr/clora.yaml hpsearch hp
+
 ts -G 1 -L cifar_ewc   notirun.sh python main.py        -c configs/cifar100/ewc.yaml hpsearch hp
 ts -G 1 -L core5_ewc   notirun.sh python main.py          -c configs/core50/ewc.yaml hpsearch hp
 ts -G 1 -L image_ewc   notirun.sh python main.py       -c configs/imagenetr/ewc.yaml hpsearch hp

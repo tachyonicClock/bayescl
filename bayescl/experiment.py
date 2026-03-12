@@ -41,11 +41,9 @@ from optuna import Trial
 from setproctitle import setproctitle
 from torch import BoolTensor
 
-import bayescl.methods.l2p as l2p
 from bayescl import config
 from bayescl.benchmark import get_benchmark
 from bayescl.methods.ball import BALLAdapterFactory
-from bayescl.methods.l2p import L2PViT
 from bayescl.methods.lora import LoRAAdapterFactory
 from bayescl.methods.train_mask import TrainTaskMask
 from bayescl.methods.vcl import VCLStrategy
@@ -171,23 +169,6 @@ class Experiment:
                 factory = LoRAAdapterFactory(peft)
                 add_adapters(self.model, filter_regex, factory)
                 self.model.get_submodule(model_config.head_module).requires_grad_(True)
-            case "L2P":
-                assert isinstance(self.model, L2PViT)
-                logger.info("Using L2P prompt-based method")
-                del self.model.model.classifier  # type: ignore
-                self.plugins += [l2p.L2PPlugin()]
-                self.model = l2p.L2PModel(
-                    vit=self.model,
-                    prompt_pool=l2p.PromptPool(
-                        prompts_per_task=peft.prompts_per_task,
-                        embed_dim=self.model.get_embedding_size(),
-                        num_tasks=self.num_tasks,
-                        prompt_length=peft.prompt_length,
-                        top_k=peft.top_k,
-                    ),
-                    out_features=self.benchmark.n_classes,
-                    pull_constraint_coeff=peft.pull_constraint_coeff,
-                )
             case "BALL":
                 logger.info("Adding BALL adapters")
                 add_adapters(self.model, filter_regex, BALLAdapterFactory(peft))
