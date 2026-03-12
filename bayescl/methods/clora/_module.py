@@ -15,6 +15,7 @@ class CLoRAModule(AdapterBase):
     A: nn.Parameter
     B: nn.Parameter
     anchor: Tensor
+    scaling: float
 
     def reset_adapter(self) -> None:
         pass
@@ -31,7 +32,9 @@ class CLoRAModule(AdapterBase):
         where :math:`\sum_{t'=1}^{t-1} \mathbf{B}_{t'} \mathbf{A}_{t'}` is pre-computed
         and stored in `anchor` to save computation.
         """
-        return (self.anchor.abs() * (self.B @ self.A)).norm(p="fro") ** 2
+        return (
+            self.scaling * self.anchor.abs() * (self.scaling * self.B @ self.A)
+        ).norm(p="fro") ** 2
 
 
 class CLoRAConv2d(nn.Conv2d, CLoRAModule):
@@ -45,6 +48,7 @@ class CLoRAConv2d(nn.Conv2d, CLoRAModule):
     ) -> None:
         super().__init__(in_channels, out_channels, kernel_size, **kwargs)
         r = config.rank
+        assert self.kernel_size[0] == self.kernel_size[1], "Only square kernels are supported"
         ks = self.kernel_size[0]
 
         shape_A = (r * ks, in_channels * ks)
