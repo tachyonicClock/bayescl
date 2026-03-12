@@ -4,30 +4,27 @@ DATASETS = [
     "imagenetr",
 ]
 METHODS = [
-    # "01_linear",
-    # "02_lora",
-    "03_ball",
-    # "04_replay",
-    # "05_gdumb",
-    # "06_der",
-    # "07_joint",
-    # "08_rwalk",
-    # "09_l2p",
-    # "10_ewc",
-    "11_tball",
-    # "12_rball",
-    # "13_rtball",
+    # "ball",
+    # "ewc",
+    # "joint",
+    # "linear",
+    # "lora",
+    # "rwalk",
+    # "tball",
+
+    "clora",
+    "sdlora",
 ]
 N_RUNS = 5
 
 
 def run_string(trial: int, dataset: str, method: str):
-    label = f"{dataset[:5]}_{method[3 : 3 + 5]}"
+    label = f"{dataset[:5]}_{method[:5]}"
     cli = [
         f"ts -G 1 -L {label:<11}",
         "notirun.sh",
         "python main.py",
-        f"-c configs/{dataset}/{method}.yaml".rjust(35),
+        f"-c configs/{dataset}/{method}.jsonnet".rjust(35),
         "-a checkpoint=True" if method.endswith("ball") else "",
         f"run test {trial}",
     ]
