@@ -8,8 +8,8 @@ from pydantic import BaseModel, Field
 
 from bayescl.base import BaseConfig
 from bayescl.methods.clora import CLoRAConfig
+from bayescl.methods.sdlora import SDLoRAConfig
 from bayescl.peft._ball.config import BALLConfig
-from bayescl.peft._sd_lora.config import SDLoRAConfig
 from bayescl.peft._tball.config import TBALLConfig
 from bayescl.util.optuna import HyperparameterSearch
 

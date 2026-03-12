@@ -4,7 +4,7 @@ import matplotlib
 
 from bayescl.methods.clora import CLoRAAdapterFactory, CLoRAPlugin
 from bayescl.methods.mmce import MMCEPlugin
-from bayescl.methods.sdlora import SDLoRAPlugin
+from bayescl.methods.sdlora import SDLoRAAdapterFactory, SDLoRAPlugin
 from bayescl.peft._tball.factory import TBALL
 from bayescl.vbnn import replace_head
 
@@ -57,7 +57,6 @@ from bayescl.peft import (
     BALL,
     LoRA_Factory,
     RegexFilter,
-    SDLoRA,
     add_adapters,
     parameter_summary_str,
 )
@@ -198,7 +197,9 @@ class Experiment:
                     replace_head(self.model, model_config.head_module, config=peft.vbnn)
             case "SDLoRA":
                 logger.info("Adding SD-LoRA adapters")
-                add_adapters(self.model, filter_regex, SDLoRA(self.num_tasks, peft))
+                add_adapters(
+                    self.model, filter_regex, SDLoRAAdapterFactory(self.num_tasks, peft)
+                )
                 self.model.get_submodule(model_config.head_module).requires_grad_(True)
                 self.plugins.append(SDLoRAPlugin())
             case "TBALL":
