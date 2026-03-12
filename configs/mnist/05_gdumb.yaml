@@ -1,8 +1,0 @@
-label:
-  method: gdumb
-
-strategy:
-  type: GDumb
-  mem_size: 2000
-
-use_local_ce: false

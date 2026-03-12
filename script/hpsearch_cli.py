@@ -6,6 +6,7 @@ DATASETS = [
 
 METHODS = [
     "ball",
+    "clora",
     "ewc",
     "joint",
     "lora",

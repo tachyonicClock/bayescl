@@ -1,8 +1,0 @@
-include:
-- ../base.yaml
-- ../base/dataset/cifar100.yaml
-- ../base/method/13_rtball.yaml
-
-hpsearch:
-  params:
-    "peft.rank": {type: int, low: 5, high: 50, log: False}
