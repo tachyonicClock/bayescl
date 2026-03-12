@@ -60,7 +60,6 @@ BACKBONES = {
     "joint": "DinoV2-small",
     "codap": "ViT-B/16",
     "dualprompt": "ViT-B/16",
-    "inflora": "ViT-B/16",
     "l2p": "ViT-B/16",
     "replay": "DinoV2-small",
     "gdumb": "DinoV2-small",

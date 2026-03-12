@@ -1,6 +1,5 @@
 """Parameter-Efficient Fine-Tuning (PEFT)"""
 
-from . import inflora
 from ._ball.factory import BALL
 from ._base import AdapterBase, AdapterFactory
 from ._create import (
@@ -28,5 +27,4 @@ __all__ = [
     "LoRA_Factory",
     "BALL",
     "parameter_summary_str",
-    "inflora",
 ]

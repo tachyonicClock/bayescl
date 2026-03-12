@@ -84,23 +84,6 @@ class CalibrationRecord:
     bin_weight: float
 
 
-def extract_inflora(
-    filename: Path | str,
-) -> Generator[Tuple[str, str, str, Dict[str, Any]], None, None]:
-    filename = Path(filename)
-    with tarfile.open(filename, mode="r:gz") as tar:
-        for member in tar.getmembers():
-            if member.name.endswith("record.pkl"):
-                f = tar.extractfile(member)
-                if f is not None:
-                    parts = member.name.split("/")
-                    dataset = parts[2]
-                    method = parts[4]
-                    run_id = parts[6]
-                    data = pickle.load(f)
-                    yield dataset, method, run_id, data
-
-
 def extract_bayescl(
     filename: Path | str,
 ) -> Generator[Tuple[str, str, str, Dict[str, Any]], None, None]:
