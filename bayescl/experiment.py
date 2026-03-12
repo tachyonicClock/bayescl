@@ -53,8 +53,8 @@ from bayescl.metrics.ece import (
 )
 from bayescl.metrics.plugin import MetricsPlugin
 from bayescl.model import get_model
+from bayescl.methods.ball import BALLAdapterFactory
 from bayescl.peft import (
-    BALL,
     LoRA_Factory,
     RegexFilter,
     add_adapters,
@@ -191,7 +191,7 @@ class Experiment:
                 )
             case "BALL":
                 logger.info("Adding BALL adapters")
-                add_adapters(self.model, filter_regex, BALL(peft))
+                add_adapters(self.model, filter_regex, BALLAdapterFactory(peft))
                 self.model.get_submodule(model_config.head_module).requires_grad_(True)
                 if peft.bll:
                     replace_head(self.model, model_config.head_module, config=peft.vbnn)

@@ -7,8 +7,9 @@ from torch import nn
 from torch.distributions import kl_divergence
 from torch.distributions.normal import Normal
 
-from bayescl.peft import BALL, BALLConfig, only_adapters_require_grad
-from bayescl.peft._ball.layer import BALLLinear
+from bayescl.methods.ball import BALLAdapterFactory, BALLConfig
+from bayescl.methods.ball._module import BALLLinear
+from bayescl.peft import only_adapters_require_grad
 from bayescl.vbnn import (
     VariationalParameter,
     VBNNConfig,
@@ -100,7 +101,7 @@ def test_ball():
     batch_size = 4
     x = torch.randn(batch_size, in_features)
     model = cast(
-        BALLLinear, BALL(BALLConfig(r=2))(torch.nn.Linear(in_features, out_features))
+        BALLLinear, BALLAdapterFactory(BALLConfig(r=2, vbnn=VBNNConfig()))(torch.nn.Linear(in_features, out_features))
     )
     only_adapters_require_grad(model)
 

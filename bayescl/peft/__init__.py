@@ -1,6 +1,5 @@
 """Parameter-Efficient Fine-Tuning (PEFT)"""
 
-from ._ball.factory import BALL
 from ._base import AdapterBase, AdapterFactory
 from ._create import (
     RegexFilter,
@@ -25,6 +24,5 @@ __all__ = [
     "iter_adapter_parameters",
     "set_module",
     "LoRA_Factory",
-    "BALL",
     "parameter_summary_str",
 ]
