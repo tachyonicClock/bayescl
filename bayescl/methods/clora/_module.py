@@ -15,7 +15,6 @@ class CLoRAModule(AdapterBase):
     A: nn.Parameter
     B: nn.Parameter
     anchor: Tensor
-    scaling: float
 
     def reset_adapter(self) -> None:
         pass
@@ -32,9 +31,7 @@ class CLoRAModule(AdapterBase):
         where :math:`\sum_{t'=1}^{t-1} \mathbf{B}_{t'} \mathbf{A}_{t'}` is pre-computed
         and stored in `anchor` to save computation.
         """
-        return (
-            self.scaling * self.anchor.abs() * (self.scaling * self.B @ self.A)
-        ).norm(p="fro") ** 2
+        return (self.anchor.abs() * (self.B @ self.A)).norm(p="fro") ** 2
 
 
 class CLoRAConv2d(nn.Conv2d, CLoRAModule):
