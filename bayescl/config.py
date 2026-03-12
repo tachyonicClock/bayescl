@@ -236,14 +236,10 @@ def _load_config_file(file: Path) -> DictConfig:
     return OmegaConf.create(json.loads(json_str))  # type: ignore
 
 
-def from_configs(
-    config_filenames: list[str], dotlist: list[str] | None = None
-) -> Config:
-    config = DictConfig({})  # type: ignore
-    for file in config_filenames:
-        file = Path(file)
-        logger.info(f"Updating config from {file}")
-        config = OmegaConf.merge(config, _load_config_file(file))
+def from_config(config_filename: str, dotlist: list[str] | None = None) -> Config:
+    file = Path(config_filename)
+    logger.info(f"Updating config from {file}")
+    config = _load_config_file(file)
     if dotlist is not None:
         logger.info(f"Updating config from command line args: {dotlist}")
         config = OmegaConf.merge(config, OmegaConf.from_dotlist(dotlist))

@@ -1,4 +1,3 @@
-
 from avalanche.models import SimpleMLP
 from torch import Tensor, nn
 from transformers import AutoModelForImageClassification

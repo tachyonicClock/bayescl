@@ -9,6 +9,7 @@ from bayescl.vbnn import replace_head
 
 matplotlib.use("Agg")
 
+import json
 import pickle
 import random
 import time
@@ -18,7 +19,6 @@ from typing import Any, Dict, List, Sequence
 
 import numpy as np
 import torch
-import yaml
 from avalanche.evaluation.metrics import (
     StreamConfusionMatrix,
     accuracy_metrics,
@@ -138,8 +138,8 @@ class Experiment:
             f".{self.cfg.label.scenario}"
             f".{self.cfg.label.method}"
         )
-        with open(log_dir / "config.yaml", "w") as f:
-            yaml.dump(self.cfg.model_dump(mode="json"), f)
+        with open(log_dir / "config.json", "w") as f:
+            json.dump(self.cfg.model_dump(mode="json"), f, indent=2)
 
         logger.info(f"Logging to '{log_dir}'")
         return log_dir
@@ -185,9 +185,8 @@ class Experiment:
                 self.plugins.append(CLoRAPlugin(peft, self.tb_log.writer))
             case _:
                 raise ValueError(f"Unsupported PEFT method: {peft.type}")
-            
+
         self.model.get_submodule(model_config.head_module).requires_grad_(True)
-        
 
     def _build_plugins(self):
         if self.cfg.use_local_ce:

@@ -1,4 +1,6 @@
-{
+local base = import 'base.jsonnet';
+
+base {
   scenario: {
     dataset: 'CIFAR100',
     n_tasks: 10,

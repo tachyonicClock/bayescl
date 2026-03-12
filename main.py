@@ -12,7 +12,7 @@ import click
 import optuna
 from loguru import logger
 
-from bayescl.config import Config, from_configs
+from bayescl.config import Config, from_config
 from bayescl.experiment import Experiment
 from bayescl.util.git import commit_message, commit_short_hash, is_git_status_clean
 from bayescl.util.optuna import optuna_suggest
@@ -105,11 +105,11 @@ def run_study(config: Config):
 
 @click.group()
 @click.option(
-    "--configs",
+    "--config",
     "-c",
-    multiple=True,
+    required=True,
     type=click.Path(exists=True, dir_okay=False),
-    help="Path to config files to load. Can be specified multiple times. The order determines precedence.",
+    help="Path to a jsonnet config file.",
 )
 @click.option(
     "--args",
@@ -133,7 +133,7 @@ def run_study(config: Config):
 @click.pass_context
 def cli(
     ctx: click.Context,
-    configs: List[str],
+    config: str,
     args: List[str],
     epochs_scale: float,
     force: bool,
@@ -141,7 +141,7 @@ def cli(
     if not force and not is_git_status_clean():
         raise SystemExit("Please ensure everything is committed")
 
-    cfg = from_configs(configs, args)
+    cfg = from_config(config, args)
     if epochs_scale != 1.0:
         epochs = int(epochs_scale * cfg.epochs)
         logger.info(f"Scaling epochs {cfg.epochs} -> {epochs}")
