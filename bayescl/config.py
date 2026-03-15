@@ -63,6 +63,13 @@ class EWCConfig(BaseConfig):
     decay_factor: float
 
 
+class SIConfig(BaseConfig):
+    si_lambda: float
+    """Hyperparameter for Synaptic Intelligence penalty. Larger values mean stronger regularization."""
+    eps: float
+    """Small constant to avoid division by zero in importance calculation."""
+
+
 class RWalkConfig(BaseModel):
     ewc_lambda: float
     """hyperparameter to weigh the penalty inside the total loss. The larger the lambda,
@@ -214,6 +221,9 @@ class Config(BaseConfig):
 
     ewc: Optional[EWCConfig] = None
     """If not None, use EWC with the given configuration."""
+
+    si: Optional[SIConfig] = None
+    """If not None, use Synaptic Intelligence with the given configuration."""
 
     hpsearch: Optional[HyperparameterSearch] = None
 

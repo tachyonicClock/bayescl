@@ -34,6 +34,7 @@ from avalanche.training.plugins import (
     ReplayPlugin,
     RWalkPlugin,
     SupervisedPlugin,
+    SynapticIntelligencePlugin,
 )
 from avalanche.training.templates import SupervisedTemplate
 from loguru import logger
@@ -213,6 +214,9 @@ class Experiment:
         if self.cfg.ewc:
             logger.info("Add 'EWCPlugin' plugin")
             self.plugins.append(EWCPlugin(**self.cfg.ewc.kwargs(), mode="online"))
+        if self.cfg.si:
+            logger.info("Add 'SynapticIntelligencePlugin' plugin")
+            self.plugins.append(SynapticIntelligencePlugin(**self.cfg.si.kwargs()))
 
         self.plugins.append(self.metrics_plugin)
 

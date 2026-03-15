@@ -12,6 +12,7 @@ METHODS = [
     "lora",
     "rwalk",
     "sdlora",
+    "si",
     "tball",
 ]
 
