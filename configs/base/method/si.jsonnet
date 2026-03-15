@@ -1,11 +1,8 @@
-{
+local lora = import 'lora.jsonnet';
+
+lora {
   label+: {
     method: 'si',
-  },
-
-  peft: {
-    type: 'LoRA',
-    r: 10,
   },
 
   si: {
