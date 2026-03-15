@@ -1,5 +1,5 @@
 DATASETS = [
-    # "cifar100",
+    "cifar100",
     "core50",
     "imagenetr",
 ]
@@ -11,7 +11,6 @@ METHODS = [
     # "lora",
     # "rwalk",
     # "tball",
-
     "clora",
     "sdlora",
 ]

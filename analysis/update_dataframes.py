@@ -261,10 +261,21 @@ for dataset, method, run_id, data in from_logs("log/test"):
     for record in to_calibration_record(dataset, method, run_id, data):
         calibration_records.append(record)
 
-dataclass_to_df(summary_records).to_parquet("analysis/dataframe/summary.parquet")
-dataclass_to_df(time_series_records).to_parquet(
-    "analysis/dataframe/time_series.parquet"
+
+summary_filename = "analysis/dataframe/summary.parquet"
+time_series_filename = "analysis/dataframe/time_series.parquet"
+calibration_filename = "analysis/dataframe/calibration.parquet"
+
+summary_df = pd.read_parquet(summary_filename)
+time_series_df = pd.read_parquet(time_series_filename)
+calibration_df = pd.read_parquet(calibration_filename)
+
+pd.concat([summary_df, dataclass_to_df(summary_records)], ignore_index=True).to_parquet(
+    summary_filename
 )
-dataclass_to_df(calibration_records).to_parquet(
-    "analysis/dataframe/calibration.parquet"
-)
+pd.concat(
+    [time_series_df, dataclass_to_df(time_series_records)], ignore_index=True
+).to_parquet(time_series_filename)
+pd.concat(
+    [calibration_df, dataclass_to_df(calibration_records)], ignore_index=True
+).to_parquet(calibration_filename)

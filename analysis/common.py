@@ -8,10 +8,12 @@ OFFLINE = {"joint"}
 #: Maps method names to their display labels.
 METHOD_TO_LABEL = {
     "joint": "Offline LoRA",
-    "linear": "Linear",
+    # "linear": "Linear",
     "rwalk": "RWalk",
     "ewc": "EWC",
     "lora": "LoRA",
+    "clora": "C-LoRA",
+    "sdlora": "SD-LoRA",
     "ball": "BALL",
     "tball": "TBALL",
 }
@@ -32,6 +34,8 @@ COLORS = {
     "ball": xgfs_normal12(4),
     "ewc": xgfs_normal12(5),
     "lora": xgfs_normal12(6),
+    "clora": xgfs_normal12(7),
+    "sdlora": xgfs_normal12(8),
 }
 
 #: Maps dataset names to their display labels.
@@ -74,10 +78,11 @@ REPLAY_METHODS = {"replay", "gdumb", "der"}
 
 PLOT_METHODS = [
     "joint",
-    "linear",
     "rwalk",
     "ewc",
     "lora",
+    "clora",
+    "sdlora",
     "ball",
     "tball",
 ]
