@@ -31,6 +31,7 @@ from avalanche.training import DER, GDumb, Naive, ReservoirSamplingBuffer
 from avalanche.training.plugins import (
     EvaluationPlugin,
     EWCPlugin,
+    MASPlugin,
     ReplayPlugin,
     RWalkPlugin,
     SupervisedPlugin,
@@ -217,6 +218,9 @@ class Experiment:
         if self.cfg.si:
             logger.info("Add 'SynapticIntelligencePlugin' plugin")
             self.plugins.append(SynapticIntelligencePlugin(**self.cfg.si.kwargs()))
+        if self.cfg.mas:
+            logger.info("Add 'MASPlugin' plugin")
+            self.plugins.append(MASPlugin(**self.cfg.mas.kwargs()))
 
         self.plugins.append(self.metrics_plugin)
 
