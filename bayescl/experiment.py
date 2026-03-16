@@ -46,6 +46,7 @@ from torch import BoolTensor
 from bayescl import config
 from bayescl.benchmark import get_benchmark
 from bayescl.methods.ball import BALLAdapterFactory
+from bayescl.methods.inflora import InfLoRAAdapterFactory, InfLoRAPlugin
 from bayescl.methods.lora import LoRAAdapterFactory
 from bayescl.methods.train_mask import TrainTaskMask
 from bayescl.methods.vcl import VCLStrategy
@@ -185,6 +186,17 @@ class Experiment:
                 logger.info("Adding CLoRA adapters and plugin")
                 add_adapters(self.model, regex_filter, CLoRAAdapterFactory(peft))
                 self.plugins.append(CLoRAPlugin(peft, self.tb_log.writer))
+            case "InfLoRA":
+                logger.info("Adding InfLoRA adapters and plugin")
+                add_adapters(self.model, regex_filter, InfLoRAAdapterFactory(peft))
+                self.plugins.append(
+                    InfLoRAPlugin(
+                        peft,
+                        total_tasks=self.num_tasks,
+                        optimizer_factory=self._new_optimizer,
+                        max_activation_batches=peft.max_activation_batches,
+                    )
+                )
             case _:
                 raise ValueError(f"Unsupported PEFT method: {peft.type}")
 

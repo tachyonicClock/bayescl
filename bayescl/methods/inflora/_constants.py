@@ -1,0 +1,4 @@
+"""Constants for InfLoRA."""
+
+DEFAULT_MAX_COLLECTED_SAMPLES = 256
+SVD_EPSILON = 1e-8

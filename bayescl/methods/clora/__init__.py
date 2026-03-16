@@ -1,8 +1,8 @@
 """Continual LoRA (c-LoRA).
 
-.. [#f0] Smith, J. S., Hsu, Y.-C., Zhang, L., Hua, T., Kira, Z., Shen, Y., & Jin, H.
-    (2024). Continual diffusion: Continual customization of text-to-image diffusion
-    with c-LoRA. 2024. https://openreview.net/forum?id=TZdEgwZ6f3
+Smith, J. S., Hsu, Y.-C., Zhang, L., Hua, T., Kira, Z., Shen, Y., & Jin, H. (2024).
+Continual diffusion: Continual customization of text-to-image diffusion with c-LoRA.
+2024. https://openreview.net/forum?id=TZdEgwZ6f3
 """
 
 from ._config import CLoRAConfig

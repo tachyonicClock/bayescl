@@ -9,6 +9,7 @@ from pydantic import BaseModel, Field
 from bayescl.base import BaseConfig
 from bayescl.methods.ball import BALLConfig
 from bayescl.methods.clora import CLoRAConfig
+from bayescl.methods.inflora import InfLoRAConfig
 from bayescl.methods.lora import LoRAConfig
 from bayescl.methods.sdlora import SDLoRAConfig
 from bayescl.methods.tball import TBALLConfig
@@ -102,7 +103,13 @@ class L2PConfig(BaseConfig):
 
 
 PEFTConfig = (
-    LoRAConfig | L2PConfig | BALLConfig | TBALLConfig | SDLoRAConfig | CLoRAConfig
+    LoRAConfig
+    | L2PConfig
+    | BALLConfig
+    | TBALLConfig
+    | SDLoRAConfig
+    | CLoRAConfig
+    | InfLoRAConfig
 )
 
 # --- Strategy Configurations ---
