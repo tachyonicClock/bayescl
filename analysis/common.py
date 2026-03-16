@@ -1,9 +1,29 @@
+from typing import Any
+
 from claiutil.cmap import xgfs_normal12
 
 N_RUNS = 5
 
 OFFLINE = {"joint"}
 
+METHODS = [
+    "joint",
+    "rwalk",
+    "ewc",
+    "mas",
+    "si",
+    "lora",
+    "clora",
+    "sdlora",
+    "ball",
+    "tball",
+]
+
+DATASETS = [
+    "cifar100",
+    "core50",
+    "imagenetr",
+]
 
 #: Maps method names to their display labels.
 METHOD_TO_LABEL = {
@@ -64,34 +84,7 @@ METRIC_TO_LABEL = {
     "asce_final": r"ASCE $\downarrow$",
 }
 
-BACKBONES = {
-    "joint": "DinoV2-small",
-    "codap": "ViT-B/16",
-    "dualprompt": "ViT-B/16",
-    "l2p": "ViT-B/16",
-    "replay": "DinoV2-small",
-    "gdumb": "DinoV2-small",
-    "der": "DinoV2-small",
-    "lora": "DinoV2-small",
-    "linear": "DinoV2-small",
-    "rwalk": "DinoV2-small",
-    "ball": "DinoV2-small",
-}
-
 REPLAY_METHODS = {"replay", "gdumb", "der"}
-
-PLOT_METHODS = [
-    "joint",
-    "rwalk",
-    "ewc",
-    "mas",
-    "si",
-    "lora",
-    "clora",
-    "sdlora",
-    "ball",
-    "tball",
-]
 
 
 OFFLINE_COMPATIBLE_METRICS = {
@@ -104,21 +97,26 @@ OFFLINE_COMPATIBLE_METRICS = {
 }
 
 
-def get_color(method_key: str) -> str:
+def get_color(method_key: str) -> Any:
     """Get the color for a given method."""
     return COLORS.get(method_key, "red")
 
 
-def get_label(method_key: str) -> str:
+def get_method_label(method_key: str) -> str:
     """Get the label for a given method."""
     return METHOD_TO_LABEL.get(method_key, method_key)
 
 
-def get_marker(method_key: str) -> str:
+def get_marker(method_key: str) -> Any:
     """Get the marker for a given method."""
-    return METHOD_TO_MARKER.get(method_key, METHOD_TO_MARKER[None])
+    return METHOD_TO_MARKER.get(method_key, METHOD_TO_MARKER[None])  # type: ignore
 
 
-def get_linestyle(method_key: str) -> str:
+def get_linestyle(method_key: str) -> Any:
     """Get the line style for a given method."""
-    return METHOD_TO_LINESTYLE.get(method_key, METHOD_TO_LINESTYLE[None])
+    return METHOD_TO_LINESTYLE.get(method_key, METHOD_TO_LINESTYLE[None])  # type: ignore
+
+
+def get_dataset_label(dataset_key: str) -> str:
+    """Get the label for a given dataset."""
+    return DATASET_TO_LABEL.get(dataset_key, dataset_key)
