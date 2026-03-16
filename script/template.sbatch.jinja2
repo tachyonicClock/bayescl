@@ -1,0 +1,25 @@
+#!/bin/bash
+#SBATCH --job-name={{ job_name }}
+#SBATCH --output={{ log_dir }}/%A_%a.out
+#SBATCH --error={{ log_dir }}/%A_%a.err
+#SBATCH --time={{ time | default("24:00:00") }}
+#SBATCH --gres=gpu:{{ gpus | default(1) }}
+#SBATCH --cpus-per-task={{ cpus | default(4) }}
+#SBATCH --mem={{ mem | default("32G") }}
+{% if array is defined and array is not none %}#SBATCH --array={{ array }}
+{% endif %}{% if partition %}#SBATCH --partition={{ partition }}
+{% endif %}{% if account %}#SBATCH --account={{ account }}
+{% endif %}
+{% if modules %}
+module purge
+{% for mod in modules %}
+module load {{ mod }}
+{% endfor %}
+{% endif %}
+{% if conda_env %}
+conda activate {{ conda_env }}
+{% endif %}
+
+python main.py \
+    -c configs/{{ dataset }}/{{ method }}.yaml \
+    run test ${SLURM_ARRAY_TASK_ID}

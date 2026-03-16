@@ -1,4 +1,5 @@
 avalanche-lib
+jinja2
 jsonnet
 omegaconf
 pydantic
