@@ -217,7 +217,18 @@ class Experiment:
             self.plugins.append(EWCPlugin(**self.cfg.ewc.kwargs(), mode="online"))
         if self.cfg.si:
             logger.info("Add 'SynapticIntelligencePlugin' plugin")
-            self.plugins.append(SynapticIntelligencePlugin(**self.cfg.si.kwargs()))
+
+            # Exclude all parameters except adapters from SI regularization
+            excluded_parameters = [
+                name
+                for name, param in self.model.named_parameters()
+                if not param.requires_grad
+            ]
+            self.plugins.append(
+                SynapticIntelligencePlugin(
+                    **self.cfg.si.kwargs(), excluded_parameters=excluded_parameters
+                )
+            )
         if self.cfg.mas:
             logger.info("Add 'MASPlugin' plugin")
             self.plugins.append(MASPlugin(**self.cfg.mas.kwargs()))
