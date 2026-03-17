@@ -1,11 +1,10 @@
 #!/bin/bash -e
 #SBATCH --job-name=hp_{{dataset}}_{{method}}
 #SBATCH --time={{duration}}
-#SBATCH --mem=8GB
+#SBATCH --mem={{memory or 16}}GB
 #SBATCH --cpus-per-task=4
 #SBATCH --gpus-per-node=L4:1
-#SBATCH --output=log/hp_{{dataset}}_{{method}}_%a.log
-#SBATCH --array=0-0
+#SBATCH --output=log/hp_{{dataset}}_{{method}}.log
 
 export PATH=$NESI_PYVENV/bayescl/bin:$PATH
 

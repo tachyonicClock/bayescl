@@ -17,9 +17,17 @@ env = jinja2.Environment(
     help="Duration for the job in format HH:MM:SS.",
     default="12:00:00",
 )
-def main(dataset, method, duration):
+@click.option(
+    "--memory",
+    help="Memory for the job in GB.",
+    default=None,
+    type=int,
+)
+def main(dataset, method, duration, memory):
     template = env.get_template("hp.sbatch.jinja2")
-    rendered = template.render(dataset=dataset, method=method, duration=duration)
+    rendered = template.render(
+        dataset=dataset, method=method, duration=duration, memory=memory
+    )
     print(rendered)
 
 
