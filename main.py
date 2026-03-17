@@ -119,11 +119,6 @@ def run_study(config: Config):
     help="Override config options using dotlist notation.",
 )
 @click.option(
-    "--epochs-scale",
-    help="Coefficient to scale number of epochs by.",
-    default=1.0,
-)
-@click.option(
     "--force",
     "-f",
     is_flag=True,
@@ -135,18 +130,12 @@ def cli(
     ctx: click.Context,
     config: str,
     args: List[str],
-    epochs_scale: float,
     force: bool,
 ):
     if not force and not is_git_status_clean():
         raise SystemExit("Please ensure everything is committed")
 
     cfg = from_config(config, args)
-    if epochs_scale != 1.0:
-        epochs = int(epochs_scale * cfg.epochs)
-        logger.info(f"Scaling epochs {cfg.epochs} -> {epochs}")
-        cfg.epochs = epochs
-
     ctx.obj = cfg
 
 

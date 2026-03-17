@@ -1,6 +1,6 @@
 #!/bin/bash -e
 #SBATCH --job-name=hp_{{dataset}}_{{method}}
-#SBATCH --time=12:00:00
+#SBATCH --time={{duration}}
 #SBATCH --mem=8GB
 #SBATCH --cpus-per-task=4
 #SBATCH --gpus-per-node=L4:1

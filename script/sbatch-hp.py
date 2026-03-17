@@ -10,9 +10,14 @@ env = jinja2.Environment(
 @click.command()
 @click.argument("dataset", required=True)
 @click.argument("method", required=True)
-def main(dataset, method):
+@click.option(
+    "--duration",
+    help="Duration for the job in format HH:MM:SS.",
+    default="12:00:00",
+)
+def main(dataset, method, duration):
     template = env.get_template("hp.sbatch.jinja2")
-    rendered = template.render(dataset=dataset, method=method)
+    rendered = template.render(dataset=dataset, method=method, duration=duration)
     print(rendered)
 
 if __name__ == "__main__":
