@@ -10,7 +10,6 @@ from os import environ
 
 import click
 import optuna
-from loguru import logger
 
 from bayescl.config import Config, from_config
 from bayescl.experiment import Experiment

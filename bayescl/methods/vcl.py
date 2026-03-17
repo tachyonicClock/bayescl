@@ -1,5 +1,5 @@
 import math
-from typing import Any, Callable, Tuple, override
+from typing import Any, Callable, Tuple
 
 import torch
 from avalanche.training.supervised import Naive
@@ -96,14 +96,12 @@ class VCLStrategy(Naive):
             pred_probs = ys_hat.mean(dim=0).softmax(dim=-1)
         return pred_probs, nll_loss(pred_probs.log(), y)
 
-    @override
     def _before_training_exp(self, **kwargs):
         # Reset the momentum optimizer to avoid forgetting previous tasks because of
         # stale momentum.
         self.optimizer = self._optimizer_fn(self.model.parameters())  # type: ignore
         return super()._before_training_exp(**kwargs)
 
-    @override
     def training_epoch(self, **kwargs):
         for self.mbatch in self.dataloader:
             if self._stop_training:
@@ -131,7 +129,6 @@ class VCLStrategy(Naive):
 
             self._after_training_iteration(**kwargs)
 
-    @override
     def eval_epoch(self, **kwargs):
         for self.mbatch in self.dataloader:
             self._unpack_minibatch()
@@ -143,7 +140,6 @@ class VCLStrategy(Naive):
 
             self._after_eval_iteration(**kwargs)
 
-    @override
     def _after_training_exp(self, **kwargs):
         logger.info("Using previous posterior as new prior.")
         posterior_to_prior(self.model)  # type: ignore

@@ -1,6 +1,6 @@
 """InfLoRA (Interference-Free Low-Rank Adaptation).
 
-This **submodule** `bayescl/methods/inflora` was generated using VS Code Agent Mode 
+This **submodule** `bayescl/methods/inflora` was generated using VS Code Agent Mode
 using the original paper and code base as context. I have reviewed the generated code
 and am satisfied that it captures the proposed method.
 
