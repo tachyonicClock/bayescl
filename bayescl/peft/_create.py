@@ -42,9 +42,9 @@ class RegexFilter(AdapterFilter):
         return self.pattern.match(name) is not None
 
 
-def add_adapters[T: nn.Module](
-    module: T, filter: AdapterFilter, factory: AdapterFactory
-) -> T:
+def add_adapters(
+    module: nn.Module, filter: AdapterFilter, factory: AdapterFactory
+) -> nn.Module:
     """Create and replace submodules with adapters.
 
     :param module: The module to modify in-place.
