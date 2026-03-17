@@ -72,7 +72,7 @@ def obj_dot_notation_set(key: str, obj: object, value: Any) -> object:
     return root
 
 
-def optuna_sugges(trial: Any, config: Any, params: Dict[str, SearchSpace]) -> Any:
+def optuna_suggest(trial: Any, config: Any, params: Dict[str, SearchSpace]) -> Any:
     import optuna
 
     assert isinstance(trial, optuna.Trial)
