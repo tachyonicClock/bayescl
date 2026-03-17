@@ -117,7 +117,9 @@ class InfLoRAPlugin(SupervisedPlugin):
             )
 
         configured_batch_size = max(1, int(self.config.activation_batch_size))
-        strategy_batch_size = int(getattr(strategy, "train_mb_size", configured_batch_size))
+        strategy_batch_size = int(
+            getattr(strategy, "train_mb_size", configured_batch_size)
+        )
         batch_size = min(configured_batch_size, strategy_batch_size)
         num_workers = 0
         return torch.utils.data.DataLoader(

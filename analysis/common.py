@@ -1,6 +1,7 @@
 from typing import Any
 
-from claiutil.cmap import xgfs_normal12
+import matplotlib.colors as mcolors
+from matplotlib.cm import get_cmap
 
 N_RUNS = 5
 
@@ -17,6 +18,7 @@ METHODS = [
     "sdlora",
     "ball",
     "tball",
+    "inflora",
 ]
 
 DATASETS = [
@@ -38,28 +40,28 @@ METHOD_TO_LABEL = {
     "sdlora": "SD-LoRA",
     "ball": "BALL",
     "tball": "TBALL",
+    "inflora": "InfLoRA",
 }
 
-METHOD_TO_MARKER = {
-    None: ".",
-}
+MARKERS = [".", "x"]
+LINE_STYLES = ["-", "--"]
 
-METHOD_TO_LINESTYLE = {
-    None: "-",
-}
+CMAP_COLOURS = get_cmap("tab20").colors
+# CMAP_COLOURS = sns.color_palette("Paired")[0:10]
+offset = 0
 
-COLORS = {
-    "tball": xgfs_normal12(0),
-    "linear": xgfs_normal12(1),
-    "joint": xgfs_normal12(2),
-    "rwalk": xgfs_normal12(3),
-    "ball": xgfs_normal12(4),
-    "ewc": xgfs_normal12(5),
-    "mas": xgfs_normal12(10),
-    "si": xgfs_normal12(9),
-    "lora": xgfs_normal12(6),
-    "clora": xgfs_normal12(7),
-    "sdlora": xgfs_normal12(8),
+_STYLE = {
+    method: {
+        "color": mcolors.to_hex(CMAP_COLOURS[i % len(CMAP_COLOURS)]),
+        "marker": MARKERS[i % len(MARKERS)],
+        "linestyle": LINE_STYLES[i % len(LINE_STYLES)],
+    }
+    for i, method in enumerate(METHODS, start=offset)
+}
+_STYLE["None"] = {
+    "color": "black",
+    "marker": "v",
+    "linestyle": "-",
 }
 
 #: Maps dataset names to their display labels.
@@ -99,7 +101,7 @@ OFFLINE_COMPATIBLE_METRICS = {
 
 def get_color(method_key: str) -> Any:
     """Get the color for a given method."""
-    return COLORS.get(method_key, "red")
+    return _STYLE.get(method_key, _STYLE["None"])["color"]
 
 
 def get_method_label(method_key: str) -> str:
@@ -109,12 +111,12 @@ def get_method_label(method_key: str) -> str:
 
 def get_marker(method_key: str) -> Any:
     """Get the marker for a given method."""
-    return METHOD_TO_MARKER.get(method_key, METHOD_TO_MARKER[None])  # type: ignore
+    return _STYLE.get(method_key, _STYLE["None"])["marker"]
 
 
 def get_linestyle(method_key: str) -> Any:
     """Get the line style for a given method."""
-    return METHOD_TO_LINESTYLE.get(method_key, METHOD_TO_LINESTYLE[None])  # type: ignore
+    return _STYLE.get(method_key, _STYLE["None"])["linestyle"]
 
 
 def get_dataset_label(dataset_key: str) -> str:

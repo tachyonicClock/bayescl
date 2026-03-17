@@ -22,6 +22,12 @@ STUDIES = [
     "bayescl/hp/cifar100/clora",
     "bayescl/hp/core50/clora",
     "bayescl/hp/imagenetr/clora",
+    "bayescl/hp/cifar100/inflora",
+    "bayescl/hp/core50/inflora",
+    "bayescl/hp/imagenetr/inflora",
+    "bayescl/hp/cifar100/mas",
+    "bayescl/hp/core50/mas",
+    "bayescl/hp/imagenetr/mas",
     # "bayescl/hp/cifar100/linear",
     # "bayescl/hp/cifar100/lora",
     # "bayescl/hp/cifar100/ball",
@@ -112,6 +118,7 @@ def main():
             n_trials=len(trials),
             hyperparameters=config,
         )
+        print(config_file)
 
         filename = f"configs/{dataset}/{method}.jsonnet"
         with open(filename, "w") as f:

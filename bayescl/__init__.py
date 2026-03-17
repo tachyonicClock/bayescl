@@ -1,9 +1,9 @@
-
-
 # Moneky patch `BaseSGDTemplate` to fix error in the training loop when `eval_streams`
 # is not None.
 from typing import Any
+
 from avalanche.training.templates import BaseSGDTemplate
+
 
 def _patched_train_exp(self, experience: Any, eval_streams=None, **kwargs):
     """Training loop over a single Experience object.
@@ -26,5 +26,6 @@ def _patched_train_exp(self, experience: Any, eval_streams=None, **kwargs):
 
         self.training_epoch(**kwargs)
         self._after_training_epoch(**kwargs)
+
 
 BaseSGDTemplate._train_exp = _patched_train_exp
