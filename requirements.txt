@@ -18,4 +18,7 @@ loguru
 seaborn
 typeguard
 
+# bnn
+git+https://github.com/microsoft/bayesianize.git@6aab95e
+
 psycopg[binary]
