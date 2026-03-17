@@ -116,8 +116,10 @@ class InfLoRAPlugin(SupervisedPlugin):
                 "unable to access dataset from strategy for activation collection"
             )
 
-        batch_size = int(getattr(strategy, "train_mb_size", 32))
-        num_workers = int(getattr(strategy, "num_workers", 0))
+        configured_batch_size = max(1, int(self.config.activation_batch_size))
+        strategy_batch_size = int(getattr(strategy, "train_mb_size", configured_batch_size))
+        batch_size = min(configured_batch_size, strategy_batch_size)
+        num_workers = 0
         return torch.utils.data.DataLoader(
             dataset,
             batch_size=batch_size,
