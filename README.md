@@ -163,10 +163,6 @@ ts -G 1 -L cifar_lora  notirun.sh python main.py       -c configs/cifar100/lora.
 ts -G 1 -L core5_lora  notirun.sh python main.py         -c configs/core50/lora.jsonnet hpsearch hp
 ts -G 1 -L image_lora  notirun.sh python main.py      -c configs/imagenetr/lora.jsonnet hpsearch hp
 
-ts -G 1 -L cifar_mas   notirun.sh python main.py        -c configs/cifar100/mas.jsonnet hpsearch hp
-ts -G 1 -L core5_mas   notirun.sh python main.py          -c configs/core50/mas.jsonnet hpsearch hp
-ts -G 1 -L image_mas   notirun.sh python main.py       -c configs/imagenetr/mas.jsonnet hpsearch hp
-
 ts -G 1 -L cifar_rwalk notirun.sh python main.py      -c configs/cifar100/rwalk.jsonnet hpsearch hp
 ts -G 1 -L core5_rwalk notirun.sh python main.py        -c configs/core50/rwalk.jsonnet hpsearch hp
 ts -G 1 -L image_rwalk notirun.sh python main.py     -c configs/imagenetr/rwalk.jsonnet hpsearch hp

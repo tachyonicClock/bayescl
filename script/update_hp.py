@@ -17,7 +17,6 @@ METHODS = [
     "inflora",
     "joint",
     "lora",
-    "mas",
     "rwalk",
     "sdlora",
     "tball",

@@ -10,7 +10,6 @@ METHODS = [
     "ewc",
     "joint",
     "lora",
-    "mas",
     "rwalk",
     "sdlora",
     "si",

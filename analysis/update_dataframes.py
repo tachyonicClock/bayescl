@@ -1,7 +1,9 @@
 import os
 import pickle
 import tarfile
+import zipfile
 from dataclasses import asdict, dataclass
+from itertools import chain
 from pathlib import Path
 from typing import Any, Dict, Generator, Tuple
 
@@ -106,6 +108,29 @@ def extract_bayescl(
                 method = parts[4]
                 run_id = parts[5]
                 yield dataset, method, run_id, metrics
+
+
+def from_zip(
+    filename: Path,
+) -> Generator[Tuple[str, str, str, Dict[str, Any]], None, None]:
+    with zipfile.ZipFile(filename, "r") as zip_file:
+        for member in zip_file.namelist():
+            if member.endswith("metrics.pkl"):
+                with (
+                    zip_file.open(member) as f_metrics,
+                    zip_file.open(
+                        member.replace("metrics.pkl", "raw_data.pkl")
+                    ) as f_raw_data,
+                ):
+                    metrics = pickle.load(f_metrics)
+                    raw_data = pickle.load(f_raw_data)
+                    metrics.update(raw_data)
+
+                    parts = member.split("/")
+                    dataset = parts[2]
+                    method = parts[3]
+                    run_id = parts[4]
+                    yield dataset, method, run_id, metrics
 
 
 def from_logs(
@@ -252,9 +277,16 @@ summary_records = []
 time_series_records = []
 calibration_records = []
 
-# BayesCL extraction and transformations
-for dataset, method, run_id, data in from_logs("log/test"):
-    print(f"Processing {dataset}/{method}/{run_id}")
+archive = Path("/local/scratch/antonlee/archive")
+
+# # BayesCL extraction and transformations
+print("DATASET/METHOD/RUN_ID")
+for dataset, method, run_id, data in chain(
+    # from_logs("log/test"),
+    from_zip(archive / "eval_cifar100_inflora_0.zip"),
+    from_zip(archive / "eval_imagenetr_inflora_0.zip"),
+):
+    print(f"{dataset}/{method}/{run_id}")
     summary_records.append(to_summary_record(dataset, method, run_id, data))
     for record in to_timeseries_record(dataset, method, run_id, data):
         time_series_records.append(record)

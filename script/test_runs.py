@@ -9,7 +9,6 @@ METHODS = [
     # "joint",
     # "linear",
     # "lora",
-    # "mas",
     # "rwalk",
     # "tball",
     "clora",

@@ -18,6 +18,9 @@ loguru
 seaborn
 typeguard
 
+fastparquet
+ipykernel
+
 # bnn
 git+https://github.com/microsoft/bayesianize.git@6aab95e
 

@@ -11,8 +11,6 @@ METHODS = [
     "joint",
     "rwalk",
     "ewc",
-    "mas",
-    "si",
     "lora",
     "clora",
     "sdlora",
@@ -30,11 +28,8 @@ DATASETS = [
 #: Maps method names to their display labels.
 METHOD_TO_LABEL = {
     "joint": "Offline LoRA",
-    # "linear": "Linear",
     "rwalk": "RWalk",
     "ewc": "EWC",
-    "mas": "MAS",
-    "si": "SI",
     "lora": "LoRA",
     "clora": "C-LoRA",
     "sdlora": "SD-LoRA",

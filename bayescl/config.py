@@ -71,13 +71,6 @@ class SIConfig(BaseConfig):
     """Small constant to avoid division by zero in importance calculation."""
 
 
-class MASConfig(BaseConfig):
-    lambda_reg: float
-    """Hyperparameter weighting the MAS penalty term in the loss."""
-    alpha: float
-    """Moving average factor used to update parameter importance across experiences."""
-
-
 class RWalkConfig(BaseModel):
     ewc_lambda: float
     """hyperparameter to weigh the penalty inside the total loss. The larger the lambda,
@@ -238,9 +231,6 @@ class Config(BaseConfig):
 
     si: Optional[SIConfig] = None
     """If not None, use Synaptic Intelligence with the given configuration."""
-
-    mas: Optional[MASConfig] = None
-    """If not None, use Memory Aware Synapses with the given configuration."""
 
     hpsearch: Optional[HyperparameterSearch] = None
 
