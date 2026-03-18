@@ -9,56 +9,22 @@ STORAGE = optuna.storages.RDBStorage(environ.get("OPTUNA_STORAGE"))
 
 MAX_TRIALS = 10
 
-DATASETS = {
-    "SplitCIFAR100": "cifar100",
-    "SplitDomainNet": "domainnet",
-    "SplitImageNetR": "imagenetr",
-}
+DATASETS = ["cifar100", "core50", "imagenetr"]
+METHODS = [
+    "ball",
+    "clora",
+    "ewc",
+    "inflora",
+    "joint",
+    "lora",
+    "mas",
+    "rwalk",
+    "sdlora",
+    "tball",
+]
 
 STUDIES = [
-    "bayescl/hp/cifar100/sdlora",
-    "bayescl/hp/core50/sdlora",
-    "bayescl/hp/imagenetr/sdlora",
-    "bayescl/hp/cifar100/clora",
-    "bayescl/hp/core50/clora",
-    "bayescl/hp/imagenetr/clora",
-    "bayescl/hp/cifar100/inflora",
-    "bayescl/hp/core50/inflora",
-    "bayescl/hp/imagenetr/inflora",
-    "bayescl/hp/cifar100/mas",
-    "bayescl/hp/core50/mas",
-    "bayescl/hp/imagenetr/mas",
-    # "bayescl/hp/cifar100/linear",
-    # "bayescl/hp/cifar100/lora",
-    # "bayescl/hp/cifar100/ball",
-    # "bayescl/hp/cifar100/tball",
-    # "bayescl/hp/cifar100/replay",
-    # "bayescl/hp/cifar100/gdumb",
-    # "bayescl/hp/cifar100/der",
-    # "bayescl/hp/cifar100/joint",
-    # "bayescl/hp/cifar100/rwalk",
-    # "bayescl/hp/cifar100/l2p",
-    # "bayescl/hp/cifar100/tball",
-    # "bayescl/hp/imagenetr/linear",
-    # "bayescl/hp/imagenetr/lora",
-    # "bayescl/hp/imagenetr/ball",
-    # "bayescl/hp/imagenetr/replay",
-    # "bayescl/hp/imagenetr/gdumb",
-    # "bayescl/hp/imagenetr/der",
-    # "bayescl/hp/imagenetr/joint",
-    # "bayescl/hp/imagenetr/rwalk",
-    # "bayescl/hp/imagenetr/l2p",
-    # "bayescl/hp/imagenetr/tball",
-    # "bayescl/hp/core50/linear",
-    # "bayescl/hp/core50/lora",
-    # "bayescl/hp/core50/ball",
-    # "bayescl/hp/core50/replay",
-    # "bayescl/hp/core50/gdumb",
-    # "bayescl/hp/core50/der",
-    # "bayescl/hp/core50/joint",
-    # "bayescl/hp/core50/rwalk",
-    # "bayescl/hp/core50/l2p",
-    # "bayescl/hp/core50/tball",
+    f"bayescl/hp/{dataset}/{method}" for dataset in DATASETS for method in METHODS
 ]
 
 
@@ -118,7 +84,7 @@ def main():
             n_trials=len(trials),
             hyperparameters=config,
         )
-        print(config_file)
+        # print(config_file)
 
         filename = f"configs/{dataset}/{method}.jsonnet"
         with open(filename, "w") as f:
