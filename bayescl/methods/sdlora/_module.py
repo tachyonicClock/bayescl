@@ -10,7 +10,7 @@ from ._config import SDLoRAConfig
 
 
 class SDLoRAModule(AdapterBase):
-    adapter_parameters = ("M", "A_t", "B_t")
+    adapter_parameters = None
 
 
 class SDLoRALinear(nn.Linear, SDLoRAModule):
@@ -82,8 +82,6 @@ class SDLoRALinear(nn.Linear, SDLoRAModule):
 
 
 class SDLoRAConv2d(nn.Conv2d, SDLoRAModule):
-    AB: torch.Tensor  # Cache for frozen directions of previous tasks
-
     def __init__(
         self,
         in_channels: int,
@@ -103,54 +101,65 @@ class SDLoRAConv2d(nn.Conv2d, SDLoRAModule):
         r = rank_per_task
         in_c_per_group = in_channels // self.groups
 
-        # Current task trainable direction (A_t and B_t)
-        self.A_t = nn.Parameter(torch.empty((r, in_c_per_group * kh * kw)))
-        self.B_t = nn.Parameter(torch.empty((out_channels, r)))
-
-        # Cache for frozen directions of previous tasks
-        # Use register_buffer instead of Parameter(requires_grad=False)
-        self.register_buffer("AB", torch.zeros(n_tasks, *self.weight.shape))
+        self.A = nn.ParameterList(
+            [
+                nn.Parameter(torch.empty((r, in_c_per_group * kh * kw)))
+                for _ in range(n_tasks)
+            ]
+        )
+        self.B = nn.ParameterList(
+            [nn.Parameter(torch.empty((out_channels, r))) for _ in range(n_tasks)]
+        )
 
         # Magnitude parameters for each task
         # Page 5: "...the learned magnitudes, all initialized to ones..."
         self.M = nn.Parameter(torch.ones((n_tasks, 1)))
 
-        self.task_idx = 0
+        adapter_parameters = ["M"]
+        for name, _ in self.A.named_parameters(prefix="A"):
+            adapter_parameters.append(name)
+        for name, _ in self.B.named_parameters(prefix="B"):
+            adapter_parameters.append(name)
+        self.adapter_parameters = tuple(adapter_parameters)
+
+        self.task_idx: int = 0
         self._init_lora_params()
+        self.set_task(0)
 
     def _init_lora_params(self):
-        nn.init.normal_(self.A_t)
-        nn.init.normal_(self.B_t)
+        for A_k, B_k in zip(self.A, self.B):
+            nn.init.normal_(A_k)
+            nn.init.normal_(B_k)
 
-    @torch.no_grad()
     def set_task(self, task: int):
-        # Capture the finished direction from the task just completed
-        W_finished = self.B_t @ self.A_t
-        direction = W_finished / (torch.norm(W_finished, p="fro") + 1e-8)
-        self.AB[self.task_idx] = direction.view_as(self.weight)
-
-        # Reset A and B for the new task
-        self._init_lora_params()
+        self.A.requires_grad_(False)
+        self.B.requires_grad_(False)
+        self.A[task].requires_grad = True
+        self.B[task].requires_grad = True
         self.task_idx = task
 
     def forward(self, input: torch.Tensor) -> torch.Tensor:
         # Start with the frozen pre-trained weights
         W_eff = self.weight.clone()
 
-        # Add past tasks' frozen directions scaled by their updated magnitudes
+        # Add past tasks' directions scaled by their magnitudes
         if self.task_idx > 0:
-            # Reshape M for broadcasting: (task_idx, 1, 1, 1, 1)
             past_magnitudes = self.M[: self.task_idx].view(-1, 1, 1, 1, 1)
-            past_directions = self.AB[: self.task_idx]
+            past_directions = []
 
-            # Sum across the task dimension (dim=0)
+            for k in range(self.task_idx):
+                W_k = self.B[k] @ self.A[k]
+                direction_k = W_k / (torch.norm(W_k, p="fro") + 1e-8)
+                past_directions.append(direction_k.view_as(self.weight))
+
+            past_directions = torch.stack(past_directions, dim=0)
+
             W_eff = W_eff + (past_magnitudes * past_directions).sum(dim=0)
 
         # Add the current task's normalized direction scaled by its magnitude
-        W_t = self.B_t @ self.A_t
+        W_t = self.B[self.task_idx] @ self.A[self.task_idx]
         W_t_normalized = W_t / (torch.norm(W_t, p="fro") + 1e-8)
 
-        # Ensure broadcasting matches the weight dimensions
         current_magnitude = self.M[self.task_idx].view(1, 1, 1, 1)
         W_eff = W_eff + current_magnitude * W_t_normalized.view_as(self.weight)
 
@@ -191,15 +200,7 @@ class SDLoRAAdapterFactory(AdapterFactory):
         self.n_tasks = n_tasks
 
     def _get_replacement(self, module: nn.Module) -> nn.Module:
-        if isinstance(module, nn.Linear):
-            return SDLoRALinear(
-                module.in_features,
-                module.out_features,
-                rank_per_task=self.config.rank_per_task,
-                n_tasks=self.n_tasks,
-                bias=module.bias is not None,
-            )
-        elif isinstance(module, nn.Conv2d):
+        if isinstance(module, nn.Conv2d):
             return SDLoRAConv2d(
                 module.in_channels,
                 module.out_channels,

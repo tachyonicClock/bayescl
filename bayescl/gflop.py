@@ -1,5 +1,7 @@
 # https://alessiodevoto.github.io/Compute-Flops-with-Pytorch-built-in-flops-counter/
 
+from contextlib import nullcontext
+
 from avalanche.training.templates.update_type import SGDUpdate
 from loguru import logger
 from torch.utils.flop_counter import FlopCounterMode
@@ -11,11 +13,15 @@ def training_epoch(self, **kwargs):
     :param kwargs:
     :return:
     """
-    for self.mbatch in self.dataloader:
+    for i, self.mbatch in enumerate(self.dataloader):
         if self._stop_training:
             break
-        flop_counter_forward = FlopCounterMode(display=False, depth=None)
-        flop_counter_backward = FlopCounterMode(display=False, depth=None)
+        if i == 0:
+            flop_counter_forward = FlopCounterMode(display=False, depth=None)
+            flop_counter_backward = FlopCounterMode(display=False, depth=None)
+        else:
+            flop_counter_forward = nullcontext()
+            flop_counter_backward = nullcontext()
 
         self._unpack_minibatch()
         self._before_training_iteration(**kwargs)
@@ -44,12 +50,12 @@ def training_epoch(self, **kwargs):
 
         self._after_training_iteration(**kwargs)
 
-        n = len(self.mbatch[0])
-        gflop_forward = flop_counter_forward.get_total_flops() / n / 2 / 1e9
-        gflop_backward = flop_counter_backward.get_total_flops() / n / 2 / 1e9
-        logger.info(f"GFLOP (forward) : {gflop_forward:.2f}")
-        logger.info(f"GFLOP (backward): {gflop_backward:.2f}")
-        break
+        if i == 0:
+            n = len(self.mbatch[0])
+            gflop_forward = flop_counter_forward.get_total_flops() / n / 2 / 1e9
+            gflop_backward = flop_counter_backward.get_total_flops() / n / 2 / 1e9
+            logger.info(f"GFLOP (forward) : {gflop_forward:.2f}")
+            logger.info(f"GFLOP (backward): {gflop_backward:.2f}")
 
 
 def monkey_patch_count_flops():
