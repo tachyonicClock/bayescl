@@ -5,11 +5,10 @@
 // Selected best run based on highest score 10 trials
 local dataset = import '../base/dataset/imagenetr.jsonnet';
 local method = import '../base/method/rwalk.jsonnet';
-
 dataset + method + {
-  lr+: 0.000796,
+  lr: 0.000796,
   rwalk+: {
-    ewc_lambda+: 0.855,
-    ewc_alpha+: 0.781,
+    ewc_lambda: 0.855,
+    ewc_alpha: 0.781,
   },
 }

@@ -283,8 +283,9 @@ archive = Path("/local/scratch/antonlee/archive")
 print("DATASET/METHOD/RUN_ID")
 for dataset, method, run_id, data in chain(
     # from_logs("log/test"),
-    from_zip(archive / "eval_cifar100_inflora_0.zip"),
-    from_zip(archive / "eval_imagenetr_inflora_0.zip"),
+    # from_zip(archive / "eval_cifar100_inflora_0.zip"),
+    # from_zip(archive / "eval_imagenetr_inflora_0.zip"),
+    from_zip(archive / "eval_core50_inflora_0.zip"),
 ):
     print(f"{dataset}/{method}/{run_id}")
     summary_records.append(to_summary_record(dataset, method, run_id, data))

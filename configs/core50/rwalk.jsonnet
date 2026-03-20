@@ -5,11 +5,10 @@
 // Selected best run based on highest score 10 trials
 local dataset = import '../base/dataset/core50.jsonnet';
 local method = import '../base/method/rwalk.jsonnet';
-
 dataset + method + {
-  lr+: 0.00198,
+  lr: 0.00198,
   rwalk+: {
-    ewc_lambda+: 0.77,
-    ewc_alpha+: 0.763,
+    ewc_lambda: 0.77,
+    ewc_alpha: 0.763,
   },
 }

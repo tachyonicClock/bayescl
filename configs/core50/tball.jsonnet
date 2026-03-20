@@ -5,13 +5,12 @@
 // Selected best run based on highest score 10 trials
 local dataset = import '../base/dataset/core50.jsonnet';
 local method = import '../base/method/tball.jsonnet';
-
 dataset + method + {
-  lr+: 0.000894,
+  lr: 0.000894,
   strategy+: {
-    beta+: 1.65,
+    beta: 1.65,
   },
   peft+: {
-    bnn+: 'FFG',
+    bnn: 'FFG',
   },
 }

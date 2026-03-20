@@ -175,6 +175,7 @@ def hpsearch(cfg: Config, name: str):
 def count_parameters(cfg: Config):
     experiment = Experiment(cfg)
     experiment.count_parameters()
+    experiment.count_flops()
 
 
 if __name__ == "__main__":

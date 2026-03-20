@@ -5,11 +5,10 @@
 // Selected best run based on highest score 10 trials
 local dataset = import '../base/dataset/cifar100.jsonnet';
 local method = import '../base/method/ewc.jsonnet';
-
 dataset + method + {
-  lr+: 0.000156,
+  lr: 0.000156,
   ewc+: {
-    ewc_lambda+: 7.99,
-    decay_factor+: 0.982,
+    ewc_lambda: 7.99,
+    decay_factor: 0.982,
   },
 }

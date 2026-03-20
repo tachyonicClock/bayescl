@@ -5,11 +5,10 @@
 // Selected best run based on highest score 10 trials
 local dataset = import '../base/dataset/imagenetr.jsonnet';
 local method = import '../base/method/ewc.jsonnet';
-
 dataset + method + {
-  lr+: 0.000149,
+  lr: 0.000149,
   ewc+: {
-    ewc_lambda+: 9.55,
-    decay_factor+: 0.883,
+    ewc_lambda: 9.55,
+    decay_factor: 0.883,
   },
 }

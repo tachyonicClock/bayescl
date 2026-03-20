@@ -5,10 +5,9 @@
 // Selected best run based on highest score 10 trials
 local dataset = import '../base/dataset/core50.jsonnet';
 local method = import '../base/method/ball.jsonnet';
-
 dataset + method + {
-  lr+: 0.000522,
+  lr: 0.000522,
   strategy+: {
-    beta+: 1.47,
+    beta: 1.47,
   },
 }

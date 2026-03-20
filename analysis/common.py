@@ -14,9 +14,9 @@ METHODS = [
     "lora",
     "clora",
     "sdlora",
+    "inflora",
     "ball",
     "tball",
-    "inflora",
 ]
 
 DATASETS = [
@@ -33,9 +33,9 @@ METHOD_TO_LABEL = {
     "lora": "LoRA",
     "clora": "C-LoRA",
     "sdlora": "SD-LoRA",
-    "ball": "BALL",
-    "tball": "TBALL",
     "inflora": "InfLoRA",
+    "tball": "TBALL",
+    "ball": "BALL",
 }
 
 MARKERS = [".", "x"]
@@ -79,6 +79,8 @@ METRIC_TO_LABEL = {
     "sce_final": r"SCE $\downarrow$",
     "brier_final": r"Brier $\downarrow$",
     "asce_final": r"ASCE $\downarrow$",
+    "ace_seen_avg": r"Avg. ACE $\downarrow$",
+    "score": r"Score $\uparrow$",
 }
 
 REPLAY_METHODS = {"replay", "gdumb", "der"}

@@ -5,7 +5,6 @@
 // Selected best run based on highest score 7 trials
 local dataset = import '../base/dataset/cifar100.jsonnet';
 local method = import '../base/method/joint.jsonnet';
-
 dataset + method + {
-  lr+: 0.000195,
+  lr: 0.000195,
 }

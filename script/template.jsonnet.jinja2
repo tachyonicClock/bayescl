@@ -5,31 +5,27 @@
 // Selected best run based on highest score {{ n_trials }} trials
 local dataset = import '../base/dataset/{{dataset}}.jsonnet';
 local method = import '../base/method/{{method}}.jsonnet';
-
-{% macro render_value(value) -%}
-{%- if value is mapping -%}
-{{ render_object(value) }}
-{%- elif value is boolean -%}
-{{ 'true' if value else 'false' }}
-{%- elif value is number -%}
-{{ '%.3g' | format(value) }}
-{%- elif value is none -%}
-null
-{%- else -%}
-{{ value | tojson }}
-{%- endif -%}
+{% macro render_value(value, indent_level=0) -%}
+  {%- if value is mapping -%}
+    {{ render_object(value, indent_level) }}
+  {%- elif value is boolean -%}
+    {{ 'true' if value else 'false' }}
+  {%- elif value is number -%}
+    {{ '%.3g' | format(value) }}
+  {%- elif value is none -%}
+    null
+  {%- else -%}
+    {{ value | tojson }}
+  {%- endif -%}
 {%- endmacro -%}
 
-{%- macro render_object(obj) -%}
+{%- macro render_object(obj, indent_level=0) -%}
 {
+{%- set next_indent = indent_level + 2 -%}
 {%- for key, value in obj.items() %}
-    {{ key }}+: {{ render_value(value) }}{{ ',' if not loop.last else '' }}
+{{ ' ' * next_indent }}{{ key }}{{ '+' if value is mapping else '' }}: {{ render_value(value, next_indent) }}{{ ',' if not loop.last else '' }}
 {%- endfor %}
-}
+{{ ' ' * indent_level }}}
 {%- endmacro -%}
 
-dataset + method + {
-{%- for key, value in hyperparameters.items() %}
-    {{ key }}+: {{ render_value(value) }}{{ ',' if not loop.last else '' }}
-{%- endfor %}
-}
+dataset + method + {{ render_object(hyperparameters, 0) }}

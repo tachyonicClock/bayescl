@@ -5,11 +5,10 @@
 // Selected best run based on highest score 10 trials
 local dataset = import '../base/dataset/core50.jsonnet';
 local method = import '../base/method/clora.jsonnet';
-
 dataset + method + {
-  lr+: 0.000185,
+  lr: 0.000185,
   peft+: {
-    lambda_+: 8.8,
-    alpha+: 0.548,
+    lambda_: 8.8,
+    alpha: 0.548,
   },
 }

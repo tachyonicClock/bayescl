@@ -44,6 +44,7 @@ from torch import BoolTensor
 
 from bayescl import config
 from bayescl.benchmark import get_benchmark
+from bayescl.gflop import monkey_patch_count_flops
 from bayescl.methods.ball import BALLAdapterFactory
 from bayescl.methods.inflora import InfLoRAAdapterFactory, InfLoRAPlugin
 from bayescl.methods.lora import LoRAAdapterFactory
@@ -371,14 +372,25 @@ class Experiment:
         with open(self.log_dir / "avalanche_results.pkl", "wb") as f:
             pickle.dump(results, f)
 
-        metrics, raw_data = self.metrics_plugin.evaluator.result()
-        pickle.dump(metrics, open(self.log_dir / "metrics.pkl", "wb"))
-        pickle.dump(raw_data, open(self.log_dir / "raw_data.pkl", "wb"))
+        if self.metrics_plugin is not None:
+            metrics, raw_data = self.metrics_plugin.evaluator.result()
+            pickle.dump(metrics, open(self.log_dir / "metrics.pkl", "wb"))
+            pickle.dump(raw_data, open(self.log_dir / "raw_data.pkl", "wb"))
 
-        for key, value in metrics.items():
-            if isinstance(value, (float, int)):
-                logger.info(f"{key}: {value:.4f}")
-        return metrics["accuracy_seen_avg"], metrics["ece_seen_avg"]
+            for key, value in metrics.items():
+                if isinstance(value, (float, int)):
+                    logger.info(f"{key}: {value:.4f}")
+            return metrics["accuracy_seen_avg"], metrics["ece_seen_avg"]
+        return -1, -1
 
     def count_parameters(self):
         print(parameter_summary_str(self.model))
+
+    def count_flops(self):
+        self.cfg.max_tasks = 2
+        self.cfg.epochs = 1
+        self.plugins.remove(self.metrics_plugin)
+        self.metrics_plugin = None
+        monkey_patch_count_flops()
+        self.run()
+        logger.info("\n" + parameter_summary_str(self.model))

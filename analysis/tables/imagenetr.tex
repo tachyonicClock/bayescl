@@ -1,16 +1,15 @@
 \begin{tabular}{llllll}
 \toprule
- & {\small Avg. Acc. $\uparrow$} & {\small Acc. $\uparrow$} & {\small BWT $\uparrow$} & {\small Avg. ECE $\downarrow$} & {\small ECE $\downarrow$} \\
+ & {\small Score $\uparrow$} & {\small Avg. Acc. $\uparrow$} & {\small Avg. ECE $\downarrow$} & {\small BWT $\uparrow$} & {\small SCE $\downarrow$} \\
 \midrule
-Offline LoRA & {\small \textit{NA}} & \small \textit{63.35 $\pm$ 0.42}$^{\uparrow}$ & {\small \textit{NA}} & {\small \textit{NA}} & \small \textit{1.48 $\pm$ 0.34} \\
-RWalk & \small 40.17 $\pm$ 0.54$^{\downarrow}$ & \small 29.00 $\pm$ 0.68$^{\downarrow}$ & \small -4.93 $\pm$ 0.59$^{\downarrow}$ & \small 30.86 $\pm$ 0.80$^{\uparrow}$ & \small 26.76 $\pm$ 2.79$^{\uparrow}$ \\
-EWC & \small 25.61 $\pm$ 0.35$^{\downarrow}$ & \small 7.41 $\pm$ 0.33$^{\downarrow}$ & \small -61.08 $\pm$ 0.37$^{\downarrow}$ & \small 31.49 $\pm$ 0.44$^{\uparrow}$ & \small 45.31 $\pm$ 1.45$^{\uparrow}$ \\
-MAS & NaN & NaN & NaN & NaN & NaN \\
-LoRA & \small 30.54 $\pm$ 0.33$^{\downarrow}$ & \small 10.90 $\pm$ 0.19$^{\downarrow}$ & \small -55.45 $\pm$ 1.18$^{\downarrow}$ & \small \textbf{6.32 $\pm$ 0.44}$^{\downarrow}$ & \small 8.60 $\pm$ 0.85 \\
-C-LoRA & \small 47.66 $\pm$ 0.29 & \small 33.18 $\pm$ 0.90$^{\downarrow}$ & \small -13.97 $\pm$ 0.59$^{\downarrow}$ & \small 16.68 $\pm$ 0.38$^{\uparrow}$ & \small 16.72 $\pm$ 0.33$^{\uparrow}$ \\
-SD-LoRA & \small \textbf{51.45 $\pm$ 0.58}$^{\uparrow}$ & \small \textbf{40.32 $\pm$ 0.61} & \small -12.82 $\pm$ 0.72$^{\downarrow}$ & \small 11.15 $\pm$ 0.44 & \small 13.56 $\pm$ 0.76 \\
-BALL & \small 47.67 $\pm$ 0.63 & \small 38.99 $\pm$ 1.16 & \small \textbf{-2.28 $\pm$ 0.47} & \small 12.27 $\pm$ 0.14 & \small \textbf{7.96 $\pm$ 2.35} \\
-TBALL & \small 48.44 $\pm$ 0.25 & \small 34.57 $\pm$ 2.37 & \small -7.55 $\pm$ 0.87$^{\downarrow}$ & \small 12.49 $\pm$ 0.75 & \small 25.28 $\pm$ 3.92$^{\uparrow}$ \\
-InfLoRA & \small 34.28 $\pm$ 0.74$^{\downarrow}$ & \small 14.13 $\pm$ 0.26$^{\downarrow}$ & \small -42.03 $\pm$ 0.99$^{\downarrow}$ & \small 14.80 $\pm$ 1.08 & \small 15.57 $\pm$ 1.16$^{\uparrow}$ \\
+Offline LoRA & {\small \textit{NA}} & {\small \textit{NA}} & {\small \textit{NA}} & {\small \textit{NA}} & \small \textit{0.015 $\pm$ 0.003} \\
+RWalk & \small 54.66 $\pm$ 0.65$^{\downarrow}$ & \small 40.17 $\pm$ 0.54$^{\downarrow}$ & \small 30.86 $\pm$ 0.80$^{\uparrow}$ & \small -4.93 $\pm$ 0.59$^{\downarrow}$ & \small 0.321 $\pm$ 0.030$^{\uparrow}$ \\
+EWC & \small 47.06 $\pm$ 0.36$^{\downarrow}$ & \small 25.61 $\pm$ 0.35$^{\downarrow}$ & \small 31.49 $\pm$ 0.44$^{\uparrow}$ & \small -61.08 $\pm$ 0.37$^{\downarrow}$ & \small 0.579 $\pm$ 0.015$^{\uparrow}$ \\
+LoRA & \small 62.11 $\pm$ 0.26$^{\downarrow}$ & \small 30.54 $\pm$ 0.33$^{\downarrow}$ & \small \textbf{6.32 $\pm$ 0.44}$^{\downarrow}$ & \small -55.45 $\pm$ 1.18$^{\downarrow}$ & \small 0.106 $\pm$ 0.013 \\
+C-LoRA & \small 65.49 $\pm$ 0.33$^{\downarrow}$ & \small 47.66 $\pm$ 0.29 & \small 16.68 $\pm$ 0.38$^{\uparrow}$ & \small -13.97 $\pm$ 0.59$^{\downarrow}$ & \small 0.211 $\pm$ 0.005$^{\uparrow}$ \\
+SD-LoRA & \small \textbf{70.15 $\pm$ 0.48}$^{\uparrow}$ & \small \textbf{51.45 $\pm$ 0.58}$^{\uparrow}$ & \small 11.15 $\pm$ 0.44 & \small -12.82 $\pm$ 0.72$^{\downarrow}$ & \small 0.167 $\pm$ 0.007 \\
+InfLoRA & \small 59.74 $\pm$ 0.85$^{\downarrow}$ & \small 34.28 $\pm$ 0.70$^{\downarrow}$ & \small 14.80 $\pm$ 1.01$^{\uparrow}$ & \small -42.03 $\pm$ 0.93$^{\downarrow}$ & \small 0.228 $\pm$ 0.015$^{\uparrow}$ \\
+TBALL & \small 67.98 $\pm$ 0.46 & \small 48.44 $\pm$ 0.25 & \small 12.49 $\pm$ 0.75 & \small -7.55 $\pm$ 0.87$^{\downarrow}$ & \small 0.310 $\pm$ 0.040$^{\uparrow}$ \\
+BALL & \small 67.70 $\pm$ 0.36 & \small 47.67 $\pm$ 0.63 & \small 12.27 $\pm$ 0.14 & \small \textbf{-2.28 $\pm$ 0.47} & \small \textbf{0.088 $\pm$ 0.028} \\
 \bottomrule
 \end{tabular}

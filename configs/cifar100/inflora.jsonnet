@@ -5,7 +5,6 @@
 // Selected best run based on highest score 10 trials
 local dataset = import '../base/dataset/cifar100.jsonnet';
 local method = import '../base/method/inflora.jsonnet';
-
 dataset + method + {
-  lr+: 0.000377,
+  lr: 0.000377,
 }
