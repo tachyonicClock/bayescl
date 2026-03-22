@@ -44,7 +44,6 @@ from torch import BoolTensor
 
 from bayescl import config
 from bayescl.benchmark import get_benchmark
-from bayescl.gflop import monkey_patch_count_flops
 from bayescl.methods.ball import BALLAdapterFactory
 from bayescl.methods.inflora import InfLoRAAdapterFactory, InfLoRAPlugin
 from bayescl.methods.lora import LoRAAdapterFactory
@@ -385,12 +384,3 @@ class Experiment:
 
     def count_parameters(self):
         print(parameter_summary_str(self.model))
-
-    def count_flops(self):
-        self.cfg.max_tasks = 2
-        self.cfg.epochs = 1
-        self.plugins.remove(self.metrics_plugin)
-        self.metrics_plugin = None
-        monkey_patch_count_flops()
-        self.run()
-        logger.info("\n" + parameter_summary_str(self.model))

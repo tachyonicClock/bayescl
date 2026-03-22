@@ -113,21 +113,42 @@ def count_adapter_parameters(module: nn.Module) -> int:
 
 def parameter_summary_str(module: nn.Module) -> str:
     """Print a summary of the number of parameters in the module."""
-    total_params = sum(p.numel() for p in module.parameters())
-    trainable_params = sum(p.numel() for p in module.parameters() if p.requires_grad)
-    buffers = sum(p.numel() for p in module.buffers())
-    frozen_params = total_params - trainable_params
-    adapter_params = count_adapter_parameters(module)
+    param_sum = sum(p.numel() for p in module.parameters())
+    param_grad_sum = sum(p.numel() for p in module.parameters() if p.requires_grad)
+    buf_sum = sum(p.numel() for p in module.buffers())
 
-    fmt_int = ">10,"
-    fmt_percent = ">9.2f"
-    return (
-        f"Total:       {total_params:{fmt_int}}\n"
-        f"Trainable:   {trainable_params:{fmt_int}}\n"
-        f"Frozen:      {frozen_params:{fmt_int}}\n"
-        f"Buffers:     {buffers:{fmt_int}}\n"
-        f"Adapter:     {adapter_params:{fmt_int}}\n"
-        f"Non-adapter: {(total_params - adapter_params):{fmt_int}}\n"
-        f"Adapter %:   {(adapter_params / total_params * 100):{fmt_percent}}%\n"
-        f"Trainable %: {(trainable_params / total_params * 100):{fmt_percent}}%\n"
-    )
+    adapter_param_sum = 0
+    adapter_param_grad_sum = 0
+    adapter_buf_sum = 0
+    for _, adapter in iter_named_adapters(module):
+        ignore = {"weight", "bias"}
+        assert isinstance(adapter, nn.Module)
+        adapter_param_sum += sum(
+            p.numel() for n, p in adapter.named_parameters() if n not in ignore
+        )
+        adapter_param_grad_sum += sum(
+            p.numel()
+            for n, p in adapter.named_parameters()
+            if n not in ignore and p.requires_grad
+        )
+        adapter_buf_sum += sum(
+            p.numel() for n, p in adapter.named_buffers() if n not in ignore
+        )
+
+    # Formatting logic
+    header = f"{'Category':<20} {'Frozen':>15} {'Trainable':>15} {'Buffers':>12}"
+    divider = "-" * len(header)
+
+    fmt = ">15,"
+    b_fmt = ">12,"
+
+    lines = [
+        divider,
+        header,
+        divider,
+        f"{'Main Module':<20} {param_sum - param_grad_sum:{fmt}} {param_grad_sum:{fmt}} {buf_sum:{b_fmt}}",
+        f"{'Adapters':<20} {adapter_param_sum - adapter_param_grad_sum:{fmt}} {adapter_param_grad_sum:{fmt}} {adapter_buf_sum:{b_fmt}}",
+        divider,
+    ]
+
+    return "\n".join(lines)

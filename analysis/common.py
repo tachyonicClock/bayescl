@@ -63,7 +63,7 @@ _STYLE["None"] = {
 DATASET_TO_LABEL = {
     "cifar100": "iCIFAR100/10",
     # "domainnet": "iDomainNet345/5",
-    "core50": "iCore50/10",
+    "core50": "iCORe50/10",
     "imagenetr": "iImageNet-R200/10",
 }
 

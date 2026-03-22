@@ -37,7 +37,7 @@ DATASETS = [
 class SummaryRecord:
     dataset: str
     method: str
-    run_id: str
+    run_id: int
     n_tasks: int
     accuracy_all_avg: float
     accuracy_final: float
@@ -57,12 +57,14 @@ class SummaryRecord:
     sce_seen_avg: float
     asce_final: float
 
+    _INDEX = ["dataset", "method", "run_id"]
+
 
 @dataclass
 class TimeSeriesRecord:
     dataset: str
     method: str
-    run_id: str
+    run_id: int
     task: int
     accuracy_all: float
     accuracy_seen: float
@@ -74,16 +76,20 @@ class TimeSeriesRecord:
     sce_all: float
     sce_seen: float
 
+    _INDEX = ["dataset", "method", "run_id", "task"]
+
 
 @dataclass
 class CalibrationRecord:
     dataset: str
     method: str
-    run_id: str
+    run_id: int
     bin: int
     bin_probability: float
     bin_frequency: float
     bin_weight: float
+
+    _INDEX = ["dataset", "method", "run_id", "bin"]
 
 
 def extract_bayescl(
@@ -177,7 +183,7 @@ def get_final_proba_and_targets(data) -> Tuple[Tensor, Tensor]:
 
 
 def to_summary_record(
-    dataset: str, method: str, run_id: str, data: Dict[str, Any]
+    dataset: str, method: str, run_id: int, data: Dict[str, Any]
 ) -> SummaryRecord:
     proba, targets = get_final_proba_and_targets(data)
     bin_probability, bin_frequency, bin_weights = compute_calibration_curve(
@@ -231,7 +237,7 @@ def calibration_curve(
 
 
 def to_calibration_record(
-    dataset: str, method: str, run_id: str, data: Dict[str, Any]
+    dataset: str, method: str, run_id: int, data: Dict[str, Any]
 ) -> Generator[CalibrationRecord, None, None]:
     bin_probability, bin_frequency, bin_weights = calibration_curve(data)
     n_bins = len(bin_probability)
@@ -248,7 +254,7 @@ def to_calibration_record(
 
 
 def to_timeseries_record(
-    dataset: str, method: str, run_id: str, data: Dict[str, Any]
+    dataset: str, method: str, run_id: int, data: Dict[str, Any]
 ) -> Generator[TimeSeriesRecord, None, None]:
     n_tasks = data["n_tasks"]
     for task in range(n_tasks):
@@ -278,20 +284,22 @@ time_series_records = []
 calibration_records = []
 
 archive = Path("/local/scratch/antonlee/archive")
-
+#  /local/scratch/antonlee/archive/eval_imagenetr_inflora_0.zip /local/scratch/antonlee/archive/eval_imagenetr_inflora_01.zip /local/scratch/antonlee/archive/eval_imagenetr_tball_01.zip
 # # BayesCL extraction and transformations
 print("DATASET/METHOD/RUN_ID")
 for dataset, method, run_id, data in chain(
     # from_logs("log/test"),
-    # from_zip(archive / "eval_cifar100_inflora_0.zip"),
-    # from_zip(archive / "eval_imagenetr_inflora_0.zip"),
-    from_zip(archive / "eval_core50_inflora_0.zip"),
+    from_zip(archive / "eval_cifar100_inflora_01.zip"),
+    from_zip(archive / "eval_core50_inflora_01.zip"),
+    from_zip(archive / "eval_imagenetr_inflora_01.zip"),
+    from_zip(archive / "eval_imagenetr_ball_01.zip"),
+    from_zip(archive / "eval_imagenetr_tball_01.zip"),
 ):
     print(f"{dataset}/{method}/{run_id}")
-    summary_records.append(to_summary_record(dataset, method, run_id, data))
-    for record in to_timeseries_record(dataset, method, run_id, data):
+    summary_records.append(to_summary_record(dataset, method, int(run_id), data))
+    for record in to_timeseries_record(dataset, method, int(run_id), data):
         time_series_records.append(record)
-    for record in to_calibration_record(dataset, method, run_id, data):
+    for record in to_calibration_record(dataset, method, int(run_id), data):
         calibration_records.append(record)
 
 
@@ -299,16 +307,38 @@ summary_filename = "analysis/dataframe/summary.parquet"
 time_series_filename = "analysis/dataframe/time_series.parquet"
 calibration_filename = "analysis/dataframe/calibration.parquet"
 
-summary_df = pd.read_parquet(summary_filename)
-time_series_df = pd.read_parquet(time_series_filename)
-calibration_df = pd.read_parquet(calibration_filename)
+summary_df = pd.read_parquet(summary_filename).reset_index()
+time_series_df = pd.read_parquet(time_series_filename).reset_index()
+calibration_df = pd.read_parquet(calibration_filename).reset_index()
 
-pd.concat([summary_df, dataclass_to_df(summary_records)], ignore_index=True).to_parquet(
-    summary_filename
+summary_df["run_id"] = summary_df["run_id"].astype(int)
+time_series_df["run_id"] = time_series_df["run_id"].astype(int)
+calibration_df["run_id"] = calibration_df["run_id"].astype(int)
+
+summary_df.set_index(SummaryRecord._INDEX, inplace=True)
+time_series_df.set_index(TimeSeriesRecord._INDEX, inplace=True)
+calibration_df.set_index(CalibrationRecord._INDEX, inplace=True)
+
+# drop duplicates rows
+summary_df = summary_df[~summary_df.index.duplicated(keep="first")]
+time_series_df = time_series_df[~time_series_df.index.duplicated(keep="first")]
+calibration_df = calibration_df[~calibration_df.index.duplicated(keep="first")]
+
+
+new_summary_df = dataclass_to_df(summary_records).set_index(SummaryRecord._INDEX)
+new_time_series_df = dataclass_to_df(time_series_records).set_index(
+    TimeSeriesRecord._INDEX
 )
-pd.concat(
-    [time_series_df, dataclass_to_df(time_series_records)], ignore_index=True
-).to_parquet(time_series_filename)
-pd.concat(
-    [calibration_df, dataclass_to_df(calibration_records)], ignore_index=True
-).to_parquet(calibration_filename)
+new_calibration_df = dataclass_to_df(calibration_records).set_index(
+    CalibrationRecord._INDEX
+)
+
+
+# upsert new records into existing dataframes
+new_summary_df.combine_first(summary_df).reset_index().to_parquet(summary_filename)
+new_time_series_df.combine_first(time_series_df).reset_index().to_parquet(
+    time_series_filename
+)
+new_calibration_df.combine_first(calibration_df).reset_index().to_parquet(
+    calibration_filename
+)
