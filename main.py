@@ -24,6 +24,8 @@ def get_sampler(sampler: str) -> optuna.samplers.BaseSampler:
         return optuna.samplers.TPESampler()
     elif sampler == "random":
         return optuna.samplers.RandomSampler()
+    elif sampler == "BruteForceSampler":
+        return optuna.samplers.BruteForceSampler()
     elif sampler == "QMC":
         return optuna.samplers.QMCSampler(scramble=True)
     raise ValueError(f"Unknown sampler: {sampler}")
@@ -175,7 +177,6 @@ def hpsearch(cfg: Config, name: str):
 def count_parameters(cfg: Config):
     experiment = Experiment(cfg)
     experiment.count_parameters()
-    experiment.count_flops()
 
 
 if __name__ == "__main__":

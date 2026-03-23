@@ -60,7 +60,7 @@ class HyperparameterSearch(_BaseConfig):
     #: The number of trials
     n_trials: int
     #: The hyperparameter optimization algorithm to use.
-    sampler: Literal["random", "TPE", "QMC"] = "random"
+    sampler: Literal["random", "TPE", "QMC", "BruteForceSampler"] = "random"
 
 
 def obj_dot_notation_set(key: str, obj: object, value: Any) -> object:
