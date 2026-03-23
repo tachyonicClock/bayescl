@@ -167,7 +167,6 @@ def run(
 @click.pass_obj
 @click.argument("name", type=str)
 def hpsearch(cfg: Config, name: str):
-    cfg.scenario.validation = True
     cfg.label.study = name
     run_study(cfg)
 
