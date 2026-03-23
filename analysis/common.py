@@ -1,22 +1,22 @@
 from typing import Any
 
 import matplotlib.colors as mcolors
-from matplotlib.cm import get_cmap
+import seaborn as sns
 
 N_RUNS = 5
 
 OFFLINE = {"joint"}
 
 METHODS = [
-    "joint",
-    "rwalk",
-    "ewc",
+    # "joint",
     "lora",
+    "ewc",
+    "rwalk",
     "clora",
     "sdlora",
     "inflora",
-    "ball",
     "tball",
+    "ball",
 ]
 
 DATASETS = [
@@ -41,9 +41,8 @@ METHOD_TO_LABEL = {
 MARKERS = [".", "x"]
 LINE_STYLES = ["-", "--"]
 
-CMAP_COLOURS = get_cmap("tab20").colors
+CMAP_COLOURS = sns.color_palette("husl", n_colors=len(METHODS))
 # CMAP_COLOURS = sns.color_palette("Paired")[0:10]
-offset = 0
 
 _STYLE = {
     method: {
@@ -51,7 +50,7 @@ _STYLE = {
         "marker": MARKERS[i % len(MARKERS)],
         "linestyle": LINE_STYLES[i % len(LINE_STYLES)],
     }
-    for i, method in enumerate(METHODS, start=offset)
+    for i, method in enumerate(METHODS)
 }
 _STYLE["None"] = {
     "color": "black",

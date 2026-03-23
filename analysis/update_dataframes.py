@@ -133,9 +133,9 @@ def from_zip(
                     metrics.update(raw_data)
 
                     parts = member.split("/")
-                    dataset = parts[2]
-                    method = parts[3]
-                    run_id = parts[4]
+                    dataset = parts[-4]
+                    method = parts[-3]
+                    run_id = parts[-2]
                     yield dataset, method, run_id, metrics
 
 
@@ -294,6 +294,8 @@ for dataset, method, run_id, data in chain(
     from_zip(archive / "eval_imagenetr_inflora_01.zip"),
     from_zip(archive / "eval_imagenetr_ball_01.zip"),
     from_zip(archive / "eval_imagenetr_tball_01.zip"),
+    from_zip(archive / "eval_cifar100_ball_01.zip"),
+    from_zip(archive / "eval_cifar100_tball_01.zip"),
 ):
     print(f"{dataset}/{method}/{run_id}")
     summary_records.append(to_summary_record(dataset, method, int(run_id), data))
@@ -307,9 +309,9 @@ summary_filename = "analysis/dataframe/summary.parquet"
 time_series_filename = "analysis/dataframe/time_series.parquet"
 calibration_filename = "analysis/dataframe/calibration.parquet"
 
-summary_df = pd.read_parquet(summary_filename).reset_index()
-time_series_df = pd.read_parquet(time_series_filename).reset_index()
-calibration_df = pd.read_parquet(calibration_filename).reset_index()
+summary_df = pd.read_parquet(summary_filename)
+time_series_df = pd.read_parquet(time_series_filename)
+calibration_df = pd.read_parquet(calibration_filename)
 
 summary_df["run_id"] = summary_df["run_id"].astype(int)
 time_series_df["run_id"] = time_series_df["run_id"].astype(int)
