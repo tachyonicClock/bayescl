@@ -185,18 +185,18 @@ ts -G 1 -L image_tball notirun.sh python main.py     -c configs/imagenetr/tball.
 
 ```sh
 ts -G 1 -L cifar_ball_sens notirun.sh python main.py \
-  -c configs/cifar100-sensitivity/ball-beta.jsonnet hpsearch sensitivity-beta
+  -c configs/cifar100-sensitivity/ball-beta.jsonnet hpsearch 00-sensitivity-beta
 ts -G 1 -L cifar_tball_sens notirun.sh python main.py \
-  -c configs/cifar100-sensitivity/tball-beta.jsonnet hpsearch sensitivity-beta
+  -c configs/cifar100-sensitivity/tball-beta.jsonnet hpsearch 00-sensitivity-beta
 
 ts -G 1 -L cifar_ball_rank notirun.sh python main.py \
-  -c configs/cifar100-sensitivity/ball-rank.jsonnet hpsearch sensitivity-rank
+  -c configs/cifar100-sensitivity/ball-rank.jsonnet hpsearch 00-sensitivity-rank
 ts -G 1 -L cifar_tball_rank notirun.sh python main.py \
-  -c configs/cifar100-sensitivity/tball-rank.jsonnet hpsearch sensitivity-rank
+  -c configs/cifar100-sensitivity/tball-rank.jsonnet hpsearch 00-sensitivity-rank
 
 ts -G 1 -L cifar_ball_sens notirun.sh python main.py \
-  -c configs/cifar100-sensitivity/ball-samples.jsonnet hpsearch sensitivity-samples
+  -c configs/cifar100-sensitivity/ball-samples.jsonnet hpsearch 00-sensitivity-samples
 ts -G 1 -L cifar_tball_sens notirun.sh python main.py \
-  -c configs/cifar100-sensitivity/tball-samples.jsonnet hpsearch sensitivity-samples
+  -c configs/cifar100-sensitivity/tball-samples.jsonnet hpsearch 00-sensitivity-samples
 ```
 

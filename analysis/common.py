@@ -1,8 +1,5 @@
 from typing import Any
 
-import matplotlib.colors as mcolors
-import seaborn as sns
-
 N_RUNS = 5
 
 OFFLINE = {"joint"}
@@ -15,8 +12,8 @@ METHODS = [
     "clora",
     "sdlora",
     "inflora",
-    "tball",
     "ball",
+    "tball",
 ]
 
 DATASETS = [
@@ -34,23 +31,68 @@ METHOD_TO_LABEL = {
     "clora": "C-LoRA",
     "sdlora": "SD-LoRA",
     "inflora": "InfLoRA",
-    "tball": "TBALL",
     "ball": "BALL",
+    "tball": "TBALL",
 }
 
 MARKERS = [".", "x"]
 LINE_STYLES = ["-", "--"]
 
-CMAP_COLOURS = sns.color_palette("husl", n_colors=len(METHODS))
+CMAP_COLOURS = [
+    (1.0, 0.62301366, 0.77227656),
+    (0.79695073, 0.01601229, 0.66400962),
+    (0.35504226, 0.14258962, 0.23456003),
+    (0.81050133, 0.08462097, 0.07466861),
+    (1.0, 0.57340844, 0.03354555),
+    (0.79638876, 0.91057152, 0.17576824),
+    (0.14887713, 0.57919728, 0.12758598),
+    (0.08817248, 0.80514856, 0.89713061),
+    (0.56116415, 0.40395853, 0.97883405),
+    (0.00795099, 0.1623914, 0.69189112),
+]
 # CMAP_COLOURS = sns.color_palette("Paired")[0:10]
 
 _STYLE = {
-    method: {
-        "color": mcolors.to_hex(CMAP_COLOURS[i % len(CMAP_COLOURS)]),
-        "marker": MARKERS[i % len(MARKERS)],
-        "linestyle": LINE_STYLES[i % len(LINE_STYLES)],
-    }
-    for i, method in enumerate(METHODS)
+    "lora": {
+        "color": CMAP_COLOURS[0],
+        "marker": "o",
+        "linestyle": "-",
+    },
+    "ewc": {
+        "color": CMAP_COLOURS[1],
+        "marker": "s",
+        "linestyle": ":",
+    },
+    "rwalk": {
+        "color": CMAP_COLOURS[4],
+        "marker": "D",
+        "linestyle": "-",
+    },
+    "clora": {
+        "color": CMAP_COLOURS[5],
+        "marker": "^",
+        "linestyle": ":",
+    },
+    "sdlora": {
+        "color": CMAP_COLOURS[6],
+        "marker": "v",
+        "linestyle": "-",
+    },
+    "inflora": {
+        "color": CMAP_COLOURS[7],
+        "marker": "o",
+        "linestyle": ":",
+    },
+    "tball": {
+        "color": CMAP_COLOURS[3],
+        "marker": "s",
+        "linestyle": ":",
+    },
+    "ball": {
+        "color": CMAP_COLOURS[9],
+        "marker": "D",
+        "linestyle": "-",
+    },
 }
 _STYLE["None"] = {
     "color": "black",
