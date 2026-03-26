@@ -178,6 +178,10 @@ ts -G 1 -L image_si    notirun.sh python main.py        -c configs/imagenetr/si.
 ts -G 1 -L cifar_tball notirun.sh python main.py      -c configs/cifar100/tball.jsonnet hpsearch hp
 ts -G 1 -L core5_tball notirun.sh python main.py        -c configs/core50/tball.jsonnet hpsearch hp
 ts -G 1 -L image_tball notirun.sh python main.py     -c configs/imagenetr/tball.jsonnet hpsearch hp
+
+ts -G 1 -L cifar_tball notirun.sh python main.py      -c configs/cifar100/tball-mnd.jsonnet hpsearch hp
+ts -G 1 -L core5_tball notirun.sh python main.py        -c configs/core50/tball-mnd.jsonnet hpsearch hp
+ts -G 1 -L image_tball notirun.sh python main.py     -c configs/imagenetr/tball-mnd.jsonnet hpsearch hp
 ```
 
 

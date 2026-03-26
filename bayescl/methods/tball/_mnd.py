@@ -23,7 +23,7 @@ class MNDParameter(MatrixNormalPriorPosterior):
         self.L_u_raw = nn.Parameter(torch.zeros(n, n))
         self.L_v_raw = nn.Parameter(torch.zeros(p, p))
 
-        init = inv_softplus(torch.tensor(config.init_sd))
+        init = inv_softplus(torch.sqrt(torch.tensor(config.init_sd)))
         nn.init.constant_(self.L_u_raw.diagonal(), init.item())
         nn.init.constant_(self.L_v_raw.diagonal(), init.item())
 
