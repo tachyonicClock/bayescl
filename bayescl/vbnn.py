@@ -77,17 +77,24 @@ class VBNNConfig:
 class MatrixNormalPriorPosterior(nn.Module):
     M: Tensor
     prior_M: Tensor
-    prior_U: Tensor
-    prior_V: Tensor
+    prior_L_u: Tensor
+    prior_L_v: Tensor
 
+    @property
+    def L_u(self) -> Tensor:
+        raise NotImplementedError
+    
+    @property
+    def L_v(self) -> Tensor:
+        raise NotImplementedError
+    
     @property
     def U(self) -> Tensor:
         raise NotImplementedError
-
+    
     @property
     def V(self) -> Tensor:
         raise NotImplementedError
-
 
 class VariationalParameter(nn.Module):
     """Implements a Gaussian variational parameter using the reparameterization trick.
@@ -253,15 +260,15 @@ def posterior_to_prior(module: nn.Module):
             pass
         elif isinstance(submodule, MatrixNormalPriorPosterior):
             assert isinstance(submodule.M, Tensor)
-            assert isinstance(submodule.U, Tensor)
-            assert isinstance(submodule.V, Tensor)
+            assert isinstance(submodule.L_u, Tensor)
+            assert isinstance(submodule.L_v, Tensor)
             assert isinstance(submodule.prior_M, Tensor)
-            assert isinstance(submodule.prior_U, Tensor)
-            assert isinstance(submodule.prior_V, Tensor)
+            assert isinstance(submodule.prior_L_u, Tensor)
+            assert isinstance(submodule.prior_L_v, Tensor)
 
             submodule.prior_M.copy_(submodule.M)
-            submodule.prior_U.copy_(submodule.U)
-            submodule.prior_V.copy_(submodule.V)
+            submodule.prior_L_u.copy_(submodule.L_u)
+            submodule.prior_L_v.copy_(submodule.L_v)
 
 
 def replace_head(parent: nn.Module, name: str, config: VBNNConfig):
