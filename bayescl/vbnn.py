@@ -74,6 +74,21 @@ class VBNNConfig:
     sd_mode: Literal["softplus", "abs"] = "softplus"
 
 
+class MatrixNormalPriorPosterior(nn.Module):
+    M: Tensor
+    prior_M: Tensor
+    prior_U: Tensor
+    prior_V: Tensor
+
+    @property
+    def U(self) -> Tensor:
+        raise NotImplementedError
+
+    @property
+    def V(self) -> Tensor:
+        raise NotImplementedError
+
+
 class VariationalParameter(nn.Module):
     """Implements a Gaussian variational parameter using the reparameterization trick.
 
@@ -236,6 +251,17 @@ def posterior_to_prior(module: nn.Module):
             assert isinstance(submodule.inducing_mean, Tensor)
             assert isinstance(submodule.inducing_scale_tril, Tensor)
             pass
+        elif isinstance(submodule, MatrixNormalPriorPosterior):
+            assert isinstance(submodule.M, Tensor)
+            assert isinstance(submodule.U, Tensor)
+            assert isinstance(submodule.V, Tensor)
+            assert isinstance(submodule.prior_M, Tensor)
+            assert isinstance(submodule.prior_U, Tensor)
+            assert isinstance(submodule.prior_V, Tensor)
+
+            submodule.prior_M.copy_(submodule.M)
+            submodule.prior_U.copy_(submodule.U)
+            submodule.prior_V.copy_(submodule.V)
 
 
 def replace_head(parent: nn.Module, name: str, config: VBNNConfig):

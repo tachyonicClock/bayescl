@@ -11,6 +11,7 @@ from typeguard import typechecked
 from bayescl.peft._base import AdapterBase, AdapterFactory
 
 from ._config import TBALLConfig
+from ._mnd import MNDLinear, MNDParameter
 
 
 class WeightModule(nn.Module):
@@ -66,7 +67,7 @@ class TBALLLinear(BALLLayer, nn.Linear):
 
     project_down: Tensor
     """Random projection matrix to reduce input dimensionality."""
-    bayes_core: FCGLinear | FFGLinear
+    bayes_core: FCGLinear | FFGLinear | MNDLinear
     """The Bayesian core layer."""
     project_up: Tensor
     """Random projection matrix to restore output dimensionality."""
@@ -128,6 +129,13 @@ class TBALLLinear(BALLLayer, nn.Linear):
                 init_sd=config.init_sd,
                 nonlinearity_scale=config.nonlinearity_scale,
             )
+        elif config.bnn == "MND":
+            self.adapter_parameters = (
+                "bayes_core.weight.M",
+                "bayes_core.weight.L_u_raw",
+                "bayes_core.weight.L_v_raw",
+            )
+            self.bayes_core = MNDLinear(config.rank, config.rank, config)
         else:
             raise ValueError(f"Unsupported BNN type: {config.bnn}")
 
@@ -145,7 +153,7 @@ class TBALLConv2d(BALLLayer, nn.Conv2d):
     """Random projection matrix to reduce input dimensionality."""
     tball_C: Tensor
     """Random projection matrix to restore output dimensionality."""
-    tball_B: FFGParameter | FCGParameter
+    tball_B: FFGParameter | FCGParameter | MNDParameter
     """The Bayesian core layer."""
 
     def __init__(
@@ -192,6 +200,13 @@ class TBALLConv2d(BALLLayer, nn.Conv2d):
                 "tball_B._weight_sd",
             )
             self.tball_B = FFGParameter((rank_ks, rank_ks), config)
+        elif config.bnn == "MND":
+            self.adapter_parameters = (
+                "tball_B.M",
+                "tball_B.L_u_raw",
+                "tball_B.L_v_raw",
+            )
+            self.tball_B = MNDParameter((rank_ks, rank_ks), config)
         else:
             raise ValueError(f"Unsupported BNN type: {config.bnn}")
 
