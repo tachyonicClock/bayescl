@@ -6,5 +6,5 @@
 local dataset = import '../base/dataset/cifar100.jsonnet';
 local method = import '../base/method/inflora.jsonnet';
 dataset + method + {
-  lr: 0.000377,
+  lr: 0.000377
 }

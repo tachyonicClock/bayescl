@@ -6,5 +6,5 @@
 local dataset = import '../base/dataset/imagenetr.jsonnet';
 local method = import '../base/method/sdlora.jsonnet';
 dataset + method + {
-  lr: 0.00137,
+  lr: 0.00137
 }

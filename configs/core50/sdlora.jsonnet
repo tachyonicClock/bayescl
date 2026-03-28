@@ -6,5 +6,5 @@
 local dataset = import '../base/dataset/core50.jsonnet';
 local method = import '../base/method/sdlora.jsonnet';
 dataset + method + {
-  lr: 0.000275,
+  lr: 0.000275
 }

@@ -6,5 +6,5 @@
 local dataset = import '../base/dataset/imagenetr.jsonnet';
 local method = import '../base/method/lora.jsonnet';
 dataset + method + {
-  lr: 0.000145,
+  lr: 0.000145
 }

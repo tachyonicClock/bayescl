@@ -6,5 +6,5 @@
 local dataset = import '../base/dataset/core50.jsonnet';
 local method = import '../base/method/joint.jsonnet';
 dataset + method + {
-  lr: 0.0001,
+  lr: 0.0001
 }

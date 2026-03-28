@@ -20,6 +20,7 @@ METHODS = [
     "rwalk",
     "sdlora",
     "tball",
+    "tball-mnd"
 ]
 
 STUDIES = [

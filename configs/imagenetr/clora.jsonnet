@@ -9,6 +9,6 @@ dataset + method + {
   lr: 0.000401,
   peft+: {
     lambda_: 0.0125,
-    alpha: 0.569,
-  },
+    alpha: 0.569
+  }
 }

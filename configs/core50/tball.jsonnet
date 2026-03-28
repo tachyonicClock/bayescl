@@ -1,4 +1,4 @@
-// bayescl/hp/core50/tball e0522f4 27
+// bayescl/hp/core50/tball 0c3305e 27
 // Accuracy: 58.76 %
 // ECE:      6.14 %
 // Score:    76.31 %
@@ -8,9 +8,9 @@ local method = import '../base/method/tball.jsonnet';
 dataset + method + {
   lr: 0.000894,
   strategy+: {
-    beta: 1.65,
+    beta: 1.65
   },
   peft+: {
-    bnn: 'FFG',
-  },
+    bnn: "FFG"
+  }
 }
