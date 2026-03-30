@@ -5,7 +5,7 @@ import torch.nn as nn
 from torch import Tensor
 from torch.nn import functional as F
 
-from bayescl.mnd.mnd import matrix_normal_sample_cholesky, matrix_normal_kl_cholesky
+from bayescl.mnd.mnd import matrix_normal_kl_cholesky, matrix_normal_sample_cholesky
 from bayescl.vbnn import MatrixNormalPriorPosterior, inv_softplus
 
 from ._config import TBALLConfig
@@ -29,8 +29,12 @@ class MNDParameter(MatrixNormalPriorPosterior):
 
         self.register_buffer("prior_M", torch.full((n, p), config.prior_mean))
         prior_cov = torch.tensor(config.prior_weight_sd)
-        self.register_buffer("prior_L_u", torch.linalg.cholesky(torch.eye(n) * prior_cov))
-        self.register_buffer("prior_L_v", torch.linalg.cholesky(torch.eye(p) * prior_cov))
+        self.register_buffer(
+            "prior_L_u", torch.linalg.cholesky(torch.eye(n) * prior_cov)
+        )
+        self.register_buffer(
+            "prior_L_v", torch.linalg.cholesky(torch.eye(p) * prior_cov)
+        )
 
     @staticmethod
     def _get_valid_cholesky(L_raw: Tensor) -> Tensor:

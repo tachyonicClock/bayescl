@@ -183,7 +183,8 @@ class Experiment:
                 add_adapters(self.model, regex_filter, TBALLAdapterFactory(peft))
             case "CLoRA":
                 logger.info("Adding CLoRA adapters and plugin")
-                add_adapters(self.model, regex_filter, CLoRAAdapterFactory(peft))
+                factory = CLoRAAdapterFactory(self.num_tasks, peft)
+                add_adapters(self.model, regex_filter, factory)
                 self.plugins.append(CLoRAPlugin(peft, self.tb_log.writer))
             case "InfLoRA":
                 logger.info("Adding InfLoRA adapters and plugin")

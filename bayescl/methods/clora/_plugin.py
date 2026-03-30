@@ -15,7 +15,8 @@ class CLoRAPlugin(SupervisedPlugin):
 
     def after_training_exp(self, strategy: Any, *args, **kwargs) -> Any:
         logger.info("Updating CLoRA Anchors")
-        update_anchors(strategy.model)
+        task_index = strategy.clock.train_exp_counter
+        update_anchors(strategy.model, task_index)
 
     def before_backward(self, strategy: Any, *args, **kwargs) -> Any:
         loss = clora_loss(strategy.model)

@@ -10,14 +10,28 @@ from ._config import CLoRAConfig
 
 class CLoRAModule(AdapterBase):
     adapter_parameters = ("A", "B")
-    adapter_buffers = ("anchor",)
+    adapter_buffers = ("anchor_A", "anchor_B")
 
+    n_tasks_seen: int = 0
+    n_tasks: int = 0
     A: nn.Parameter
     B: nn.Parameter
-    anchor: Tensor
+    anchor_A: Tensor
+    anchor_B: Tensor
 
     def reset_adapter(self) -> None:
         pass
+
+    def get_anchor_product(self, task_index: int | None = None) -> Tensor:
+        """Compute sum of all accumulated anchor products B_i @ A_i."""
+        limit = min(self.n_tasks_seen, self.n_tasks, task_index if task_index is not None else self.n_tasks_seen)
+        if limit > 0:
+            return torch.einsum(
+                "tij,tjk->ik", self.anchor_B[:limit], self.anchor_A[:limit]
+            )
+        return torch.zeros(
+            self.B.shape[0], self.A.shape[1], device=self.A.device, dtype=self.A.dtype
+        )
 
     def self_regularization_loss(self) -> Tensor:
         r"""Penalize changes to features learned by previous tasks.
@@ -28,10 +42,11 @@ class CLoRAModule(AdapterBase):
             || \left| \sum_{t'=1}^{t-1} \mathbf{B}_{t'} \mathbf{A}_{t'} \right|
             \odot \mathbf{B}_t \mathbf{A}_t ||_F^2
 
-        where :math:`\sum_{t'=1}^{t-1} \mathbf{B}_{t'} \mathbf{A}_{t'}` is pre-computed
-        and stored in `anchor` to save computation.
+        where :math:`\sum_{t'=1}^{t-1} \mathbf{B}_{t'} \mathbf{A}_{t'}` is computed
+        from pre-allocated anchor buffers.
         """
-        return (self.anchor.abs() * (self.B @ self.A)).norm(p="fro") ** 2
+        anchor_product = self.get_anchor_product()
+        return (anchor_product.abs() * (self.B @ self.A)).norm(p="fro") ** 2
 
 
 class CLoRAConv2d(nn.Conv2d, CLoRAModule):
@@ -41,6 +56,7 @@ class CLoRAConv2d(nn.Conv2d, CLoRAModule):
         in_channels: int,
         out_channels: int,
         kernel_size: int | tuple[int, int],
+        n_tasks: int,
         **kwargs,
     ) -> None:
         super().__init__(in_channels, out_channels, kernel_size, **kwargs)
@@ -54,13 +70,17 @@ class CLoRAConv2d(nn.Conv2d, CLoRAModule):
         shape_B = (out_channels // self.groups * ks, r * ks)
         self.A = nn.Parameter(torch.empty(shape_A))
         self.B = nn.Parameter(torch.empty(shape_B))
-        self.anchor = nn.Buffer(torch.zeros(shape_B[0], shape_A[1]))
+        self.anchor_A = nn.Buffer(torch.zeros(n_tasks, *shape_A))
+        self.anchor_B = nn.Buffer(torch.zeros(n_tasks, *shape_B))
+        self.n_tasks = n_tasks
+        self.n_tasks_seen = 0
         self.scaling = config.alpha / r
         self.reset_adapter()
 
     def forward(self, input: torch.Tensor) -> torch.Tensor:
+        anchor_product = self.get_anchor_product()
         weight = self.weight + self.scaling * (
-            (self.B @ self.A).view_as(self.weight) + self.anchor.view_as(self.weight)
+            (self.B @ self.A).view_as(self.weight) + anchor_product.view_as(self.weight)
         )
         return self._conv_forward(input, weight, self.bias)
 
@@ -70,9 +90,10 @@ class CLoRAConv2d(nn.Conv2d, CLoRAModule):
 
 
 class CLoRAAdapterFactory(AdapterFactory):
-    def __init__(self, config: CLoRAConfig) -> None:
+    def __init__(self, n_tasks: int, config: CLoRAConfig) -> None:
         super().__init__()
         self.config = config
+        self.n_tasks = n_tasks
 
     def _get_replacement(self, module: nn.Module) -> AdapterBase | nn.Module:
         if isinstance(module, nn.Conv2d):
@@ -87,6 +108,7 @@ class CLoRAAdapterFactory(AdapterFactory):
                 groups=module.groups,
                 bias=module.bias is not None,
                 padding_mode=module.padding_mode,
+                n_tasks=self.n_tasks,
             )
         raise ValueError(f"Unsupported layer type: {type(module)}")
 
@@ -99,11 +121,16 @@ class CLoRAAdapterFactory(AdapterFactory):
 
 
 @torch.no_grad()
-def update_anchors(module: nn.Module) -> None:
-    """Update the anchor parameters with the current LoRA parameters."""
+def update_anchors(module: nn.Module, task_index: int) -> None:
+    """Update the anchor parameters with the current LoRA parameters.
+
+    Stores the current A and B parameters at the specified task index.
+    """
     for name, submodule in iter_named_adapters(module):
         if isinstance(submodule, CLoRAModule):
-            submodule.anchor += submodule.B.detach() @ submodule.A.detach()
+            submodule.anchor_A[task_index] = submodule.A.detach()
+            submodule.anchor_B[task_index] = submodule.B.detach()
+            submodule.n_tasks_seen = max(submodule.n_tasks_seen, task_index + 1)
             submodule.reset_adapter()
 
 

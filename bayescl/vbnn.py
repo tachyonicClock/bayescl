@@ -83,18 +83,19 @@ class MatrixNormalPriorPosterior(nn.Module):
     @property
     def L_u(self) -> Tensor:
         raise NotImplementedError
-    
+
     @property
     def L_v(self) -> Tensor:
         raise NotImplementedError
-    
+
     @property
     def U(self) -> Tensor:
         raise NotImplementedError
-    
+
     @property
     def V(self) -> Tensor:
         raise NotImplementedError
+
 
 class VariationalParameter(nn.Module):
     """Implements a Gaussian variational parameter using the reparameterization trick.

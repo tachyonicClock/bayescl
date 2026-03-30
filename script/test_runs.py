@@ -11,8 +11,9 @@ METHODS = [
     # "lora",
     # "rwalk",
     # "tball",
-    "clora",
-    "sdlora",
+    # "clora",
+    # "sdlora",
+    "tball-mnd"
 ]
 N_RUNS = 5
 

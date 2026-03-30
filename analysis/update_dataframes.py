@@ -289,16 +289,19 @@ archive = Path("/local/scratch/antonlee/archive")
 print("DATASET/METHOD/RUN_ID")
 for dataset, method, run_id, data in chain(
     # from_logs("log/test"),
-    from_zip(archive / "eval_cifar100_ewc_2026-03-24.zip"),
-    from_zip(archive / "eval_cifar100_inflora_2026-03-23.zip"),
-    from_zip(archive / "eval_cifar100_mas_2026-03-19.zip"),
-    from_zip(archive / "eval_cifar100_tball_2026-03-23.zip"),
-    from_zip(archive / "eval_core50_ewc_2026-03-24.zip"),
-    from_zip(archive / "eval_core50_inflora_2026-03-23.zip"),
-    from_zip(archive / "eval_imagenetr_ball_2026-03-23.zip"),
-    from_zip(archive / "eval_imagenetr_ewc_2026-03-24.zip"),
-    from_zip(archive / "eval_imagenetr_inflora_2026-03-23.zip"),
-    from_zip(archive / "eval_imagenetr_tball_2026-03-23.zip"),
+    # from_zip(archive / "eval_cifar100_ewc_2026-03-24.zip"),
+    # from_zip(archive / "eval_cifar100_inflora_2026-03-23.zip"),
+    # from_zip(archive / "eval_cifar100_mas_2026-03-19.zip"),
+    # from_zip(archive / "eval_cifar100_tball_2026-03-23.zip"),
+    # from_zip(archive / "eval_core50_ewc_2026-03-24.zip"),
+    # from_zip(archive / "eval_core50_inflora_2026-03-23.zip"),
+    # from_zip(archive / "eval_imagenetr_ball_2026-03-23.zip"),
+    # from_zip(archive / "eval_imagenetr_ewc_2026-03-24.zip"),
+    # from_zip(archive / "eval_imagenetr_inflora_2026-03-23.zip"),
+    # from_zip(archive / "eval_imagenetr_tball_2026-03-23.zip"),
+    from_zip(archive / "eval_cifar100_tball-mnd_2026-03-30.zip"),
+    from_zip(archive / "eval_core50_tball-mnd_2026-03-30.zip"),
+    from_zip(archive / "eval_imagenetr_tball-mnd_2026-03-30.zip"),
 ):
     print(f"{dataset}/{method}/{run_id}")
     summary_records.append(to_summary_record(dataset, method, int(run_id), data))

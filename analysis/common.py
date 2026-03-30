@@ -13,6 +13,7 @@ METHODS = [
     "sdlora",
     "inflora",
     "ball",
+    "tball-mnd",
     "tball",
 ]
 
@@ -24,7 +25,6 @@ DATASETS = [
 
 #: Maps method names to their display labels.
 METHOD_TO_LABEL = {
-    "joint": "Offline LoRA",
     "rwalk": "RWalk",
     "ewc": "EWC",
     "lora": "LoRA",
@@ -32,7 +32,8 @@ METHOD_TO_LABEL = {
     "sdlora": "SD-LoRA",
     "inflora": "InfLoRA",
     "ball": "BALL",
-    "tball": "TBALL",
+    "tball-mnd": r"TBALL\textsubscript{MND}",
+    "tball": r"TBALL",
 }
 
 MARKERS = [".", "x"]
@@ -92,6 +93,11 @@ _STYLE = {
         "color": CMAP_COLOURS[9],
         "marker": "D",
         "linestyle": "-",
+    },
+    "tball-mnd": {
+        "color": CMAP_COLOURS[8],
+        "marker": "p",
+        "linestyle": "--",
     },
 }
 _STYLE["None"] = {
