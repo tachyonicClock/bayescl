@@ -24,7 +24,11 @@ class CLoRAModule(AdapterBase):
 
     def get_anchor_product(self, task_index: int | None = None) -> Tensor:
         """Compute sum of all accumulated anchor products B_i @ A_i."""
-        limit = min(self.n_tasks_seen, self.n_tasks, task_index if task_index is not None else self.n_tasks_seen)
+        limit = min(
+            self.n_tasks_seen,
+            self.n_tasks,
+            task_index if task_index is not None else self.n_tasks_seen,
+        )
         if limit > 0:
             return torch.einsum(
                 "tij,tjk->ik", self.anchor_B[:limit], self.anchor_A[:limit]

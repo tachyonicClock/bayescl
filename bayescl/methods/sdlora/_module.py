@@ -98,17 +98,21 @@ class SDLoRAConv2d(nn.Conv2d, SDLoRAModule):
             **kwargs,
         )
         kh, kw = _pair(kernel_size)
+        assert kh == kw, "Only square kernels are supported"
+        ks = kh
         r = rank_per_task
-        in_c_per_group = in_channels // self.groups
 
         self.A = nn.ParameterList(
             [
-                nn.Parameter(torch.empty((r, in_c_per_group * kh * kw)))
+                nn.Parameter(torch.empty((r * ks, in_channels * ks)))
                 for _ in range(n_tasks)
             ]
         )
         self.B = nn.ParameterList(
-            [nn.Parameter(torch.empty((out_channels, r))) for _ in range(n_tasks)]
+            [
+                nn.Parameter(torch.empty((out_channels // self.groups * ks, r * ks)))
+                for _ in range(n_tasks)
+            ]
         )
 
         # Magnitude parameters for each task
