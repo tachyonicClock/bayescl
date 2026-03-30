@@ -8,6 +8,6 @@ local method = import '../base/method/ball.jsonnet';
 dataset + method + {
   lr: 0.000657,
   strategy+: {
-    beta: 1.92
-  }
+    beta: 1.92,
+  },
 }

@@ -6,5 +6,5 @@
 local dataset = import '../base/dataset/imagenetr.jsonnet';
 local method = import '../base/method/joint.jsonnet';
 dataset + method + {
-  lr: 0.000154
+  lr: 0.000154,
 }

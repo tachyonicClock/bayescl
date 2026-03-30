@@ -9,6 +9,6 @@ dataset + method + {
   lr: 0.000275,
   ewc+: {
     ewc_lambda: 4.47,
-    decay_factor: 0.923
-  }
+    decay_factor: 0.923,
+  },
 }

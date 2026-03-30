@@ -9,6 +9,6 @@ dataset + method + {
   lr: 0.00198,
   rwalk+: {
     ewc_lambda: 0.77,
-    ewc_alpha: 0.763
-  }
+    ewc_alpha: 0.763,
+  },
 }
