@@ -77,6 +77,11 @@ class InfLoRAPlugin(SupervisedPlugin):
         context = self._current_exp or self._experience_context(strategy)
         loader = self._activation_loader(strategy)
 
+        assert self._engine
+        parameter_count = self._engine.parameter_count()
+        buffer_count = self._engine.buffer_count()
+        logger.info(f"InfLoRA task {context.task_index} parameters: {parameter_count}, buffers: {buffer_count}")
+
         logger.info(f"InfLoRA finalize task {context.task_index}")
         engine.finalize_task(
             task_id=context.task_id,
@@ -85,6 +90,7 @@ class InfLoRAPlugin(SupervisedPlugin):
             device=strategy.device,
             max_batches=self.max_activation_batches,
         )
+
         self._current_exp = None
 
     def _require_engine(self) -> InfLoRAEngine:

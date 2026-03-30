@@ -108,6 +108,10 @@ class DualGPMMemory:
             project_type="retain",
         )
 
+    def buffer_count(self) -> int:
+        """Count tensor elements stored in memory state."""
+        return sum(state.basis.numel() for state in self.layers.values())
+
     def _initial_state(self, activation: Tensor, threshold: float) -> LayerMemoryState:
         """Compute initial memory state."""
         basis, _ = self._principal_subspace(activation, threshold)
