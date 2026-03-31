@@ -5,15 +5,15 @@ DATASETS = [
 ]
 
 METHODS = [
-    "ball",
-    "clora",
-    "ewc",
-    "joint",
-    "lora",
     "rwalk",
+    "ewc",
+    "lora",
+    "clora",
     "sdlora",
-    "si",
+    "inflora",
+    "ball",
     "tball",
+    "tball-mnd",
 ]
 
 
@@ -23,13 +23,13 @@ def run_string(dataset, method):
         f"ts -G 1 -L {label:<11}",
         "notirun.sh",
         "python main.py",
-        f"-c configs/{dataset}/{method}.yaml".rjust(35),
+        f"-c configs/{dataset}/{method}.jsonnet".rjust(40),
         "hpsearch hp",
     ]
     return " ".join(cli)
 
 
-for method in METHODS:
-    for dataset in DATASETS:
+for dataset in DATASETS:
+    for method in METHODS:
         print(run_string(dataset, method))
     print()

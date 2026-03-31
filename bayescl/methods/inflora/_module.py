@@ -263,9 +263,9 @@ class InfLoRAEngine:
         for _, layer in iter_inflora_layers(self.model):
             for branch in layer.branches.values():
                 assert isinstance(branch, _LowRankBranch)
-                x += branch.adapter.numel() # type: ignore
+                x += branch.adapter.numel()  # type: ignore
         return x
-    
+
     def buffer_count(self) -> int:
         x = 0
         for _, layer in iter_inflora_layers(self.model):
@@ -274,7 +274,6 @@ class InfLoRAEngine:
                 x += branch.basis.numel()  # type: ignore
         x += self.memory.buffer_count()
         return x
-
 
     def trainable_parameters(
         self,

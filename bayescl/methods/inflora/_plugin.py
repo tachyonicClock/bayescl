@@ -80,7 +80,9 @@ class InfLoRAPlugin(SupervisedPlugin):
         assert self._engine
         parameter_count = self._engine.parameter_count()
         buffer_count = self._engine.buffer_count()
-        logger.info(f"InfLoRA task {context.task_index} parameters: {parameter_count}, buffers: {buffer_count}")
+        logger.info(
+            f"InfLoRA task {context.task_index} parameters: {parameter_count}, buffers: {buffer_count}"
+        )
 
         logger.info(f"InfLoRA finalize task {context.task_index}")
         engine.finalize_task(
