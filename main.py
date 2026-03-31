@@ -11,7 +11,7 @@ from os import environ
 import click
 import optuna
 
-from bayescl.config import Config, from_config
+from bayescl.config import Config, ZeusMonitorConfig, from_config
 from bayescl.experiment import Experiment
 from bayescl.util.git import commit_message, commit_short_hash, is_git_status_clean
 from bayescl.util.optuna import optuna_suggest
@@ -147,6 +147,12 @@ def cli(
     default=False,
     help="Run in validation mode",
 )
+@click.option(
+    "--zeus",
+    is_flag=True,
+    default=False,
+    help="Enable Zeus GPU energy monitoring.",
+)
 @click.argument("name", type=str, default="manual")
 @click.argument("seed", type=int, default=0)
 @click.pass_obj
@@ -155,11 +161,14 @@ def run(
     name: str,
     seed: int,
     validate: bool,
+    zeus: bool,
 ):
     cfg.scenario.validation = validate
     cfg.seed = seed
     cfg.label.study = name
     cfg.label.run = f"{seed:02d}"
+    if zeus and cfg.zeus_monitor is None:
+        cfg.zeus_monitor = ZeusMonitorConfig()
     Experiment(cfg).run()
 
 

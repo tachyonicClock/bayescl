@@ -84,6 +84,21 @@ class RWalkConfig(BaseModel):
     """Specify the iterations interval in which the parameter scores are updated."""
 
 
+class ZeusMonitorConfig(BaseConfig):
+    gpu_indices: Optional[list[int]] = None
+    """CUDA device indices to monitor. If None, Zeus uses all visible GPUs."""
+    cpu_indices: Optional[list[int]] = None
+    """CPU package indices to monitor. If None, Zeus uses all visible packages."""
+    approx_instant_energy: bool = False
+    """Approximate energy for very short windows when counters do not update."""
+    sync_execution: bool = True
+    """Synchronize outstanding accelerator work when opening and closing windows."""
+    measure_eval: bool = True
+    """Whether to measure evaluation stream and experience windows."""
+    log_file: Optional[str] = None
+    """Optional CSV output path for Zeus' native window log."""
+
+
 # --- PEFT Configurations ---
 
 
@@ -208,6 +223,9 @@ class Config(BaseConfig):
 
     #: Add the RWalk plugin
     rwalk: Optional[RWalkConfig] = None
+
+    #: Add the Zeus energy monitor plugin
+    zeus_monitor: Optional[ZeusMonitorConfig] = None
 
     #: Number of workers for data loading
     num_workers: int = 0

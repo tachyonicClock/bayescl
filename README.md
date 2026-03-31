@@ -184,6 +184,15 @@ ts -G 1 -L core5_tball notirun.sh python main.py        -c configs/core50/tball-
 ts -G 1 -L image_tball notirun.sh python main.py     -c configs/imagenetr/tball-mnd.jsonnet hpsearch hp
 ```
 
+## Energy Analysis
+
+```bash
+ts -G 1 -L ZL notirun.sh python main.py -f -a epochs=5 -c configs/cifar100/lora.jsonnet      run --zeus zeus 0
+ts -G 1 -L ZB notirun.sh python main.py -f -a epochs=5 -c configs/cifar100/ball.jsonnet      run --zeus zeus 0
+ts -G 1 -L ZM notirun.sh python main.py -f -a epochs=5 -c configs/cifar100/tball-mnd.jsonnet run --zeus zeus 0
+ts -G 1 -L ZT notirun.sh python main.py -f -a epochs=5 -c configs/cifar100/tball.jsonnet     run --zeus zeus 0
+```
+
 
 ## Sensitivity Analysis
 

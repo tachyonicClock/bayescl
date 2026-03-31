@@ -17,6 +17,7 @@ matplotlib
 loguru
 seaborn
 typeguard
+zeus
 
 fastparquet
 ipykernel

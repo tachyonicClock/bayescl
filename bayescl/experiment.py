@@ -59,6 +59,7 @@ from bayescl.peft import (
     add_adapters,
     parameter_summary_str,
 )
+from bayescl.plugins import ZeusMonitorPlugin
 
 
 def avalanche_class_schedule(
@@ -241,6 +242,13 @@ class Experiment:
                     **self.cfg.si.kwargs(), excluded_parameters=excluded_parameters
                 )
             )
+        if self.cfg.zeus_monitor:
+            logger.info("Add 'ZeusMonitorPlugin' plugin")
+            self.zeus_monitor_plugin = ZeusMonitorPlugin(
+                config=self.cfg.zeus_monitor,
+                writer=self.tb_log.writer,  # tpye: ignore
+            )
+            self.plugins.append(self.zeus_monitor_plugin)
 
         self.plugins.append(self.metrics_plugin)
 
@@ -272,6 +280,7 @@ class Experiment:
         self.tb_log = self._new_logger()
         self.eval_plugin: EvaluationPlugin = self._new_eval_plugin()
         self.metrics_plugin = MetricsPlugin(self.num_tasks, self.num_classes)
+        self.zeus_monitor_plugin: ZeusMonitorPlugin | None = None
         self.model = get_model(cfg, self.benchmark.n_classes)
         self._build_peft()
         self._build_plugins()
@@ -371,6 +380,10 @@ class Experiment:
         # Save results to log directory
         with open(self.log_dir / "avalanche_results.pkl", "wb") as f:
             pickle.dump(results, f)
+
+        if self.zeus_monitor_plugin is not None:
+            with open(self.log_dir / "zeus_monitor.json", "w") as f:
+                json.dump(self.zeus_monitor_plugin.result(), f, indent=2)
 
         if self.metrics_plugin is not None:
             metrics, raw_data = self.metrics_plugin.evaluator.result()
