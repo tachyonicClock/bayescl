@@ -21,7 +21,7 @@
       'scenario.validation': { type: 'constant', value: true },
     },
     sampler: 'QMC',
-    n_trials: 10,
+    n_trials: 20,
     direction: ['maximize', 'minimize'],
   },
 }
