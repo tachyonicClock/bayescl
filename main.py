@@ -78,13 +78,18 @@ def run_study(config: Config):
     n_trials = config.hpsearch.n_trials
     assert n_trials and n_trials >= 1
 
-    def objective(trial: optuna.Trial) -> tuple[float, float]:
+    def objective(trial: optuna.Trial) -> tuple[float, ...] | float:
         assert config.hpsearch
 
         config.label.run = f"trial_{trial.number:04d}"
         config.seed = trial.number
         optuna_suggest(trial, config, config.hpsearch.params)
-        return Experiment(config).run(trial)
+        avg_acc, avg_ece = Experiment(config).run(trial)
+        trial.set_user_attr("avg_acc", avg_acc)
+        trial.set_user_attr("avg_ece", avg_ece)
+        if len(config.hpsearch.direction) == 1:
+            return 0.5 * (avg_acc + (1 - avg_ece))
+        return avg_acc, avg_ece
 
     study = optuna.create_study(
         directions=config.hpsearch.direction,

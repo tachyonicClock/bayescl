@@ -20,8 +20,8 @@
       // When hyper-parameter searching use a validation set in place of the test set
       'scenario.validation': { type: 'constant', value: true },
     },
-    sampler: 'QMC',
+    sampler: 'TPE',
     n_trials: 20,
-    direction: ['maximize', 'minimize'],
+    direction: ['maximize'],
   },
 }

@@ -1,5 +1,4 @@
 from os import environ
-from typing import Tuple
 
 import jinja2
 import optuna
@@ -28,8 +27,7 @@ STUDIES = [
 ]
 
 
-def score(values: Tuple[float, float]) -> float:
-    acc, ece = values
+def score(acc: float, ece: float) -> float:
     return (acc + (1 - ece)) / 2
 
 
@@ -50,15 +48,18 @@ def main():
             t for t in study.trials if t.state == optuna.trial.TrialState.COMPLETE
         ][:MAX_TRIALS]
 
-        # Select the best trial based on the highest score (accuracy and ECE)
-        best_trial = max(trials, key=lambda t: score(t.values))
+        # Select the best trial based on the highest score (single objective value)
+        best_trial = max(trials, key=lambda t: t.values[0])
 
-        # score_ = score(best_trial.values)
+        accuracy = best_trial.user_attrs["avg_acc"]
+        ece = best_trial.user_attrs["avg_ece"]
+        score_ = best_trial.values[0]
+
         print("========================================")
         print(f"Dataset {dataset}, Method: {method}")
-        print(f"Avg. Acc. {best_trial.values[0] * 100:.2f}")
-        print(f"ECE       {best_trial.values[1] * 100:.2f}")
-        print(f"Score:    {score(best_trial.values) * 100:.2f}")
+        print(f"Avg. Acc. {accuracy * 100:.2f}")
+        print(f"ECE       {ece * 100:.2f}")
+        print(f"Score:    {score_ * 100:.2f}")
         print(f"N Trials  {len(study.trials)}")
 
         git_hash = study.user_attrs.get("git_commit")
@@ -78,9 +79,9 @@ def main():
             git_hash=git_hash,
             dataset=dataset,
             method=method,
-            accuracy=best_trial.values[0],
-            ece=best_trial.values[1],
-            score=score(best_trial.values),
+            accuracy=accuracy,
+            ece=ece,
+            score=score_,
             n_trials=len(trials),
             hyperparameters=config,
         )
