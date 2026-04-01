@@ -143,45 +143,35 @@ python main.py --hpsearch -c configs/cifar100/01_linear.yaml --args epochs=1
 ## Script (TODO: Remove)
 
 ```bash
-ts -G 1 -L cifar_ball  notirun.sh python main.py       -c configs/cifar100/ball.jsonnet hpsearch hp
-ts -G 1 -L core5_ball  notirun.sh python main.py         -c configs/core50/ball.jsonnet hpsearch hp
-ts -G 1 -L image_ball  notirun.sh python main.py      -c configs/imagenetr/ball.jsonnet hpsearch hp
+ts -G 1 -L C100.RWLK   notirun.sh python main.py        -c configs/cifar100/rwalk.jsonnet hpsearch hp
+ts -G 1 -L C100.EWC    notirun.sh python main.py          -c configs/cifar100/ewc.jsonnet hpsearch hp
+ts -G 1 -L C100.LORA   notirun.sh python main.py         -c configs/cifar100/lora.jsonnet hpsearch hp
+ts -G 1 -L C100.CLORA  notirun.sh python main.py        -c configs/cifar100/clora.jsonnet hpsearch hp
+ts -G 1 -L C100.SDLORA notirun.sh python main.py       -c configs/cifar100/sdlora.jsonnet hpsearch hp
+ts -G 1 -L C100.INFLO  notirun.sh python main.py      -c configs/cifar100/inflora.jsonnet hpsearch hp
+ts -G 1 -L C100.BALL   notirun.sh python main.py         -c configs/cifar100/ball.jsonnet hpsearch hp
+ts -G 1 -L C100.TBALL  notirun.sh python main.py        -c configs/cifar100/tball.jsonnet hpsearch hp
+ts -G 1 -L C100.TBMND  notirun.sh python main.py    -c configs/cifar100/tball-mnd.jsonnet hpsearch hp
 
-ts -G 1 -L cifar_clora notirun.sh python main.py      -c configs/cifar100/clora.jsonnet hpsearch hp
-ts -G 1 -L core5_clora notirun.sh python main.py        -c configs/core50/clora.jsonnet hpsearch hp
-ts -G 1 -L image_clora notirun.sh python main.py     -c configs/imagenetr/clora.jsonnet hpsearch hp
+ts -G 1 -L C50.RWLK    notirun.sh python main.py          -c configs/core50/rwalk.jsonnet hpsearch hp
+ts -G 1 -L C50.EWC     notirun.sh python main.py            -c configs/core50/ewc.jsonnet hpsearch hp
+ts -G 1 -L C50.LORA    notirun.sh python main.py           -c configs/core50/lora.jsonnet hpsearch hp
+ts -G 1 -L C50.CLORA   notirun.sh python main.py          -c configs/core50/clora.jsonnet hpsearch hp
+ts -G 1 -L C50.SDLORA  notirun.sh python main.py         -c configs/core50/sdlora.jsonnet hpsearch hp
+ts -G 1 -L C50.INFLO   notirun.sh python main.py        -c configs/core50/inflora.jsonnet hpsearch hp
+ts -G 1 -L C50.BALL    notirun.sh python main.py           -c configs/core50/ball.jsonnet hpsearch hp
+ts -G 1 -L C50.TBALL   notirun.sh python main.py          -c configs/core50/tball.jsonnet hpsearch hp
+ts -G 1 -L C50.TBMND   notirun.sh python main.py      -c configs/core50/tball-mnd.jsonnet hpsearch hp
 
-ts -G 1 -L cifar_ewc   notirun.sh python main.py        -c configs/cifar100/ewc.jsonnet hpsearch hp
-ts -G 1 -L core5_ewc   notirun.sh python main.py          -c configs/core50/ewc.jsonnet hpsearch hp
-ts -G 1 -L image_ewc   notirun.sh python main.py       -c configs/imagenetr/ewc.jsonnet hpsearch hp
-
-ts -G 1 -L cifar_joint notirun.sh python main.py      -c configs/cifar100/joint.jsonnet hpsearch hp
-ts -G 1 -L core5_joint notirun.sh python main.py        -c configs/core50/joint.jsonnet hpsearch hp
-ts -G 1 -L image_joint notirun.sh python main.py     -c configs/imagenetr/joint.jsonnet hpsearch hp
-
-ts -G 1 -L cifar_lora  notirun.sh python main.py       -c configs/cifar100/lora.jsonnet hpsearch hp
-ts -G 1 -L core5_lora  notirun.sh python main.py         -c configs/core50/lora.jsonnet hpsearch hp
-ts -G 1 -L image_lora  notirun.sh python main.py      -c configs/imagenetr/lora.jsonnet hpsearch hp
-
-ts -G 1 -L cifar_rwalk notirun.sh python main.py      -c configs/cifar100/rwalk.jsonnet hpsearch hp
-ts -G 1 -L core5_rwalk notirun.sh python main.py        -c configs/core50/rwalk.jsonnet hpsearch hp
-ts -G 1 -L image_rwalk notirun.sh python main.py     -c configs/imagenetr/rwalk.jsonnet hpsearch hp
-
-ts -G 1 -L cifar_sdlor notirun.sh python main.py     -c configs/cifar100/sdlora.jsonnet hpsearch hp
-ts -G 1 -L core5_sdlor notirun.sh python main.py       -c configs/core50/sdlora.jsonnet hpsearch hp
-ts -G 1 -L image_sdlor notirun.sh python main.py    -c configs/imagenetr/sdlora.jsonnet hpsearch hp
-
-ts -G 1 -L cifar_si    notirun.sh python main.py         -c configs/cifar100/si.jsonnet hpsearch hp
-ts -G 1 -L core5_si    notirun.sh python main.py           -c configs/core50/si.jsonnet hpsearch hp
-ts -G 1 -L image_si    notirun.sh python main.py        -c configs/imagenetr/si.jsonnet hpsearch hp
-
-ts -G 1 -L cifar_tball notirun.sh python main.py      -c configs/cifar100/tball.jsonnet hpsearch hp
-ts -G 1 -L core5_tball notirun.sh python main.py        -c configs/core50/tball.jsonnet hpsearch hp
-ts -G 1 -L image_tball notirun.sh python main.py     -c configs/imagenetr/tball.jsonnet hpsearch hp
-
-ts -G 1 -L cifar_tball notirun.sh python main.py      -c configs/cifar100/tball-mnd.jsonnet hpsearch hp
-ts -G 1 -L core5_tball notirun.sh python main.py        -c configs/core50/tball-mnd.jsonnet hpsearch hp
-ts -G 1 -L image_tball notirun.sh python main.py     -c configs/imagenetr/tball-mnd.jsonnet hpsearch hp
+ts -G 1 -L INR.RWLK    notirun.sh python main.py       -c configs/imagenetr/rwalk.jsonnet hpsearch hp
+ts -G 1 -L INR.EWC     notirun.sh python main.py         -c configs/imagenetr/ewc.jsonnet hpsearch hp
+ts -G 1 -L INR.LORA    notirun.sh python main.py        -c configs/imagenetr/lora.jsonnet hpsearch hp
+ts -G 1 -L INR.CLORA   notirun.sh python main.py       -c configs/imagenetr/clora.jsonnet hpsearch hp
+ts -G 1 -L INR.SDLORA  notirun.sh python main.py      -c configs/imagenetr/sdlora.jsonnet hpsearch hp
+ts -G 1 -L INR.INFLO   notirun.sh python main.py     -c configs/imagenetr/inflora.jsonnet hpsearch hp
+ts -G 1 -L INR.BALL    notirun.sh python main.py        -c configs/imagenetr/ball.jsonnet hpsearch hp
+ts -G 1 -L INR.TBALL   notirun.sh python main.py       -c configs/imagenetr/tball.jsonnet hpsearch hp
+ts -G 1 -L INR.TBMND   notirun.sh python main.py   -c configs/imagenetr/tball-mnd.jsonnet hpsearch hp
 ```
 
 ## Energy Analysis

@@ -21,8 +21,8 @@
       'scenario.validation': { type: 'constant', value: true },
     },
     sampler: 'TPESampler',
-    n_trials: 20,
+    n_trials: 30,
     direction: ['maximize'],
-    pruner: 'HyperbandPruner',
+    pruner: 'MedianPruner',
   },
 }
