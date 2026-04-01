@@ -16,9 +16,25 @@ METHODS = [
     "tball-mnd",
 ]
 
+# 5 CHARS MAX
+ABBREVIATIONS = {
+    "cifar100": "C100",
+    "core50": "C50",
+    "imagenetr": "INR",
+    "rwalk": "RWLK",
+    "ewc": "EWC",
+    "lora": "LORA",
+    "clora": "CLORA",
+    "sdlora": "SDLORA",
+    "inflora": "INFLO",
+    "ball": "BALL",
+    "tball": "TBALL",
+    "tball-mnd": "TBMND",
+}
+
 
 def run_string(dataset, method):
-    label = f"{dataset[:5]}_{method[:5]}"
+    label = f"{ABBREVIATIONS[dataset]}.{ABBREVIATIONS[method]}"
     cli = [
         f"ts -G 1 -L {label:<11}",
         "notirun.sh",
