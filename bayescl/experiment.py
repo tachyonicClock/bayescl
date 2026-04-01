@@ -18,6 +18,7 @@ from pprint import pformat
 from typing import Any, Dict, List, Sequence
 
 import numpy as np
+import optuna
 import torch
 from avalanche.evaluation.metrics import (
     StreamConfusionMatrix,
@@ -372,6 +373,20 @@ class Experiment:
             if self.cfg.checkpoint:
                 checkpoint_path = self.log_dir / f"checkpoint-t{t:02d}.pth"
                 self.save_checkpoint(checkpoint_path)
+
+            if (
+                trial is not None
+                and self.metrics_plugin is not None
+                and self.cfg.hpsearch is not None
+                and len(self.cfg.hpsearch.direction) == 1
+            ):
+                intermediate_acc, intermediate_ece = (
+                    self.metrics_plugin.evaluator.intermediate_result(t)
+                )
+                intermediate_score = 0.5 * (intermediate_acc + (1 - intermediate_ece))
+                trial.report(intermediate_score, step=t)
+                if trial.should_prune():
+                    raise optuna.exceptions.TrialPruned()
 
             if self.cfg.max_tasks is not None and t + 1 >= self.cfg.max_tasks:
                 logger.info(f"Stopping after {self.cfg.max_tasks} tasks")

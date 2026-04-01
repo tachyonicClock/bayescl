@@ -211,6 +211,48 @@ class ContinualLearningEvaluator:
             accumulate=True,
         )
 
+    @torch.no_grad()
+    def intermediate_result(self, t: int) -> tuple[float, float]:
+        """Compute a pessimistic intermediate result after training on task ``t``.
+
+        Returns a lower bound on the final ``(accuracy_seen_avg, ece_seen_avg)``
+        by assuming all remaining tasks contribute zero accuracy and ECE of 1.0.
+        This makes the derived score monotonically non-decreasing with ``t``, so
+        it is safe to use with Optuna pruning.
+        """
+        T = self._task_count
+        acc_sum = 0.0
+        ece_sum = 0.0
+        for t_prime in range(t + 1):
+            # accuracy_seen(t_prime)
+            r_seen = self._big_r[t_prime, : t_prime + 1]  # (t'+1, C, C)
+            correct = r_seen.diagonal(dim1=1, dim2=2).sum()
+            total = r_seen.sum()
+            acc_sum += (correct / total).item() if total > 0 else 0.0
+
+            # ece_seen(t_prime)
+            y_true_parts = [
+                torch.cat(self._y_true[(t_prime, j)], dim=0)
+                for j in range(t_prime + 1)
+                if (t_prime, j) in self._y_true
+            ]
+            y_logit_parts = [
+                torch.cat(self._y_logit[(t_prime, j)], dim=0)
+                for j in range(t_prime + 1)
+                if (t_prime, j) in self._y_logit
+            ]
+            if y_true_parts:
+                ece_sum += self.ece(
+                    torch.cat(y_logit_parts, dim=0), torch.cat(y_true_parts, dim=0)
+                )
+            else:
+                ece_sum += 1.0  # worst-case for missing data
+
+        # Remaining (T - t - 1) tasks assumed: acc=0, ece=1
+        intermediate_acc = acc_sum / T
+        intermediate_ece = (ece_sum + (T - t - 1)) / T
+        return intermediate_acc, intermediate_ece
+
     @staticmethod
     def ece(y_logit: Tensor, y_true: Tensor, num_bins: int = N_BINS) -> float:
         """Expected Calibration Error. Use probabilities from the predicted class only."""

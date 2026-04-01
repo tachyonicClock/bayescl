@@ -20,8 +20,9 @@
       // When hyper-parameter searching use a validation set in place of the test set
       'scenario.validation': { type: 'constant', value: true },
     },
-    sampler: 'TPE',
+    sampler: 'TPESampler',
     n_trials: 20,
     direction: ['maximize'],
+    pruner: 'HyperbandPruner',
   },
 }

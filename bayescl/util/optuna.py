@@ -1,5 +1,7 @@
+from enum import Enum
 from typing import Annotated, Any, Dict, Literal, Optional, Sequence, Union
 
+import optuna
 import pydantic
 
 
@@ -52,6 +54,20 @@ SearchSpace = Annotated[
 ]
 
 
+class PrunerType(str, Enum):
+    NopPruner = "NopPruner"
+    MedianPruner = "MedianPruner"
+    HyperbandPruner = "HyperbandPruner"
+    SuccessiveHalvingPruner = "SuccessiveHalvingPruner"
+
+
+class SamplerType(str, Enum):
+    RandomSampler = "RandomSampler"
+    TPESampler = "TPESampler"
+    QMCSampler = "QMCSampler"
+    BruteForceSampler = "BruteForceSampler"
+
+
 class HyperparameterSearch(_BaseConfig):
     #: hyperparameters to search for. Keys should use dot notation "key.subkey.subsubkey"
     params: Dict[str, SearchSpace]
@@ -60,7 +76,33 @@ class HyperparameterSearch(_BaseConfig):
     #: The number of trials
     n_trials: int
     #: The hyperparameter optimization algorithm to use.
-    sampler: Literal["random", "TPE", "QMC", "BruteForceSampler"] = "random"
+    sampler: SamplerType = SamplerType.QMCSampler
+    #: Pruner to use. NopPruner disables pruning.
+    pruner: PrunerType = PrunerType.NopPruner
+
+
+def get_pruner(pruner: PrunerType) -> "optuna.pruners.BasePruner":
+    if pruner == PrunerType.NopPruner:
+        return optuna.pruners.NopPruner()
+    elif pruner == PrunerType.MedianPruner:
+        return optuna.pruners.MedianPruner()
+    elif pruner == PrunerType.HyperbandPruner:
+        return optuna.pruners.HyperbandPruner()
+    elif pruner == PrunerType.SuccessiveHalvingPruner:
+        return optuna.pruners.SuccessiveHalvingPruner()
+    raise ValueError(f"Unknown pruner: {pruner}")
+
+
+def get_sampler(sampler: SamplerType) -> "optuna.samplers.BaseSampler":
+    if sampler == SamplerType.TPESampler:
+        return optuna.samplers.TPESampler()
+    elif sampler == SamplerType.RandomSampler:
+        return optuna.samplers.RandomSampler()
+    elif sampler == SamplerType.BruteForceSampler:
+        return optuna.samplers.BruteForceSampler()
+    elif sampler == SamplerType.QMCSampler:
+        return optuna.samplers.QMCSampler(scramble=True)
+    raise ValueError(f"Unknown sampler: {sampler}")
 
 
 def obj_dot_notation_set(key: str, obj: object, value: Any) -> object:

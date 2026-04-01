@@ -14,21 +14,9 @@ import optuna
 from bayescl.config import Config, ZeusMonitorConfig, from_config
 from bayescl.experiment import Experiment
 from bayescl.util.git import commit_message, commit_short_hash, is_git_status_clean
-from bayescl.util.optuna import optuna_suggest
+from bayescl.util.optuna import get_pruner, get_sampler, optuna_suggest
 
 OPTUNA_PROJECT_PREFIX = "bayescl"
-
-
-def get_sampler(sampler: str) -> optuna.samplers.BaseSampler:
-    if sampler == "TPE":
-        return optuna.samplers.TPESampler()
-    elif sampler == "random":
-        return optuna.samplers.RandomSampler()
-    elif sampler == "BruteForceSampler":
-        return optuna.samplers.BruteForceSampler()
-    elif sampler == "QMC":
-        return optuna.samplers.QMCSampler(scramble=True)
-    raise ValueError(f"Unknown sampler: {sampler}")
 
 
 def optimize_with_max_trials(
@@ -92,6 +80,7 @@ def run_study(config: Config):
         return avg_acc, avg_ece
 
     study = optuna.create_study(
+        pruner=get_pruner(config.hpsearch.pruner),
         directions=config.hpsearch.direction,
         study_name=get_optuna_study_name(config),
         storage=environ.get("OPTUNA_STORAGE"),
