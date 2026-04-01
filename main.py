@@ -94,7 +94,11 @@ def run_study(config: Config):
         study,
         objective,
         n_trials=n_trials,
-        states=(optuna.trial.TrialState.COMPLETE, optuna.trial.TrialState.RUNNING),
+        states=(
+            optuna.trial.TrialState.COMPLETE,
+            optuna.trial.TrialState.RUNNING,
+            optuna.trial.TrialState.PRUNED,
+        ),
     )
 
 
