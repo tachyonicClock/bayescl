@@ -1,10 +1,10 @@
-// bayescl/hp/cifar100/inflora 77a0dc2 47
-// Accuracy: 54.39 %
-// ECE:      4.05 %
-// Score:    75.17 %
-// Selected best run based on highest score 10 trials
+// bayescl/hp/cifar100/inflora 587aee7 125
+// Accuracy: 54.93 %
+// ECE:      3.45 %
+// Score:    75.74 %
+// Selected best run based on highest score 30 trials
 local dataset = import '../base/dataset/cifar100.jsonnet';
 local method = import '../base/method/inflora.jsonnet';
 dataset + method + {
-  lr: 0.000377,
+  lr: 0.000387,
 }

@@ -1,14 +1,14 @@
-// bayescl/hp/imagenetr/clora 45cc83e 13
-// Accuracy: 47.12 %
-// ECE:      4.24 %
-// Score:    71.44 %
-// Selected best run based on highest score 10 trials
+// bayescl/hp/imagenetr/clora 587aee7 163
+// Accuracy: 53.75 %
+// ECE:      4.01 %
+// Score:    74.87 %
+// Selected best run based on highest score 30 trials
 local dataset = import '../base/dataset/imagenetr.jsonnet';
 local method = import '../base/method/clora.jsonnet';
 dataset + method + {
-  lr: 0.000401,
+  lr: 0.00043,
   peft+: {
-    lambda_: 0.0125,
-    alpha: 0.569,
+    alpha: 0.519,
+    lambda_: 0.188,
   },
 }

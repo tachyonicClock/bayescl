@@ -1,14 +1,14 @@
-// bayescl/hp/imagenetr/ewc 9867fb2 22
-// Accuracy: 34.35 %
-// ECE:      4.12 %
-// Score:    65.12 %
-// Selected best run based on highest score 10 trials
+// bayescl/hp/imagenetr/ewc 587aee7 165
+// Accuracy: 35.53 %
+// ECE:      4.10 %
+// Score:    65.71 %
+// Selected best run based on highest score 30 trials
 local dataset = import '../base/dataset/imagenetr.jsonnet';
 local method = import '../base/method/ewc.jsonnet';
 dataset + method + {
-  lr: 0.000149,
   ewc+: {
-    ewc_lambda: 9.55,
-    decay_factor: 0.883,
+    decay_factor: 0.963,
+    ewc_lambda: 9.26,
   },
+  lr: 0.00017,
 }
