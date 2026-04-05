@@ -1,16 +1,13 @@
-// bayescl/hp/core50/tball 0c3305e 27
-// Accuracy: 58.76 %
-// ECE:      6.14 %
-// Score:    76.31 %
-// Selected best run based on highest score 10 trials
+// bayescl/hp/core50/tball 587aee7 167
+// Accuracy: 62.81 %
+// ECE:      4.02 %
+// Score:    79.40 %
+// Selected best run based on highest score 30 trials
 local dataset = import '../base/dataset/core50.jsonnet';
 local method = import '../base/method/tball.jsonnet';
 dataset + method + {
-  lr: 0.000894,
+  lr: 0.000714,
   strategy+: {
-    beta: 1.65,
-  },
-  peft+: {
-    bnn: 'FFG',
+    beta: 0.129,
   },
 }

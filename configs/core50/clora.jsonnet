@@ -1,14 +1,14 @@
-// bayescl/hp/core50/clora 45cc83e 11
-// Accuracy: 49.37 %
-// ECE:      12.92 %
-// Score:    68.22 %
-// Selected best run based on highest score 10 trials
+// bayescl/hp/core50/clora 587aee7 159
+// Accuracy: 51.99 %
+// ECE:      9.68 %
+// Score:    71.16 %
+// Selected best run based on highest score 30 trials
 local dataset = import '../base/dataset/core50.jsonnet';
 local method = import '../base/method/clora.jsonnet';
 dataset + method + {
-  lr: 0.000185,
+  lr: 0.000235,
   peft+: {
-    lambda_: 8.8,
-    alpha: 0.548,
+    alpha: 0.694,
+    lambda_: 2.9,
   },
 }
