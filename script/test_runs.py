@@ -1,7 +1,7 @@
 DATASETS = [
-    "cifar100",
+    # "cifar100",
     "core50",
-    "imagenetr",
+    # "imagenetr",
 ]
 METHODS = [
     # "ball",
@@ -25,7 +25,6 @@ def run_string(trial: int, dataset: str, method: str):
         "notirun.sh",
         "python main.py",
         f"-c configs/{dataset}/{method}.jsonnet".rjust(35),
-        "-a checkpoint=True" if method.endswith("ball") else "",
         f"run test {trial}",
     ]
     return " ".join(cli)

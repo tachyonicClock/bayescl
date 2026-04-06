@@ -6,7 +6,7 @@ import optuna
 STORAGE = optuna.storages.RDBStorage(environ.get("OPTUNA_STORAGE"))
 
 
-MAX_TRIALS = 10
+MAX_TRIALS = 30
 
 DATASETS = ["cifar100", "core50", "imagenetr"]
 METHODS = [
@@ -45,11 +45,14 @@ def main():
         _, _, dataset, method = study_name.split("/")
 
         trials = [
-            t for t in study.trials if t.state == optuna.trial.TrialState.COMPLETE
+            t
+            for t in study.trials
+            if t.state
+            in (optuna.trial.TrialState.COMPLETE, optuna.trial.TrialState.PRUNED)
         ][:MAX_TRIALS]
+        best_trial = max(trials, key=lambda t: t.value or 0)
 
         # Select the best trial based on the highest score (single objective value)
-        best_trial = max(trials, key=lambda t: t.values[0])
 
         accuracy = best_trial.user_attrs["avg_acc"]
         ece = best_trial.user_attrs["avg_ece"]
@@ -60,7 +63,7 @@ def main():
         print(f"Avg. Acc. {accuracy * 100:.2f}")
         print(f"ECE       {ece * 100:.2f}")
         print(f"Score:    {score_ * 100:.2f}")
-        print(f"N Trials  {len(study.trials)}")
+        print(f"N Trials  {len(trials)}")
 
         git_hash = study.user_attrs.get("git_commit")
 

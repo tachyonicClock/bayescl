@@ -3,7 +3,6 @@ import pickle
 import tarfile
 import zipfile
 from dataclasses import asdict, dataclass
-from itertools import chain
 from pathlib import Path
 from typing import Any, Dict, Generator, Tuple
 
@@ -283,32 +282,49 @@ summary_records = []
 time_series_records = []
 calibration_records = []
 
-archive = Path("/local/scratch/antonlee/archive")
+
+archive_root = Path("/local/scratch/antonlee/archive")
+archive_files = [
+    "260407_bayescl_eval_cifar100_ball.zip",
+    "260407_bayescl_eval_cifar100_clora.zip",
+    "260407_bayescl_eval_cifar100_ewc.zip",
+    "260407_bayescl_eval_cifar100_inflora.zip",
+    "260407_bayescl_eval_cifar100_lora.zip",
+    "260407_bayescl_eval_cifar100_rwalk.zip",
+    "260407_bayescl_eval_cifar100_sdlora.zip",
+    "260407_bayescl_eval_cifar100_tball.zip",
+    "260407_bayescl_eval_cifar100_tball-mnd.zip",
+    "260407_bayescl_eval_core50_ball.zip",
+    "260407_bayescl_eval_core50_clora.zip",
+    "260407_bayescl_eval_core50_ewc.zip",
+    "260407_bayescl_eval_core50_inflora.zip",
+    "260407_bayescl_eval_core50_lora.zip",
+    "260407_bayescl_eval_core50_rwalk.zip",
+    "260407_bayescl_eval_core50_sdlora.zip",
+    "260407_bayescl_eval_core50_tball.zip",
+    "260407_bayescl_eval_imagenetr_ball.zip",
+    "260407_bayescl_eval_imagenetr_clora.zip",
+    "260407_bayescl_eval_imagenetr_ewc.zip",
+    "260407_bayescl_eval_imagenetr_inflora.zip",
+    "260407_bayescl_eval_imagenetr_lora.zip",
+    "260407_bayescl_eval_imagenetr_rwalk.zip",
+    "260407_bayescl_eval_imagenetr_sdlora.zip",
+    "260407_bayescl_eval_imagenetr_tball.zip",
+    "260407_bayescl_eval_imagenetr_tball-mnd.zip",
+    # TODO: CORe50 TBALL_MND
+]
+
 #  /local/scratch/antonlee/archive/eval_imagenetr_inflora_0.zip /local/scratch/antonlee/archive/eval_imagenetr_inflora_01.zip /local/scratch/antonlee/archive/eval_imagenetr_tball_01.zip
 # # BayesCL extraction and transformations
 print("DATASET/METHOD/RUN_ID")
-for dataset, method, run_id, data in chain(
-    # from_logs("log/test"),
-    # from_zip(archive / "eval_cifar100_ewc_2026-03-24.zip"),
-    # from_zip(archive / "eval_cifar100_inflora_2026-03-23.zip"),
-    # from_zip(archive / "eval_cifar100_mas_2026-03-19.zip"),
-    # from_zip(archive / "eval_cifar100_tball_2026-03-23.zip"),
-    # from_zip(archive / "eval_core50_ewc_2026-03-24.zip"),
-    # from_zip(archive / "eval_core50_inflora_2026-03-23.zip"),
-    # from_zip(archive / "eval_imagenetr_ball_2026-03-23.zip"),
-    # from_zip(archive / "eval_imagenetr_ewc_2026-03-24.zip"),
-    # from_zip(archive / "eval_imagenetr_inflora_2026-03-23.zip"),
-    # from_zip(archive / "eval_imagenetr_tball_2026-03-23.zip"),
-    from_zip(archive / "eval_cifar100_tball-mnd_2026-03-30.zip"),
-    from_zip(archive / "eval_core50_tball-mnd_2026-03-30.zip"),
-    from_zip(archive / "eval_imagenetr_tball-mnd_2026-03-30.zip"),
-):
-    print(f"{dataset}/{method}/{run_id}")
-    summary_records.append(to_summary_record(dataset, method, int(run_id), data))
-    for record in to_timeseries_record(dataset, method, int(run_id), data):
-        time_series_records.append(record)
-    for record in to_calibration_record(dataset, method, int(run_id), data):
-        calibration_records.append(record)
+for archive in archive_files:
+    for dataset, method, run_id, data in from_zip(archive_root / archive):
+        print(f"{dataset}/{method}/{run_id}")
+        summary_records.append(to_summary_record(dataset, method, int(run_id), data))
+        for record in to_timeseries_record(dataset, method, int(run_id), data):
+            time_series_records.append(record)
+        for record in to_calibration_record(dataset, method, int(run_id), data):
+            calibration_records.append(record)
 
 
 summary_filename = "analysis/dataframe/summary.parquet"

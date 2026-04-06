@@ -1,16 +1,17 @@
 DATASETS = [
-    "cifar100",
-    "core50",
-    "imagenetr",
+    # "cifar100",
+    # "core50",
+    # "imagenetr",
+    "cifar100-sensitivity"
 ]
 
 METHODS = [
-    "rwalk",
-    "ewc",
-    "lora",
-    "clora",
-    "sdlora",
-    "inflora",
+    # "rwalk",
+    # "ewc",
+    # "lora",
+    # "clora",
+    # "sdlora",
+    # "inflora",
     "ball",
     "tball",
     "tball-mnd",
@@ -30,6 +31,7 @@ ABBREVIATIONS = {
     "ball": "BALL",
     "tball": "TBALL",
     "tball-mnd": "TBMND",
+    "cifar100-sensitivity": "C100S",
 }
 
 
@@ -40,7 +42,7 @@ def run_string(dataset, method):
         "notirun.sh",
         "python main.py",
         f"-c configs/{dataset}/{method}.jsonnet".rjust(40),
-        "hpsearch hp",
+        "hpsearch sens",
     ]
     return " ".join(cli)
 
