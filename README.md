@@ -194,24 +194,24 @@ ts -G 1 -L Znolora notirun.sh python main.py -f -a epochs=5 -c configs/cifar100/
 
 ```sh
 ts -G 1 -L cifar_ball_sens notirun.sh python main.py \
-  -c configs/cifar100-sensitivity/ball-beta.jsonnet hpsearch 01-sensitivity-beta
+  -c configs/core50-sensitivity/ball-beta.jsonnet hpsearch 01-sensitivity-beta
 ts -G 1 -L cifar_tball_sens notirun.sh python main.py \
-  -c configs/cifar100-sensitivity/tball-beta.jsonnet hpsearch 01-sensitivity-beta
+  -c configs/core50-sensitivity/tball-beta.jsonnet hpsearch 01-sensitivity-beta
 ts -G 1 -L cifar_tball_mnd_sens notirun.sh python main.py \
-  -c configs/cifar100-sensitivity/tball-mnd-beta.jsonnet hpsearch 01-sensitivity-beta
+  -c configs/core50-sensitivity/tball-mnd-beta.jsonnet hpsearch 01-sensitivity-beta
 
 ts -G 1 -L cifar_ball_rank notirun.sh python main.py \
-  -c configs/cifar100-sensitivity/ball-rank.jsonnet hpsearch 01-sensitivity-rank
+  -c configs/core50-sensitivity/ball-rank.jsonnet hpsearch 01-sensitivity-rank
 ts -G 1 -L cifar_tball_rank notirun.sh python main.py \
-  -c configs/cifar100-sensitivity/tball-rank.jsonnet hpsearch 01-sensitivity-rank
+  -c configs/core50-sensitivity/tball-rank.jsonnet hpsearch 01-sensitivity-rank
 ts -G 1 -L cifar_tball_mnd_rank notirun.sh python main.py \
-  -c configs/cifar100-sensitivity/tball-mnd-rank.jsonnet hpsearch 01-sensitivity-rank
+  -c configs/core50-sensitivity/tball-mnd-rank.jsonnet hpsearch 01-sensitivity-rank
 
 ts -G 1 -L cifar_ball_sens notirun.sh python main.py \
-  -c configs/cifar100-sensitivity/ball-samples.jsonnet hpsearch 01-sensitivity-samples
+  -c configs/core50-sensitivity/ball-samples.jsonnet hpsearch 01-sensitivity-samples
 ts -G 1 -L cifar_tball_sens notirun.sh python main.py \
-  -c configs/cifar100-sensitivity/tball-samples.jsonnet hpsearch 01-sensitivity-samples
+  -c configs/core50-sensitivity/tball-samples.jsonnet hpsearch 01-sensitivity-samples
 ts -G 1 -L cifar_tball_mnd_sens notirun.sh python main.py \
-  -c configs/cifar100-sensitivity/tball-mnd-samples.jsonnet hpsearch 01-sensitivity-samples
+  -c configs/core50-sensitivity/tball-mnd-samples.jsonnet hpsearch 01-sensitivity-samples
 ```
 
