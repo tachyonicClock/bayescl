@@ -5,7 +5,6 @@ import torch.nn as nn
 from torch import Tensor
 from torch.nn import functional as F
 from torch.nn.modules.utils import _pair
-from typeguard import typechecked
 
 from bayescl.peft._base import AdapterBase, AdapterFactory
 from bayescl.vbnn import VariationalParameter
@@ -107,7 +106,6 @@ class BALLConv2d(BALLLayer, nn.Conv2d):
 class BALLAdapterFactory(AdapterFactory):
     """A factory for creating BALL adapters."""
 
-    @typechecked
     def __init__(self, config: BALLConfig) -> None:
         self.config = config
 

@@ -6,7 +6,6 @@ from bnn.nn.modules import FCGLinear, FCGMixin, FFGLinear, FFGMixin
 from torch import Tensor
 from torch.nn import functional as F
 from torch.nn.modules.utils import _pair
-from typeguard import typechecked
 
 from bayescl.peft._base import AdapterBase, AdapterFactory
 
@@ -221,7 +220,6 @@ class TBALLConv2d(BALLLayer, nn.Conv2d):
 class TBALLAdapterFactory(AdapterFactory):
     """A factory for creating TBALL adapters."""
 
-    @typechecked
     def __init__(self, config: TBALLConfig) -> None:
         self.config = config
 
