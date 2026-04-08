@@ -55,6 +55,7 @@ class SummaryRecord:
     sce_final: float
     sce_seen_avg: float
     asce_final: float
+    duration_s: float
 
     _INDEX = ["dataset", "method", "run_id"]
 
@@ -218,6 +219,7 @@ def to_summary_record(
         sce_seen_avg=data["sce_seen_avg"],
         ece_all_avg=data["ece_all_avg"],
         asce_final=asce_final,
+        duration_s=data["duration_s"],
     )
 
 
@@ -311,7 +313,7 @@ archive_files = [
     "260407_bayescl_eval_imagenetr_sdlora.zip",
     "260407_bayescl_eval_imagenetr_tball.zip",
     "260407_bayescl_eval_imagenetr_tball-mnd.zip",
-    # TODO: CORe50 TBALL_MND
+    "260407_bayescl_eval_core50_tball-mnd.zip",
 ]
 
 #  /local/scratch/antonlee/archive/eval_imagenetr_inflora_0.zip /local/scratch/antonlee/archive/eval_imagenetr_inflora_01.zip /local/scratch/antonlee/archive/eval_imagenetr_tball_01.zip
@@ -331,38 +333,11 @@ summary_filename = "analysis/dataframe/summary.parquet"
 time_series_filename = "analysis/dataframe/time_series.parquet"
 calibration_filename = "analysis/dataframe/calibration.parquet"
 
-summary_df = pd.read_parquet(summary_filename)
-time_series_df = pd.read_parquet(time_series_filename)
-calibration_df = pd.read_parquet(calibration_filename)
+summary_df = dataclass_to_df(summary_records)
+time_series_df = dataclass_to_df(time_series_records)
+calibration_df = dataclass_to_df(calibration_records)
 
-summary_df["run_id"] = summary_df["run_id"].astype(int)
-time_series_df["run_id"] = time_series_df["run_id"].astype(int)
-calibration_df["run_id"] = calibration_df["run_id"].astype(int)
-
-summary_df.set_index(SummaryRecord._INDEX, inplace=True)
-time_series_df.set_index(TimeSeriesRecord._INDEX, inplace=True)
-calibration_df.set_index(CalibrationRecord._INDEX, inplace=True)
-
-# drop duplicates rows
-summary_df = summary_df[~summary_df.index.duplicated(keep="first")]
-time_series_df = time_series_df[~time_series_df.index.duplicated(keep="first")]
-calibration_df = calibration_df[~calibration_df.index.duplicated(keep="first")]
-
-
-new_summary_df = dataclass_to_df(summary_records).set_index(SummaryRecord._INDEX)
-new_time_series_df = dataclass_to_df(time_series_records).set_index(
-    TimeSeriesRecord._INDEX
-)
-new_calibration_df = dataclass_to_df(calibration_records).set_index(
-    CalibrationRecord._INDEX
-)
-
-
-# upsert new records into existing dataframes
-new_summary_df.combine_first(summary_df).reset_index().to_parquet(summary_filename)
-new_time_series_df.combine_first(time_series_df).reset_index().to_parquet(
-    time_series_filename
-)
-new_calibration_df.combine_first(calibration_df).reset_index().to_parquet(
-    calibration_filename
-)
+# Save dataframes
+summary_df.to_parquet(summary_filename, index=False)
+time_series_df.to_parquet(time_series_filename, index=False)
+calibration_df.to_parquet(calibration_filename, index=False)
