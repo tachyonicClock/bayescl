@@ -1,3 +1,3 @@
-local base = import '../core50/ball.jsonnet';
+local base = import '../imagenetr/ball.jsonnet';
 local search = import 'base/ball-rank.jsonnet';
 base + search

@@ -329,15 +329,15 @@ for archive in archive_files:
             calibration_records.append(record)
 
 
-summary_filename = "analysis/dataframe/summary.parquet"
-time_series_filename = "analysis/dataframe/time_series.parquet"
-calibration_filename = "analysis/dataframe/calibration.parquet"
+summary_filename = "analysis/dataframe/summary.csv"
+time_series_filename = "analysis/dataframe/time_series.csv"
+calibration_filename = "analysis/dataframe/calibration.csv"
 
 summary_df = dataclass_to_df(summary_records)
 time_series_df = dataclass_to_df(time_series_records)
 calibration_df = dataclass_to_df(calibration_records)
 
 # Save dataframes
-summary_df.to_parquet(summary_filename, index=False)
-time_series_df.to_parquet(time_series_filename, index=False)
-calibration_df.to_parquet(calibration_filename, index=False)
+summary_df.to_csv(summary_filename, index=False)
+time_series_df.to_csv(time_series_filename, index=False)
+calibration_df.to_csv(calibration_filename, index=False)
