@@ -1,5 +1,0 @@
-{
-  label+: {
-    method: 'linear',
-  },
-}
