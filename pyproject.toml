@@ -7,11 +7,13 @@ requires-python = ">=3.12"
 dependencies = [
     "avalanche-lib==0.6.0",
     "bayesianize",
+    "click>=8.1.8",
     "ipykernel==7.2.0",
     "jsonnet==0.21.0",
     "loguru==0.7.3",
     "matplotlib==3.7.5",
     "omegaconf==2.3.0",
+    "optuna-dashboard>=0.20.0",
     "optuna==4.7.0",
     "psycopg[binary]==3.3.3",
     "pydantic==2.11.9",
