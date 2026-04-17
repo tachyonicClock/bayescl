@@ -107,8 +107,6 @@ def main(
         print(f"Score:    {score_ * 100:.2f}")
         print(f"N Trials  {len(trials)}")
 
-        git_hash = study.user_attrs.get("git_commit")
-
         config = {}
 
         for param in best_trial.params:
@@ -121,7 +119,6 @@ def main(
         config_file = jinja_template.render(
             study_id=study._study_id,
             study_name=full_study_name,
-            git_hash=git_hash,
             dataset=dataset,
             method=method,
             accuracy=accuracy,
