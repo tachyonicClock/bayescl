@@ -1,6 +1,15 @@
 # BALL
 Replay-Free Bayesian Adaptors for Lifelong Learning and Uncertainty Quantification.
 
+
+## Methods
+
+In the paper we refer to our family of methods as BALL with the following variants:
+- 2BALL: This is called `ball` in the codebase.
+- 3BALL: This is called `tball` in the codebase.
+- 3BALL_M: This is called `tball-mnd` in the codebase.
+
+
 ## Reproduce Experiments
 
 To run with [uv](https://docs.astral.sh/uv/getting-started/installation/):
