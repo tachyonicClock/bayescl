@@ -31,9 +31,9 @@ METHOD_TO_LABEL = {
     "clora": "C-LoRA",
     "sdlora": "SD-LoRA",
     "inflora": "InfLoRA",
-    "ball": "BALL",
-    "tball-mnd": r"TBALL\textsubscript{MND}",
-    "tball": r"TBALL",
+    "ball": "2BALL",
+    "tball-mnd": r"3TBALL\textsubscript{M}",
+    "tball": r"3TBALL",
 }
 
 MARKERS = [".", "x"]
