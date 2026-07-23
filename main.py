@@ -13,7 +13,6 @@ import optuna
 
 from bayescl.config import Config, ZeusMonitorConfig, from_config
 from bayescl.experiment import Experiment
-from bayescl.util.git import commit_message, commit_short_hash, is_git_status_clean
 from bayescl.util.optuna import get_pruner, get_sampler, optuna_suggest
 
 OPTUNA_PROJECT_PREFIX = "bayescl"
@@ -87,8 +86,6 @@ def run_study(config: Config):
         sampler=get_sampler(config.hpsearch.sampler),
         load_if_exists=True,
     )
-    study.set_user_attr("git_commit", commit_short_hash())
-    study.set_user_attr("git_message", commit_message())
 
     optimize_with_max_trials(
         study,
@@ -117,23 +114,12 @@ def run_study(config: Config):
     multiple=True,
     help="Override config options using dotlist notation.",
 )
-@click.option(
-    "--force",
-    "-f",
-    is_flag=True,
-    default=False,
-    help="Skip checking if repo is clean.",
-)
 @click.pass_context
 def cli(
     ctx: click.Context,
     config: str,
     args: List[str],
-    force: bool,
 ):
-    if not force and not is_git_status_clean():
-        raise SystemExit("Please ensure everything is committed")
-
     cfg = from_config(config, args)
     ctx.obj = cfg
 
@@ -176,13 +162,6 @@ def run(
 def hpsearch(cfg: Config, name: str):
     cfg.label.study = name
     run_study(cfg)
-
-
-@cli.command()
-@click.pass_obj
-def count_parameters(cfg: Config):
-    experiment = Experiment(cfg)
-    experiment.count_parameters()
 
 
 if __name__ == "__main__":
