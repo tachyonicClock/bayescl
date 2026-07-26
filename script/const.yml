@@ -1,0 +1,14 @@
+datasets:
+  - cifar100
+  - imagenet100
+  - imagenet1000
+methods:
+  - ball
+  - clora
+  - ewc
+  - inflora
+  - lora
+  - rwalk
+  - sdlora
+  - tball
+  - tball-mnd
