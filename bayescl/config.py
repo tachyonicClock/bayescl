@@ -49,8 +49,10 @@ class Dataset:
 
 DATASETS: dict[str, Dataset] = {
     "cifar100": Dataset("cifar100", "CIFAR100", full_epochs=30),
-    "core50": Dataset("core50", "CORe50", full_epochs=30),
-    "imagenetr": Dataset("imagenetr", "ImageNetR", full_epochs=60),
+    # 224px decode+augment is CPU-bound; these benefit from more workers than the
+    # default 4 (measured ~1.8x from 4->8 workers on both pipelines).
+    "core50": Dataset("core50", "CORe50", full_epochs=30, num_workers=8),
+    "imagenetr": Dataset("imagenetr", "ImageNetR", full_epochs=60, num_workers=8),
 }
 
 

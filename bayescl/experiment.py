@@ -171,17 +171,24 @@ class Experiment:
 
             strategy.train_epochs = self.config.epochs
 
+            # ``persistent_workers`` avoids respawning the worker pool every epoch;
+            # ``pin_memory`` speeds up the host->GPU copy. Both are forwarded by
+            # Avalanche to the underlying ``DataLoader``.
+            loader_kwargs = dict(
+                num_workers=self.config.num_workers,
+                pin_memory=True,
+                persistent_workers=self.config.num_workers > 0,
+            )
+
             # train returns a dictionary which contains all the metric values
             strategy.train(
                 experience,
                 self.benchmark.test_stream[: t + 1],
-                num_workers=self.config.num_workers,
+                **loader_kwargs,
             )
 
             results.append(
-                strategy.eval(
-                    self.benchmark.test_stream, num_workers=self.config.num_workers
-                )
+                strategy.eval(self.benchmark.test_stream, **loader_kwargs)
             )
             if trial is not None and report_intermediate:
                 intermediate_acc, intermediate_ece = (

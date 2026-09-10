@@ -1,6 +1,15 @@
 import os
+from functools import lru_cache
 from pathlib import Path
 from typing import Any, Callable, Literal, Sequence
+
+# Keep every Hugging Face artifact (hub blobs + processed Arrow) under ``$DATASETS``
+# instead of the default ``~/.cache/huggingface``. Must run before importing
+# ``datasets``/``huggingface_hub`` since the cache paths are resolved at import.
+if os.environ.get("DATASETS") and not os.environ.get("HF_HOME"):
+    os.environ["HF_HOME"] = str(
+        Path(os.environ["DATASETS"]).expanduser().resolve() / "huggingface"
+    )
 
 import torch
 import yaml
@@ -9,10 +18,10 @@ from avalanche.benchmarks import (
     nc_benchmark,
 )
 
-# from avalanche.benchmarks.datasets import CORe50Dataset
+from datasets import load_dataset
 from loguru import logger
 from PIL import Image
-from torch.utils.data import ConcatDataset, Dataset, Subset
+from torch.utils.data import Dataset, Subset
 from torchvision.datasets import CIFAR100, ImageFolder
 
 
@@ -26,16 +35,88 @@ def datasets_path() -> str:
     return str(torch_data_dir_path)
 
 
-class ImageNetR(ImageFolder):
+def hf_cache_dir() -> str:
+    """Directory under ``$DATASETS`` where Hugging Face datasets are cached."""
+    path = Path(datasets_path()) / "huggingface"
+    path.mkdir(exist_ok=True)
+    return str(path)
+
+
+@lru_cache(maxsize=None)
+def _load_hf(repo: str, split: str):
+    """Load and cache a Hugging Face dataset split for the lifetime of the process.
+
+    ``Split*`` helpers instantiate each dataset class two or three times (a length
+    probe plus the train and test views), so without this cache every call would
+    re-open the Arrow table and re-run the class-balanced split. The cache is
+    populated in the parent process before ``DataLoader`` workers fork, so workers
+    inherit it for free; the underlying Arrow data is memory-mapped, not copied.
+    """
+    return load_dataset(repo, split=split, cache_dir=hf_cache_dir())
+
+
+@lru_cache(maxsize=None)
+def _imagenetr_split() -> tuple[Any, list[str], dict[str, int], list[int], list[int], list[int]]:
+    ds = _load_hf(ImageNetR.HF_REPO, "test")
+    classes = sorted(set(ds["wnid"]))
+    wnid_to_idx = {wnid: i for i, wnid in enumerate(classes)}
+    all_targets = [wnid_to_idx[wnid] for wnid in ds["wnid"]]
+    train_idx, test_idx = class_balanced_split(all_targets, 0.2, seed=0)
+    return (
+        ds,
+        classes,
+        wnid_to_idx,
+        all_targets,
+        [int(i) for i in train_idx],
+        [int(i) for i in test_idx],
+    )
+
+
+class ImageNetR(Dataset):
+    """ImageNet-R(endition) hosted on the Hugging Face Hub (``axiong/imagenet-r``).
+
+    The Hub dataset ships a single ``test`` split of 30,000 images labelled by
+    WordNet id. Integer labels are derived from the sorted list of WordNet ids and
+    a deterministic class-balanced 80/20 split yields ~24,000 train / ~6,000 test
+    images (the per-class counts are not exactly equal, so the split is not a clean
+    150/30).
+    """
+
+    HF_REPO = "axiong/imagenet-r"
+
     def __init__(
         self,
-        root: str | Path,
+        root: str | Path | None = None,
         transform: Callable[..., Any] | None = None,
         target_transform: Callable[..., Any] | None = None,
         train: bool = True,
     ):
-        path = Path(root) / "imagenet-r" / ("train" if train else "test")
-        super().__init__(path, transform, target_transform)
+        ds, classes, wnid_to_idx, all_targets, train_idx, test_idx = _imagenetr_split()
+        self.classes = classes
+        self._wnid_to_idx = wnid_to_idx
+
+        idx = train_idx if train else test_idx
+        self._ds = ds.select(idx)
+        self.targets = [all_targets[i] for i in idx]
+        self.transform = transform
+        self.target_transform = target_transform
+
+    def __len__(self) -> int:
+        return len(self._ds)
+
+    def __getitem__(self, index: int) -> tuple[Any, int]:
+        row = self._ds[int(index)]
+        image = row["image"]
+        if image.mode != "RGB":
+            image = image.convert("RGB")
+        target = self._wnid_to_idx[row["wnid"]]
+
+        if self.transform is not None:
+            image = self.transform(image)
+        if self.target_transform is not None:
+            target = self.target_transform(target)
+
+        return image, target
 
 
 class DomainNet(Dataset):
@@ -84,28 +165,66 @@ class TinyImageNet(ImageFolder):
         super().__init__(Path(root) / "tiny-imagenet-200" / split, transform)
 
 
-class CORe50Dataset(ConcatDataset):
-    SESSIONS = {
-        "test": [3, 7, 10],
-        "train": [1, 2, 5, 6, 8, 9],
-        "valid": [11, 4],
-        "train&valid": [1, 2, 4, 5, 6, 8, 9, 11],
-    }
+@lru_cache(maxsize=None)
+def _core50_targets(hf_split: str) -> list[int]:
+    """Cache the (expensive to materialise) label column of a CORe50 Hub split."""
+    return [int(x) for x in _load_hf(CORe50Dataset.HF_REPO, hf_split)["label"]]
+
+
+@lru_cache(maxsize=None)
+def _core50_valid_indices() -> list[int]:
+    _, valid_idx = class_balanced_split(_core50_targets("train"), 0.1, seed=0)
+    return [int(i) for i in valid_idx]
+
+
+class CORe50Dataset(Dataset):
+    """CORe50 hosted on the Hugging Face Hub (``adrake17/core50``).
+
+    The Hub dataset provides ``train`` (131,892 images) and ``test`` (32,974
+    images) splits over the 50 object classes. The ``valid`` split is carved from
+    the Hub ``train`` split with a deterministic class-balanced 10% hold-out, and
+    ``train&valid`` is the full Hub ``train`` split.
+    """
+
+    HF_REPO = "adrake17/core50"
 
     def __init__(
         self,
-        root: str | Path,
-        split: Literal["train", "train&valid", "valid", "test"],
+        root: str | Path | None = None,
+        split: Literal["train", "train&valid", "valid", "test"] = "train",
         transform: Callable[..., Any] | None = None,
     ):
-        self.root = Path(root) / "core50_128x128"
+        if split == "test":
+            self._ds = _load_hf(self.HF_REPO, "test")
+            self.targets = _core50_targets("test")
+        elif split in ("train", "train&valid"):
+            self._ds = _load_hf(self.HF_REPO, "train")
+            self.targets = _core50_targets("train")
+        elif split == "valid":
+            valid_idx = _core50_valid_indices()
+            self._ds = _load_hf(self.HF_REPO, "train").select(valid_idx)
+            train_targets = _core50_targets("train")
+            self.targets = [train_targets[i] for i in valid_idx]
+        else:
+            raise ValueError(f"Unknown split: {split!r}")
+
         self.transform = transform
+        self.classes = list(range(50))
 
-        self.sessions = []
-        for s in self.SESSIONS[split]:
-            self.sessions.append(ImageFolder(self.root / f"s{s}", transform))
+    def __len__(self) -> int:
+        return len(self._ds)
 
-        super().__init__(self.sessions)
+    def __getitem__(self, index: int) -> tuple[Any, int]:
+        row = self._ds[int(index)]
+        image = row["image"]
+        if image.mode != "RGB":
+            image = image.convert("RGB")
+        target = int(row["label"])
+
+        if self.transform is not None:
+            image = self.transform(image)
+
+        return image, target
 
 
 def valid_split_indices(
@@ -176,12 +295,11 @@ def SplitImageNetR(
         of out-of-distribution generalization." Proceedings of the IEEE/CVF
         international conference on computer vision. 2021.
     """
-    n = 24000
     if validation_set <= 0.0:
         train_dataset = ImageNetR(dataset_root, train_transform, train=True)
         test_dataset = ImageNetR(dataset_root, eval_transform, train=False)
-        assert len(train_dataset) == n
     else:
+        n = len(ImageNetR(dataset_root, train=True))
         train_perm, test_perm = valid_split_indices(n, validation_set)
         train_dataset = Subset(
             ImageNetR(dataset_root, train_transform, train=True), train_perm
