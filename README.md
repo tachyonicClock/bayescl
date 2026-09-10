@@ -9,83 +9,96 @@ In the paper we refer to our family of methods as BALL with the following varian
 - 3BALL: This is called `tball` in the codebase.
 - 3BALL_M: This is called `tball-mnd` in the codebase.
 
+Each method ("arm") is a single dataclass in `bayescl/methods/<name>/_arm.py`
+holding its hyperparameters, an Optuna search space (`search_space`), and a
+`build(...)` that assembles an `ExperimentSpec` and returns a runnable
+`Experiment`. Variants such as `tball-mnd` are `@register`ed subclasses that only
+change field defaults. Datasets live in `bayescl/datasets_spec.py` and the
+`pilot` / `full` budgets in `bayescl/scale.py`.
+
 
 ## Reproduce Experiments
 
 To run with [uv](https://docs.astral.sh/uv/getting-started/installation/):
+
 ```
 $ uv run main.py --help
 Usage: main.py [OPTIONS] COMMAND [ARGS]...
 
-Options:
-  -c, --config FILE  Path to a jsonnet config file.  [required]
-  -a, --args TEXT    Override config options using dotlist notation.
-  -f, --force        Skip checking if repo is clean.
-  --help             Show this message and exit.
-
 Commands:
-  hpsearch
-  run
+  tune  Search hyperparameters for METHOD on DATASET at the given SCALE.
+  test  Evaluate METHOD's best tuned config on DATASET over `n_seeds` seeds.
 ```
 
-### Evaluation Runs
+Both commands take the same positional arguments:
 
-Evaluation runs train the model with the specified hyperparameters and evaluate the
-model on the test set. Runs are logged to `log/{NAME}/{DATASET}/{METHOD}/{SEED}`
+```
+main.py <tune|test> <pilot|full> <dataset> <method>
+```
+
+- `scale` — `pilot` is a fast smoke run (few trials, few epochs, one seed);
+  `full` is the paper-quality budget (see `bayescl/scale.py`).
+- `dataset` — one of `cifar100`, `core50`, `imagenetr`.
+- `method` — one of `ball`, `clora`, `ewc`, `inflora`, `lora`, `rwalk`,
+  `sdlora`, `tball`, `tball-mnd`.
+
+Set `$DATASETS` to your datasets directory (or pass `--dataset-path`).
+
+### 1. Tune
 
 ```bash
-# uv run main.py -c configs/cifar100/ball.jsonnet run {name}  {seed}
-$ uv run main.py -c configs/cifar100/ball.jsonnet run example 0
+$ uv run main.py tune full cifar100 ball
 ```
 
-### Hyperparameter Search
+Runs an Optuna study against a validation split and writes:
 
-Hyperparameter search uses [Optuna](https://optuna.org/) to optimize the hyperparameters
-of the model. The hyperparameter search is ran against the validation set and evaluated
-on an aggregate metric of accuracy and calibration. The results are stored in a database
-specified by the `OPTUNA_STORAGE` environment variable.
+```
+runs/tune/full/cifar100/ball/<RUNID>/
+    results.jsonl   # one line per trial: {trial, arm, params, acc, ece, score, state}
+    meta.json       # git provenance, scale knobs, best trial
+    trial_0000/ ...  # per-trial Experiment output (TensorBoard, metrics.pkl, ...)
+```
+
+`<RUNID>` is a `%Y-%m-%d_%H-%M-%S` timestamp. The objective maximises
+`score = 0.5 * (accuracy + (1 - ECE))`.
+
+Add `--sampler` / `--pruner` to change the Optuna strategy (e.g.
+`--sampler BruteForceSampler` for a grid sweep). Add `--sqlite` to also write
+`runs/.../optuna.db` for the dashboard:
 
 ```bash
-$ export OPTUNA_STORAGE="sqlite:///example.db"
-# uv run main.py -c configs/cifar100/ball.jsonnet hpsearch {study name}
-$ uv run main.py -c configs/cifar100/ball.jsonnet hpsearch example-hp
+$ uv run optuna-dashboard runs/tune/full/cifar100/ball/<RUNID>/optuna.db
 ```
 
-The study is named `bayescl/example-hp/cifar100/ball` and can be accessed using the
-Optuna dashboard:
+### 2. Test
 
 ```bash
-$ uv run optuna-dashboard example.db
+$ uv run main.py test full cifar100 ball
 ```
 
-Once you have found the best hyperparameters, you may update the config files with the
-best hyperparameters:
+Finds the most recent `runs/tune/full/cifar100/ball/*/` (or use `--from-tune
+PATH`), picks the trial with the best `score`, reconstructs the arm, and runs it
+for `n_seeds` seeds against the test set:
 
-```sh
-$ uv run script/hpupdate.py -s example-hp -d cifar100 -d core50 -m ball
+```
+runs/test/full/cifar100/ball/<RUNID>/
+    results.jsonl   # one line per seed: {seed, acc, ece, score}
+    meta.json
+    seed_00/ ...
 ```
 
-<details>
-<summary>hpupdate all</summary>
+> Arm defaults are generic (`lr=1e-3`). `test` only produces meaningful numbers
+> after a `full` `tune` for that (dataset, method) pair.
 
-```sh
-$ uv run script/hpupdate.py -s example-hp\
-  -d cifar100 -d core50 -d imagenetr \
-  -m ball -m clora -m ewc -m inflora -m lora -m rwalk -m sdlora -m tball -m tball-mnd
-```
-
-</details>
 
 ## Analysis
 
-To collect the results of the hyperparameter search, you can run the following command:
+Collect run results into a CSV:
+
 ```bash
-$ uv run script/collect.py hpsearch example-hp example-hp.csv
+$ uv run script/collect.py ./runs results.csv --stage test
+$ uv run script/collect.py ./runs trials.csv --stage tune
 ```
 
-To collect the results of the evaluation runs, you can run the following command:
-```bash
-$ uv run script/collect.py run example-run example-run.csv
-```
-
-You can find my runs and hyperparameter search metrics in the `results` directory.
+You can find my runs and hyperparameter search metrics in the `results`
+directory.

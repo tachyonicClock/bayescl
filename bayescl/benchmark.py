@@ -5,7 +5,6 @@ from avalanche.benchmarks.scenarios import NCScenario
 from loguru import logger
 from torchvision import transforms as T
 
-from bayescl.config import Config
 from bayescl.datasets import (
     SplitCIFAR100,
     SplitCORe50,
@@ -13,6 +12,7 @@ from bayescl.datasets import (
     SplitDomainNet,
     SplitImageNetR,
 )
+from bayescl.spec import ExperimentSpec
 
 Transform = Callable[[Any], Any]
 
@@ -58,7 +58,7 @@ STANDARDIZE = T.Normalize(
 )
 
 
-def get_transforms(cfg: Config, dataset: str) -> Tuple[Transform, Transform]:
+def get_transforms(standardize: bool, dataset: str) -> Tuple[Transform, Transform]:
     train_transform: List[Callable[[Any], Any]] = []
     eval_transform: List[Callable[[Any], Any]] = []
 
@@ -71,74 +71,76 @@ def get_transforms(cfg: Config, dataset: str) -> Tuple[Transform, Transform]:
     train_transform.extend(COMMON_POST_TRANSFORM)
     eval_transform.extend(COMMON_POST_TRANSFORM)
 
-    if cfg.standardize:
+    if standardize:
         train_transform.append(STANDARDIZE)
         eval_transform.append(STANDARDIZE)
 
     return (T.Compose(train_transform), T.Compose(eval_transform))
 
 
-def get_benchmark(cfg: Config) -> NCScenario:
-    logger.info(f"Setting up '{cfg.scenario.dataset}' benchmark")
-    validation_set = 0.1 if cfg.scenario.validation else 0
-    train_transform, eval_transform = get_transforms(cfg, cfg.scenario.dataset)
-    if cfg.scenario.dataset == "MNIST":
+def get_benchmark(spec: ExperimentSpec) -> NCScenario:
+    logger.info(f"Setting up '{spec.dataset}' benchmark")
+    dataset_root = str(spec.dataset_root)
+    validation_set = 0.1 if spec.validation else 0
+    train_transform, eval_transform = get_transforms(spec.standardize, spec.dataset)
+    if spec.dataset == "MNIST":
         return SplitMNIST(
-            dataset_root=cfg.dataset_root,
-            n_experiences=cfg.scenario.n_tasks,
+            dataset_root=dataset_root,
+            n_experiences=spec.n_tasks,
             # train_transform=train_transform,
             # eval_transform=eval_transform,
             return_task_id=True,
-            shuffle=cfg.scenario.shuffle,
+            shuffle=spec.shuffle,
         )
-    elif cfg.scenario.dataset == "CIFAR100":
+    elif spec.dataset == "CIFAR100":
         return SplitCIFAR100(  # type: ignore
-            dataset_root=cfg.dataset_root,
-            n_experiences=cfg.scenario.n_tasks,
+            dataset_root=dataset_root,
+            n_experiences=spec.n_tasks,
             train_transform=train_transform,
             eval_transform=eval_transform,
             return_task_id=True,
-            shuffle=cfg.scenario.shuffle,
+            shuffle=spec.shuffle,
             validation_set=validation_set,
         )
-    elif cfg.scenario.dataset == "ImageNetR":
+    elif spec.dataset == "ImageNetR":
         return SplitImageNetR(  # type: ignore
-            dataset_root=cfg.dataset_root,
-            n_experiences=cfg.scenario.n_tasks,
+            dataset_root=dataset_root,
+            n_experiences=spec.n_tasks,
             train_transform=train_transform,
             eval_transform=eval_transform,
             return_task_id=True,
-            shuffle=cfg.scenario.shuffle,
+            shuffle=spec.shuffle,
             validation_set=validation_set,
         )
-    elif cfg.scenario.dataset == "DomainNet":
+    elif spec.dataset == "DomainNet":
         return SplitDomainNet(  # type: ignore
-            dataset_root=cfg.dataset_root,
-            n_experiences=cfg.scenario.n_tasks,
+            dataset_root=dataset_root,
+            n_experiences=spec.n_tasks,
             train_transform=train_transform,
             eval_transform=eval_transform,
             return_task_id=True,
-            shuffle=cfg.scenario.shuffle,
+            shuffle=spec.shuffle,
             validation_set=validation_set,
         )
-    elif cfg.scenario.dataset == "CORe50":
+    elif spec.dataset == "CORe50":
+        # SplitCORe50 takes a bool here, every other Split* takes a float fraction.
         return SplitCORe50(  # type: ignore
-            dataset_root=cfg.dataset_root,
-            n_experiences=cfg.scenario.n_tasks,
+            dataset_root=dataset_root,
+            n_experiences=spec.n_tasks,
             train_transform=train_transform,
             eval_transform=eval_transform,
             return_task_id=True,
-            shuffle=cfg.scenario.shuffle,
-            validation_set=cfg.scenario.validation,
+            shuffle=spec.shuffle,
+            validation_set=spec.validation,
         )
-    elif cfg.scenario.dataset == "CUB200_2011":
+    elif spec.dataset == "CUB200_2011":
         return SplitCUB200_2011(  # type: ignore
-            dataset_root=cfg.dataset_root,
-            n_experiences=cfg.scenario.n_tasks,
+            dataset_root=dataset_root,
+            n_experiences=spec.n_tasks,
             train_transform=train_transform,
             eval_transform=eval_transform,
             return_task_id=True,
-            shuffle=cfg.scenario.shuffle,
+            shuffle=spec.shuffle,
             validation_set=validation_set,
         )
-    raise ValueError(f"Unsupported scenario: {cfg.scenario}")
+    raise ValueError(f"Unsupported scenario: {spec.dataset}")

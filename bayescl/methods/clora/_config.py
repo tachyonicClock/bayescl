@@ -1,13 +1,14 @@
-from typing import Literal
+from dataclasses import dataclass
+from typing import ClassVar
 
-from bayescl.base import BaseConfig
 
-
-class CLoRAConfig(BaseConfig):
-    type: Literal["CLoRA"] = "CLoRA"
-    rank: int
+@dataclass
+class CLoRAConfig:
+    rank: int = 10
     """Rank of LoRA adapters."""
-    alpha: float
+    alpha: float = 1.0
     """LoRA scaling factor."""
-    lambda_: float
+    lambda_: float = 1.0
     """How much to penalize changes compared to the anchors."""
+
+    type: ClassVar[str] = "CLoRA"

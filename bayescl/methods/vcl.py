@@ -9,7 +9,7 @@ from torch.nn.functional import nll_loss
 from torch.utils.tensorboard import SummaryWriter
 
 from bayescl.base import NumericError
-from bayescl.config import VCLConfig
+from bayescl.spec import VCLConfig
 from bayescl.vbnn import (
     kl_divergence,
     posterior_to_prior,

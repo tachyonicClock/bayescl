@@ -1,168 +1,260 @@
-from typing import Callable, List
+#!/usr/bin/env -S uv run
+"""bayescl experiment CLI.
 
-import matplotlib
+    main.py tune <pilot|full> <dataset> <method>   # search hyperparameters
+    main.py test <pilot|full> <dataset> <method>   # evaluate best config over seeds
 
-from bayescl.base import NumericError
+Artifacts are written to::
 
-matplotlib.use("Agg")
+    runs/tune/{scale}/{dataset}/{method}/{RUNID}/
+        results.jsonl   # one line per trial; consumed by `test`
+        meta.json       # provenance + best trial
+        trial_XXXX/      # per-trial Experiment output
+    runs/test/{scale}/{dataset}/{method}/{RUNID}/
+        results.jsonl   # one line per seed
+        meta.json
+        seed_XX/
 
-from os import environ
+RUNID is a %Y-%m-%d_%H-%M-%S timestamp; `test` uses the most recent tune run.
+"""
+
+from __future__ import annotations
+
+import os
+import sys
+import time
+from dataclasses import asdict
+from pathlib import Path
 
 import click
 import optuna
+from loguru import logger
 
-from bayescl.config import Config, ZeusMonitorConfig, from_config
-from bayescl.experiment import Experiment
-from bayescl.util.optuna import get_pruner, get_sampler, optuna_suggest
+from bayescl.arms import get_arm
+from bayescl.base import NumericError
+from bayescl.datasets_spec import dataset_names, get_dataset
+from bayescl.methods._registry import arm_names
+from bayescl.runio import append_jsonl, latest_run, read_jsonl, score, write_json
+from bayescl.scale import get_scale, scale_names
+from bayescl.search import get_pruner, get_sampler
+from bayescl.util.git import commit_message, commit_short_hash, is_git_status_clean
 
-OPTUNA_PROJECT_PREFIX = "bayescl"
-
-
-def optimize_with_max_trials(
-    study: "optuna.study.Study",
-    objective: Callable[[optuna.trial.Trial], tuple[float, ...]],
-    n_trials: int,
-    states: tuple[optuna.trial.TrialState, ...] = (optuna.trial.TrialState.COMPLETE,),
-    callbacks=[],
-    # rest optuna options
-    **kwargs,
-):
-    """
-    By default the n_trials specifies trials count per worker.
-    So if you use multiple processes you will have some issues:
-    - you should know exactly how much workers will it be to pick correct value
-    - if some of workers will reach it's n_trials faster, you'll get an idle
-      worker which could do some work otherwise
-    - if you'll restart the process — trial count will start from scratch without
-      accounting for earlier finished trials
-
-    Source: https://github.com/optuna/optuna/issues/1883#issuecomment-702688136
-    """
-
-    trials = study.get_trials(deepcopy=False, states=states)
-    n_complete = len(trials)
-
-    if n_complete >= n_trials:
-        return
-
-    callbacks.append(optuna.study.MaxTrialsCallback(n_trials, states=states))
-
-    study.optimize(
-        objective,
-        n_trials=n_trials,
-        callbacks=callbacks,
-        catch=[NumericError],
-        **kwargs,
-    )
+_DATASET_PATH = os.environ.get("DATASETS")
 
 
-def get_optuna_study_name(config: Config) -> str:
-    return f"{OPTUNA_PROJECT_PREFIX}/{config.label.study}/{config.label.scenario}/{config.label.method}"
+def _timestamp() -> str:
+    return time.strftime("%Y-%m-%d_%H-%M-%S")
 
 
-def run_study(config: Config):
-    assert config.hpsearch
-    n_trials = config.hpsearch.n_trials
-    assert n_trials and n_trials >= 1
+def _targets(f):
+    f = click.argument("method", type=click.Choice(arm_names()))(f)
+    f = click.argument("dataset", type=click.Choice(dataset_names()))(f)
+    f = click.argument("scale", type=click.Choice(scale_names()))(f)
+    f = click.option(
+        "--runs",
+        type=click.Path(file_okay=False),
+        default="./runs",
+        show_default=True,
+        help="Directory to store run outputs.",
+    )(f)
+    f = click.option(
+        "--dataset-path",
+        type=click.Path(file_okay=False),
+        default=_DATASET_PATH,
+        help="Path to the datasets directory (defaults to $DATASETS).",
+    )(f)
+    f = click.option(
+        "--device",
+        default="cuda",
+        show_default=True,
+        help="Torch device for training.",
+    )(f)
+    return f
 
-    def objective(trial: optuna.Trial) -> tuple[float, ...] | float:
-        assert config.hpsearch
 
-        config.label.run = f"trial_{trial.number:04d}"
-        config.seed = trial.number
-        optuna_suggest(trial, config, config.hpsearch.params)
-        avg_acc, avg_ece = Experiment(config).run(trial)
-        trial.set_user_attr("avg_acc", avg_acc)
-        trial.set_user_attr("avg_ece", avg_ece)
-        if len(config.hpsearch.direction) == 1:
-            return 0.5 * (avg_acc + (1 - avg_ece))
-        return avg_acc, avg_ece
-
-    study = optuna.create_study(
-        pruner=get_pruner(config.hpsearch.pruner),
-        directions=config.hpsearch.direction,
-        study_name=get_optuna_study_name(config),
-        storage=environ.get("OPTUNA_STORAGE"),
-        sampler=get_sampler(config.hpsearch.sampler),
-        load_if_exists=True,
-    )
-
-    optimize_with_max_trials(
-        study,
-        objective,
-        n_trials=n_trials,
-        states=(
-            optuna.trial.TrialState.COMPLETE,
-            optuna.trial.TrialState.RUNNING,
-            optuna.trial.TrialState.PRUNED,
-        ),
-    )
+def _meta(stage, scale, dataset, method, runid, sc, ds, **extra) -> dict:
+    return {
+        "stage": stage,
+        "scale": scale,
+        "dataset": dataset,
+        "method": method,
+        "runid": runid,
+        "argv": sys.argv,
+        "git": {
+            "hash": commit_short_hash(),
+            "message": commit_message(),
+            "dirty": not is_git_status_clean(),
+        },
+        "scale_knobs": {
+            "n_trials": sc.n_trials,
+            "n_seeds": sc.n_seeds,
+            "epochs": sc.epochs(ds),
+        },
+        "created": _timestamp(),
+        **extra,
+    }
 
 
 @click.group()
-@click.option(
-    "--config",
-    "-c",
-    required=True,
-    type=click.Path(exists=True, dir_okay=False),
-    help="Path to a jsonnet config file.",
-)
-@click.option(
-    "--args",
-    "-a",
-    type=str,
-    multiple=True,
-    help="Override config options using dotlist notation.",
-)
-@click.pass_context
-def cli(
-    ctx: click.Context,
-    config: str,
-    args: List[str],
-):
-    cfg = from_config(config, args)
-    ctx.obj = cfg
+def main() -> None:
+    """Run hyperparameter search (`tune`) and evaluation (`test`)."""
 
 
-@cli.command()
+@main.command()
+@_targets
+@click.option("--sampler", default="TPESampler", show_default=True)
+@click.option("--pruner", default="MedianPruner", show_default=True)
 @click.option(
-    "--validate",
+    "--sqlite",
     is_flag=True,
     default=False,
-    help="Run in validation mode",
+    help="Also write optuna.db under the run dir for optuna-dashboard.",
 )
+def tune(scale, dataset, method, runs, dataset_path, device, sampler, pruner, sqlite):
+    """Search hyperparameters for METHOD on DATASET at the given SCALE."""
+    if dataset_path is None:
+        raise click.ClickException("Set $DATASETS or pass --dataset-path.")
+
+    sc, ds, arm_cls = get_scale(scale), get_dataset(dataset), get_arm(method)
+    runid = _timestamp()
+    run_dir = Path(runs) / "tune" / scale / dataset / method / runid
+    run_dir.mkdir(parents=True, exist_ok=False)
+    results = run_dir / "results.jsonl"
+    meta_path = run_dir / "meta.json"
+
+    base = arm_cls()
+    write_json(
+        meta_path,
+        _meta("tune", scale, dataset, method, runid, sc, ds, sampler=sampler, pruner=pruner),
+    )
+
+    study = optuna.create_study(
+        direction="maximize",
+        sampler=get_sampler(sampler),
+        pruner=get_pruner(pruner),
+        study_name=f"bayescl/{scale}/{dataset}/{method}",
+        storage=f"sqlite:///{run_dir / 'optuna.db'}" if sqlite else None,
+        load_if_exists=bool(sqlite),
+    )
+
+    def objective(trial: optuna.Trial) -> float:
+        arm = type(base).suggest_config(trial, base)
+        exp = arm.build(
+            dataset=ds,
+            scale=sc,
+            seed=trial.number,
+            validation=True,
+            run_dir=run_dir / f"trial_{trial.number:04d}",
+            dataset_root=Path(dataset_path),
+        )
+        exp.spec.device = device
+        row = {
+            "trial": trial.number,
+            "seed": trial.number,
+            "arm": asdict(arm),
+            "ts": _timestamp(),
+        }
+        try:
+            acc, ece = exp.run(trial)
+        except optuna.TrialPruned:
+            append_jsonl(
+                results,
+                {**row, "params": trial.params, "state": "pruned", "acc": None, "ece": None, "score": None},
+            )
+            raise
+        except NumericError as e:
+            append_jsonl(
+                results,
+                {**row, "params": trial.params, "state": "failed", "error": str(e), "acc": None, "ece": None, "score": None},
+            )
+            raise
+        s = score(acc, ece)
+        trial.set_user_attr("acc", acc)
+        trial.set_user_attr("ece", ece)
+        append_jsonl(
+            results,
+            {**row, "params": trial.params, "state": "complete", "acc": acc, "ece": ece, "score": s},
+        )
+        return s
+
+    study.optimize(objective, n_trials=sc.n_trials, catch=(NumericError,))
+
+    best = study.best_trial
+    write_json(
+        meta_path,
+        _meta(
+            "tune", scale, dataset, method, runid, sc, ds,
+            sampler=sampler, pruner=pruner, finished=_timestamp(),
+            best={
+                "trial": best.number,
+                "params": best.params,
+                "acc": best.user_attrs.get("acc"),
+                "ece": best.user_attrs.get("ece"),
+                "score": best.value,
+            },
+        ),
+    )
+    logger.info(f"Best trial {best.number}: score={best.value:.4f} params={best.params}")
+
+
+@main.command()
+@_targets
 @click.option(
-    "--zeus",
-    is_flag=True,
-    default=False,
-    help="Enable Zeus GPU energy monitoring.",
+    "--from-tune",
+    type=click.Path(exists=True, file_okay=False),
+    default=None,
+    help="Tune run directory to read hyperparameters from (default: latest).",
 )
-@click.argument("name", type=str, default="manual")
-@click.argument("seed", type=int, default=0)
-@click.pass_obj
-def run(
-    cfg: Config,
-    name: str,
-    seed: int,
-    validate: bool,
-    zeus: bool,
-):
-    cfg.scenario.validation = validate
-    cfg.seed = seed
-    cfg.label.study = name
-    cfg.label.run = f"{seed:02d}"
-    if zeus and cfg.zeus_monitor is None:
-        cfg.zeus_monitor = ZeusMonitorConfig()
-    Experiment(cfg).run()
+def test(scale, dataset, method, runs, dataset_path, device, from_tune):
+    """Evaluate METHOD's best tuned config on DATASET over `n_seeds` seeds."""
+    if dataset_path is None:
+        raise click.ClickException("Set $DATASETS or pass --dataset-path.")
 
+    sc, ds, arm_cls = get_scale(scale), get_dataset(dataset), get_arm(method)
+    tune_dir = (
+        Path(from_tune)
+        if from_tune
+        else latest_run(Path(runs) / "tune" / scale / dataset / method)
+    )
+    rows = [r for r in read_jsonl(tune_dir / "results.jsonl") if r["state"] == "complete"]
+    if not rows:
+        raise SystemExit(f"No complete trials in {tune_dir / 'results.jsonl'}")
+    best = max(rows, key=lambda r: r["score"])
+    arm = arm_cls(**best["arm"])
+    logger.info(f"Loaded best config from {tune_dir} (trial {best['trial']}): {best['arm']}")
 
-@cli.command()
-@click.pass_obj
-@click.argument("name", type=str)
-def hpsearch(cfg: Config, name: str):
-    cfg.label.study = name
-    run_study(cfg)
+    runid = _timestamp()
+    run_dir = Path(runs) / "test" / scale / dataset / method / runid
+    run_dir.mkdir(parents=True, exist_ok=False)
+    results = run_dir / "results.jsonl"
+    write_json(
+        run_dir / "meta.json",
+        _meta(
+            "test", scale, dataset, method, runid, sc, ds,
+            source_tune=str(tune_dir),
+            best_trial=best["trial"],
+            best_params=best["params"],
+            arm=best["arm"],
+        ),
+    )
+
+    for seed in range(sc.n_seeds):
+        exp = arm.build(
+            dataset=ds,
+            scale=sc,
+            seed=seed,
+            validation=False,
+            run_dir=run_dir / f"seed_{seed:02d}",
+            dataset_root=Path(dataset_path),
+        )
+        exp.spec.device = device
+        acc, ece = exp.run(None)
+        append_jsonl(
+            results,
+            {"seed": seed, "acc": acc, "ece": ece, "score": score(acc, ece), "ts": _timestamp()},
+        )
+        logger.info(f"seed {seed}: acc={acc:.4f} ece={ece:.4f}")
 
 
 if __name__ == "__main__":
-    cli()
+    main()

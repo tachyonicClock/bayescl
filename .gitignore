@@ -212,3 +212,6 @@ nohup.out
 figs
 
 papers
+
+# bayescl experiment outputs
+runs/

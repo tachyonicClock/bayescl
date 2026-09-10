@@ -1,11 +1,10 @@
-from typing import Literal
+from dataclasses import dataclass
+from typing import ClassVar, Literal
 
-from bayescl.base import BaseConfig
 
-
-class TBALLConfig(BaseConfig):
-    type: Literal["TBALL"] = "TBALL"
-    rank: int
+@dataclass
+class TBALLConfig:
+    rank: int = 10
     """Rank of the TBALL adapters."""
     alpha: float = 1.0
     """Scaling factor for the TBALL adapters."""
@@ -21,3 +20,9 @@ class TBALLConfig(BaseConfig):
     """Bayesian core type: full covariance (FCG), fully factorized Gaussian (FFG), or matrix normal (MND)."""
     bias: bool = False
     """Whether to include bias in the Bayesian layers."""
+
+    type: ClassVar[str] = "TBALL"
+
+    def __post_init__(self) -> None:
+        if self.bnn not in ("FCG", "FFG", "MND"):
+            raise ValueError(f"bnn must be one of FCG/FFG/MND, got {self.bnn!r}")

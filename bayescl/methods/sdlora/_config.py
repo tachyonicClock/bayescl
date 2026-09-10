@@ -1,8 +1,9 @@
-from typing import Literal
+from dataclasses import dataclass
+from typing import ClassVar
 
-from bayescl.base import BaseConfig
 
+@dataclass
+class SDLoRAConfig:
+    rank_per_task: int = 1
 
-class SDLoRAConfig(BaseConfig):
-    type: Literal["SDLoRA"] = "SDLoRA"
-    rank_per_task: int
+    type: ClassVar[str] = "SDLoRA"
