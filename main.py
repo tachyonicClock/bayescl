@@ -32,11 +32,16 @@ from loguru import logger
 
 from bayescl.arms import get_arm
 from bayescl.base import NumericError
-from bayescl.datasets_spec import dataset_names, get_dataset
-from bayescl.experiment import Experiment, ExperimentConfig
+from bayescl.config import (
+    ExperimentConfig,
+    dataset_names,
+    get_dataset,
+    get_scale,
+    scale_names,
+)
+from bayescl.experiment import Experiment
 from bayescl.methods._registry import arm_names
 from bayescl.runio import append_jsonl, latest_run, read_jsonl, score, write_json
-from bayescl.scale import get_scale, scale_names
 from bayescl.util.git import commit_message, commit_short_hash, is_git_status_clean
 
 _DATASET_PATH = os.environ.get("DATASETS")

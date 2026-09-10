@@ -107,7 +107,7 @@ class ArmBase:
             evaluator=experiment.eval_plugin,
             device=experiment.config.device,
             plugins=experiment.plugins,
-            eval_every=experiment.config.eval_every,
+            eval_every=-1,
             criterion=torch.nn.CrossEntropyLoss(),
         )
 

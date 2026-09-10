@@ -5,7 +5,7 @@ matplotlib.use("Agg")
 import json
 import pickle
 import random
-from dataclasses import asdict, dataclass
+from dataclasses import asdict
 from pathlib import Path
 from pprint import pformat
 from typing import Any, Dict, List, Sequence
@@ -28,6 +28,7 @@ from setproctitle import setproctitle
 from torch import BoolTensor
 
 from bayescl.benchmark import get_benchmark
+from bayescl.config import ExperimentConfig
 from bayescl.metrics.ece import (
     ExpectedCalibrationError,
 )
@@ -35,42 +36,7 @@ from bayescl.metrics.plugin import MetricsPlugin
 from bayescl.model import get_model
 from bayescl.peft import parameter_summary_str
 
-
-@dataclass(frozen=True)
-class ExperimentConfig:
-    dataset: str
-    n_tasks: int
-    shuffle: bool
-    dataset_root: Path
-    standardize: bool
-    validation: bool
-    backbone_name: str
-    freeze_backbone: bool
-    adapter_filter: str | None
-    head_module: str
-    epochs: int
-    train_mb_size: int
-    eval_mb_size: int
-    num_workers: int
-    run_dir: Path
-    seed: int
-    device: str
-    first_exp_epochs: int | None = None
-    eval_every: int = -1
-    checkpoint: bool = False
-
-    @classmethod
-    def from_spec(cls, dataset, scale, *, seed, validation, run_dir, dataset_root, device="cuda"):
-        backbone = dataset.backbone
-        return cls(
-            dataset=dataset.scenario, n_tasks=dataset.n_tasks, shuffle=dataset.shuffle,
-            dataset_root=Path(dataset_root), standardize=dataset.standardize,
-            validation=validation, backbone_name=backbone.name,
-            freeze_backbone=backbone.freeze_backbone, adapter_filter=backbone.adapter_filter,
-            head_module=backbone.head_module, epochs=scale.epochs(dataset),
-            train_mb_size=dataset.train_mb_size, eval_mb_size=dataset.eval_mb_size,
-            num_workers=dataset.num_workers, run_dir=Path(run_dir), seed=seed, device=device,
-        )
+__all__ = ["Experiment", "ExperimentConfig"]
 
 
 def avalanche_class_schedule(
@@ -185,17 +151,6 @@ class Experiment:
         self.arm._build_plugins(self)
         self.arm.build(self)
 
-    def save_checkpoint(self, filename: Path) -> None:
-        # Only save learnable parameters (adapters)
-        state = {
-            k: v.to(copy=True, dtype=torch.float16)
-            for k, v in self.model.named_parameters()
-            if v.requires_grad
-        }
-        numel = sum(p.numel() for p in state.values())
-        logger.info(f"Saving checkpoint to '{filename}' ({numel} parameters)")
-        torch.save(state, filename)
-
     def _config(self) -> dict:
         return asdict(self.config)
 
@@ -214,12 +169,7 @@ class Experiment:
             logger.info(f"Experience Size: {len(experience.dataset)}")
             logger.info(f"Current Classes: {experience.classes_in_this_experience}")
 
-            # If first_exp_epochs is set, use it for the first experience
-            strategy.train_epochs = (
-                self.config.first_exp_epochs
-                if t == 0 and self.config.first_exp_epochs is not None
-                else self.config.epochs
-            )
+            strategy.train_epochs = self.config.epochs
 
             # train returns a dictionary which contains all the metric values
             strategy.train(
@@ -233,10 +183,6 @@ class Experiment:
                     self.benchmark.test_stream, num_workers=self.config.num_workers
                 )
             )
-            if self.config.checkpoint:
-                checkpoint_path = self.config.run_dir / f"checkpoint-t{t:02d}.pth"
-                self.save_checkpoint(checkpoint_path)
-
             if trial is not None and report_intermediate:
                 intermediate_acc, intermediate_ece = (
                     self.metrics_plugin.evaluator.intermediate_result(t)

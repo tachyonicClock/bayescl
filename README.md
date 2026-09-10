@@ -10,11 +10,11 @@ In the paper we refer to our family of methods as BALL with the following varian
 - 3BALL_M: This is called `tball-mnd` in the codebase.
 
 Each method ("arm") is a single dataclass in `bayescl/methods/<name>/_arm.py`
-holding its hyperparameters, an Optuna search space (`search_space`), and a
-`build(...)` that assembles an `ExperimentSpec` and returns a runnable
-`Experiment`. Variants such as `tball-mnd` are `@register`ed subclasses that only
-change field defaults. Datasets live in `bayescl/datasets_spec.py` and the
-`pilot` / `full` budgets in `bayescl/scale.py`.
+holding its hyperparameters, a `suggest_config(trial, base)` that samples them
+from an Optuna trial, and builder hooks that assemble a runnable `Experiment`.
+Variants such as `tball-mnd` are `@register`ed subclasses that only change field
+defaults. All non-method configuration — datasets, the `pilot` / `full` budgets,
+and the resolved `ExperimentConfig` — lives in `bayescl/config.py`.
 
 
 ## Reproduce Experiments
@@ -37,7 +37,7 @@ main.py <tune|test> <pilot|full> <dataset> <method>
 ```
 
 - `scale` — `pilot` is a fast smoke run (few trials, few epochs, one seed);
-  `full` is the paper-quality budget (see `bayescl/scale.py`).
+  `full` is the paper-quality budget (see `bayescl/config.py`).
 - `dataset` — one of `cifar100`, `core50`, `imagenetr`.
 - `method` — one of `ball`, `clora`, `ewc`, `inflora`, `lora`, `rwalk`,
   `sdlora`, `tball`, `tball-mnd`.

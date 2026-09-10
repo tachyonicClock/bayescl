@@ -13,7 +13,7 @@ from bayescl.datasets import (
     SplitImageNetR,
 )
 if TYPE_CHECKING:
-    from bayescl.experiment import ExperimentConfig
+    from bayescl.config import ExperimentConfig
 Transform = Callable[[Any], Any]
 
 TRAIN_TRANSFORMS = {

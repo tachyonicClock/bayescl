@@ -3,7 +3,7 @@ from typing import TYPE_CHECKING
 from transformers import AutoModelForImageClassification
 from transformers.models.resnet.modeling_resnet import ResNetForImageClassification
 if TYPE_CHECKING:
-    from bayescl.experiment import ExperimentConfig
+    from bayescl.config import ExperimentConfig
 
 class ResNetHuggingFaceAdapter(nn.Module):
     def __init__(self, model: nn.Module):
