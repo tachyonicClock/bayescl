@@ -149,11 +149,6 @@ class Experiment:
         self.arm._build_peft(self)
         self.arm._build_plugins(self)
 
-    def _new_optimizer(self, parameters) -> torch.optim.Optimizer:
-        return torch.optim.Adam(
-            filter(lambda p: p.requires_grad, parameters), lr=self.spec.lr
-        )
-
     def save_checkpoint(self, filename: Path) -> None:
         # Only save learnable parameters (adapters)
         state = {
@@ -252,7 +247,6 @@ def build_experiment(
         freeze_backbone=bb.freeze_backbone,
         adapter_filter=bb.adapter_filter,
         head_module=bb.head_module,
-        lr=arm.lr,
         epochs=scale.epochs(dataset),
         train_mb_size=dataset.train_mb_size,
         eval_mb_size=dataset.eval_mb_size,

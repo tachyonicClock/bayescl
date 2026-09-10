@@ -103,7 +103,6 @@ class ExperimentSpec:
     head_module: str
 
     # --- optimisation ---
-    lr: float
     epochs: int
     train_mb_size: int
     eval_mb_size: int | None

@@ -65,6 +65,11 @@ class ArmBase:
 
     # ---- experiment assembly ----
 
+    def configure_optimizers(self, parameters) -> torch.optim.Optimizer:
+        return torch.optim.Adam(
+            filter(lambda parameter: parameter.requires_grad, parameters), lr=self.lr
+        )
+
     def _build_peft(self, experiment: "Experiment") -> None:
         raise NotImplementedError
 
@@ -86,7 +91,7 @@ class ArmBase:
 
             logger.info("Add 'TrainTaskMask' plugin")
             experiment.plugins.append(
-                TrainTaskMask(experiment.mask, experiment._new_optimizer)
+                TrainTaskMask(experiment.mask, self.configure_optimizers)
             )
         if append_metrics:
             experiment.plugins.append(experiment.metrics_plugin)
@@ -94,7 +99,7 @@ class ArmBase:
     def _strategy_kwargs(self, experiment: "Experiment") -> dict[str, Any]:
         return dict(
             model=experiment.model,
-            optimizer=experiment._new_optimizer(experiment.model.parameters()),
+            optimizer=self.configure_optimizers(experiment.model.parameters()),
             train_mb_size=experiment.spec.train_mb_size,
             eval_mb_size=experiment.spec.eval_mb_size or experiment.spec.train_mb_size,
             train_epochs=experiment.spec.epochs,
@@ -118,7 +123,7 @@ class ArmBase:
             config=config,
             mask=experiment.mask,
             writer=experiment.tb_log.writer,
-            optimizer_fn=experiment._new_optimizer,
+            optimizer_fn=self.configure_optimizers,
             **self._strategy_kwargs(experiment),
         )
 

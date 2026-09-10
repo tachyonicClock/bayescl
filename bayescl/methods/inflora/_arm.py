@@ -39,7 +39,7 @@ class InfLoRA(ArmBase):
             InfLoRAPlugin(
                 peft,
                 total_tasks=experiment.num_tasks,
-                optimizer_factory=experiment._new_optimizer,
+                optimizer_factory=self.configure_optimizers,
                 max_activation_batches=peft.max_activation_batches,
             )
         )
