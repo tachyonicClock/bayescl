@@ -2,10 +2,11 @@ from dataclasses import dataclass, replace
 
 import torch
 from avalanche.training.plugins import EWCPlugin
-from bayescl.methods._registry import ArmBase, register
-from bayescl.methods.lora import LoRAAdapterFactory, LoRAConfig
-from bayescl.peft import RegexFilter, add_adapters
 from loguru import logger
+
+from bayescl.peft import RegexFilter, add_adapters
+from bayescl.treatments._registry import ArmBase, register
+from bayescl.treatments.lora import LoRAAdapterFactory, LoRAConfig
 
 
 @register("ewc")
@@ -24,7 +25,9 @@ class EWC(ArmBase):
             RegexFilter(experiment.config.adapter_filter),
             LoRAAdapterFactory(LoRAConfig(r=self.r)),
         )
-        experiment.model.get_submodule(experiment.config.head_module).requires_grad_(True)
+        experiment.model.get_submodule(experiment.config.head_module).requires_grad_(
+            True
+        )
 
     def _build_plugins(self, experiment):
         self._build_common_plugins(

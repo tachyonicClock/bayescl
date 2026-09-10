@@ -1,8 +1,8 @@
 from dataclasses import dataclass, replace
 
 import torch
-from bayescl.methods._registry import ArmBase, register
-from bayescl.methods.tball import TBALLAdapterFactory, TBALLConfig
+from bayescl.treatments._registry import ArmBase, register
+from bayescl.treatments.tball import TBALLAdapterFactory, TBALLConfig
 from bayescl.peft import RegexFilter, add_adapters
 from bayescl.vcl import VCLConfig
 from loguru import logger

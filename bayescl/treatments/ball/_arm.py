@@ -1,12 +1,13 @@
 from dataclasses import dataclass, replace
 
 import torch
-from bayescl.methods._registry import ArmBase, register
-from bayescl.methods.ball import BALLAdapterFactory, BALLConfig
-from bayescl.peft import RegexFilter, add_adapters
-from bayescl.vcl import VCLConfig
-from bayescl.vbnn import VBNNConfig
 from loguru import logger
+
+from bayescl.peft import RegexFilter, add_adapters
+from bayescl.treatments._registry import ArmBase, register
+from bayescl.treatments.ball import BALLAdapterFactory, BALLConfig
+from bayescl.vbnn import VBNNConfig
+from bayescl.vcl import VCLConfig
 
 
 @register("ball")
@@ -56,7 +57,9 @@ class BALL(ArmBase):
             replace_head(
                 experiment.model, experiment.config.head_module, config=peft.vbnn
             )
-            experiment.model.get_submodule(experiment.config.head_module).requires_grad_(True)
+            experiment.model.get_submodule(
+                experiment.config.head_module
+            ).requires_grad_(True)
 
     def _build_plugins(self, experiment):
         self._build_common_plugins(experiment, local_ce=False)

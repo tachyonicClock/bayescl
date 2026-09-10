@@ -1,10 +1,11 @@
 from dataclasses import dataclass, replace
 
 import torch
-from bayescl.methods._registry import ArmBase, register
-from bayescl.methods.clora import CLoRAAdapterFactory, CLoRAConfig, CLoRAPlugin
-from bayescl.peft import RegexFilter, add_adapters
 from loguru import logger
+
+from bayescl.peft import RegexFilter, add_adapters
+from bayescl.treatments._registry import ArmBase, register
+from bayescl.treatments.clora import CLoRAAdapterFactory, CLoRAConfig, CLoRAPlugin
 
 
 @register("clora")
@@ -28,7 +29,9 @@ class CLoRA(ArmBase):
             CLoRAAdapterFactory(experiment.num_tasks, peft),
         )
         experiment.plugins.append(CLoRAPlugin(peft, experiment.tb_log.writer))
-        experiment.model.get_submodule(experiment.config.head_module).requires_grad_(True)
+        experiment.model.get_submodule(experiment.config.head_module).requires_grad_(
+            True
+        )
 
     def _build_strategy(self, experiment):
         return self._build_naive_strategy(experiment)

@@ -1,8 +1,8 @@
 from dataclasses import dataclass
 
 import torch
-from bayescl.methods._registry import ArmBase, register
-from bayescl.methods.inflora import InfLoRAAdapterFactory, InfLoRAConfig, InfLoRAPlugin
+from bayescl.treatments._registry import ArmBase, register
+from bayescl.treatments.inflora import InfLoRAAdapterFactory, InfLoRAConfig, InfLoRAPlugin
 from bayescl.peft import RegexFilter, add_adapters
 from loguru import logger
 
