@@ -33,6 +33,7 @@ from loguru import logger
 from bayescl.arms import get_arm
 from bayescl.base import NumericError
 from bayescl.datasets_spec import dataset_names, get_dataset
+from bayescl.experiment import build_experiment
 from bayescl.methods._registry import arm_names
 from bayescl.runio import append_jsonl, latest_run, read_jsonl, score, write_json
 from bayescl.scale import get_scale, scale_names
@@ -125,7 +126,17 @@ def tune(scale, dataset, method, runs, dataset_path, device, sampler, pruner, sq
     base = arm_cls()
     write_json(
         meta_path,
-        _meta("tune", scale, dataset, method, runid, sc, ds, sampler=sampler, pruner=pruner),
+        _meta(
+            "tune",
+            scale,
+            dataset,
+            method,
+            runid,
+            sc,
+            ds,
+            sampler=sampler,
+            pruner=pruner,
+        ),
     )
 
     study = optuna.create_study(
@@ -139,15 +150,16 @@ def tune(scale, dataset, method, runs, dataset_path, device, sampler, pruner, sq
 
     def objective(trial: optuna.Trial) -> float:
         arm = type(base).suggest_config(trial, base)
-        exp = arm.build(
+        exp = build_experiment(
+            arm,
             dataset=ds,
             scale=sc,
             seed=trial.number,
             validation=True,
             run_dir=run_dir / f"trial_{trial.number:04d}",
             dataset_root=Path(dataset_path),
+            device=device,
         )
-        exp.spec.device = device
         row = {
             "trial": trial.number,
             "seed": trial.number,
@@ -159,13 +171,28 @@ def tune(scale, dataset, method, runs, dataset_path, device, sampler, pruner, sq
         except optuna.TrialPruned:
             append_jsonl(
                 results,
-                {**row, "params": trial.params, "state": "pruned", "acc": None, "ece": None, "score": None},
+                {
+                    **row,
+                    "params": trial.params,
+                    "state": "pruned",
+                    "acc": None,
+                    "ece": None,
+                    "score": None,
+                },
             )
             raise
         except NumericError as e:
             append_jsonl(
                 results,
-                {**row, "params": trial.params, "state": "failed", "error": str(e), "acc": None, "ece": None, "score": None},
+                {
+                    **row,
+                    "params": trial.params,
+                    "state": "failed",
+                    "error": str(e),
+                    "acc": None,
+                    "ece": None,
+                    "score": None,
+                },
             )
             raise
         s = score(acc, ece)
@@ -173,7 +200,14 @@ def tune(scale, dataset, method, runs, dataset_path, device, sampler, pruner, sq
         trial.set_user_attr("ece", ece)
         append_jsonl(
             results,
-            {**row, "params": trial.params, "state": "complete", "acc": acc, "ece": ece, "score": s},
+            {
+                **row,
+                "params": trial.params,
+                "state": "complete",
+                "acc": acc,
+                "ece": ece,
+                "score": s,
+            },
         )
         return s
 
@@ -183,8 +217,16 @@ def tune(scale, dataset, method, runs, dataset_path, device, sampler, pruner, sq
     write_json(
         meta_path,
         _meta(
-            "tune", scale, dataset, method, runid, sc, ds,
-            sampler=sampler, pruner=pruner, finished=_timestamp(),
+            "tune",
+            scale,
+            dataset,
+            method,
+            runid,
+            sc,
+            ds,
+            sampler=sampler,
+            pruner=pruner,
+            finished=_timestamp(),
             best={
                 "trial": best.number,
                 "params": best.params,
@@ -194,7 +236,9 @@ def tune(scale, dataset, method, runs, dataset_path, device, sampler, pruner, sq
             },
         ),
     )
-    logger.info(f"Best trial {best.number}: score={best.value:.4f} params={best.params}")
+    logger.info(
+        f"Best trial {best.number}: score={best.value:.4f} params={best.params}"
+    )
 
 
 @main.command()
@@ -216,12 +260,16 @@ def test(scale, dataset, method, runs, dataset_path, device, from_tune):
         if from_tune
         else latest_run(Path(runs) / "tune" / scale / dataset / method)
     )
-    rows = [r for r in read_jsonl(tune_dir / "results.jsonl") if r["state"] == "complete"]
+    rows = [
+        r for r in read_jsonl(tune_dir / "results.jsonl") if r["state"] == "complete"
+    ]
     if not rows:
         raise SystemExit(f"No complete trials in {tune_dir / 'results.jsonl'}")
     best = max(rows, key=lambda r: r["score"])
     arm = arm_cls(**best["arm"])
-    logger.info(f"Loaded best config from {tune_dir} (trial {best['trial']}): {best['arm']}")
+    logger.info(
+        f"Loaded best config from {tune_dir} (trial {best['trial']}): {best['arm']}"
+    )
 
     runid = _timestamp()
     run_dir = Path(runs) / "test" / scale / dataset / method / runid
@@ -230,7 +278,13 @@ def test(scale, dataset, method, runs, dataset_path, device, from_tune):
     write_json(
         run_dir / "meta.json",
         _meta(
-            "test", scale, dataset, method, runid, sc, ds,
+            "test",
+            scale,
+            dataset,
+            method,
+            runid,
+            sc,
+            ds,
             source_tune=str(tune_dir),
             best_trial=best["trial"],
             best_params=best["params"],
@@ -239,19 +293,26 @@ def test(scale, dataset, method, runs, dataset_path, device, from_tune):
     )
 
     for seed in range(sc.n_seeds):
-        exp = arm.build(
+        exp = build_experiment(
+            arm,
             dataset=ds,
             scale=sc,
             seed=seed,
             validation=False,
             run_dir=run_dir / f"seed_{seed:02d}",
             dataset_root=Path(dataset_path),
+            device=device,
         )
-        exp.spec.device = device
         acc, ece = exp.run(None)
         append_jsonl(
             results,
-            {"seed": seed, "acc": acc, "ece": ece, "score": score(acc, ece), "ts": _timestamp()},
+            {
+                "seed": seed,
+                "acc": acc,
+                "ece": ece,
+                "score": score(acc, ece),
+                "ts": _timestamp(),
+            },
         )
         logger.info(f"seed {seed}: acc={acc:.4f} ece={ece:.4f}")
 

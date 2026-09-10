@@ -1,8 +1,9 @@
 """Arm registry.
 
 An *arm* is a single method / treatment: a dataclass holding that method's
-hyperparameters, an Optuna search space, and a ``build`` that assembles an
-:class:`~bayescl.spec.ExperimentSpec` and returns a runnable
+hyperparameters, a ``suggest_config`` that samples them from an Optuna trial,
+builder hooks for method-specific construction, and a ``build`` that assembles
+an :class:`~bayescl.spec.ExperimentSpec` and returns a runnable
 :class:`~bayescl.experiment.Experiment`.
 
 Register variants by subclassing an existing arm and changing field defaults,
@@ -12,17 +13,16 @@ then ``@register("name")`` under a new key (see ``tball`` / ``tball-mnd``).
 from __future__ import annotations
 
 from dataclasses import replace
-from pathlib import Path
-from typing import TYPE_CHECKING, Callable, ClassVar
+from typing import TYPE_CHECKING, Any, Callable, ClassVar
 
+import torch
 import optuna
-
-from bayescl.datasets_spec import Dataset
-from bayescl.scale import Scale
-from bayescl.search import get_pruner, get_sampler
+from avalanche.training import Naive
+from loguru import logger
 
 if TYPE_CHECKING:
     from bayescl.experiment import Experiment
+    from bayescl.spec import StrategyConfig
 
 ARMS: dict[str, type["ArmBase"]] = {}
 
@@ -50,7 +50,7 @@ class ArmBase:
     """Shared behaviour for every arm.
 
     Subclasses are ``@dataclass`` instances that redeclare ``lr`` plus their own
-    hyperparameters, optionally override :meth:`suggest_config`, and implement
+    hyperparameters and optionally override :meth:`suggest_config` or
     :meth:`build`.
     """
 
@@ -63,49 +63,64 @@ class ArmBase:
     def suggest_config(trial: optuna.Trial, base: "ArmBase") -> "ArmBase":
         return replace(base, lr=trial.suggest_float("lr", 1e-4, 1e-2, log=True))
 
-    # ---- spec assembly ----
+    # ---- experiment assembly ----
 
-    def base_spec(
+    def _build_peft(self, experiment: "Experiment") -> None:
+        raise NotImplementedError
+
+    def _build_plugins(self, experiment: "Experiment") -> None:
+        self._build_common_plugins(experiment)
+
+    def _build_strategy(self, experiment: "Experiment") -> Any:
+        raise NotImplementedError
+
+    def _build_common_plugins(
         self,
+        experiment: "Experiment",
         *,
-        dataset: Dataset,
-        scale: Scale,
-        seed: int,
-        validation: bool,
-        run_dir: Path,
-        dataset_root: Path,
-        use_local_ce: bool = True,
-    ) -> dict:
-        bb = dataset.backbone
+        local_ce: bool = True,
+        append_metrics: bool = True,
+    ) -> None:
+        if local_ce:
+            from bayescl.methods.train_mask import TrainTaskMask
+
+            logger.info("Add 'TrainTaskMask' plugin")
+            experiment.plugins.append(
+                TrainTaskMask(experiment.mask, experiment._new_optimizer)
+            )
+        if append_metrics:
+            experiment.plugins.append(experiment.metrics_plugin)
+
+    def _strategy_kwargs(self, experiment: "Experiment") -> dict[str, Any]:
         return dict(
-            dataset=dataset.scenario,
-            n_tasks=dataset.n_tasks,
-            shuffle=dataset.shuffle,
-            dataset_root=Path(dataset_root),
-            standardize=dataset.standardize,
-            validation=validation,
-            backbone_name=bb.name,
-            freeze_backbone=bb.freeze_backbone,
-            adapter_filter=bb.adapter_filter,
-            head_module=bb.head_module,
-            lr=self.lr,
-            epochs=scale.epochs(dataset),
-            train_mb_size=dataset.train_mb_size,
-            eval_mb_size=dataset.eval_mb_size,
-            num_workers=dataset.num_workers,
-            seed=seed,
-            run_dir=run_dir,
-            use_local_ce=use_local_ce,
+            model=experiment.model,
+            optimizer=experiment._new_optimizer(experiment.model.parameters()),
+            train_mb_size=experiment.spec.train_mb_size,
+            eval_mb_size=experiment.spec.eval_mb_size or experiment.spec.train_mb_size,
+            train_epochs=experiment.spec.epochs,
+            evaluator=experiment.eval_plugin,
+            device=experiment.spec.device,
+            plugins=experiment.plugins,
+            eval_every=experiment.spec.eval_every,
+            criterion=torch.nn.CrossEntropyLoss(),
         )
 
-    def build(
-        self,
-        *,
-        dataset: Dataset,
-        scale: Scale,
-        seed: int,
-        validation: bool,
-        run_dir: Path,
-        dataset_root: Path,
-    ) -> "Experiment":
-        raise NotImplementedError
+    def _build_naive_strategy(self, experiment: "Experiment") -> Any:
+        return Naive(**self._strategy_kwargs(experiment))
+
+    def _build_vcl_strategy(
+        self, experiment: "Experiment", config: "StrategyConfig"
+    ) -> Any:
+        from bayescl.methods.vcl import VCLStrategy
+
+        logger.info("Using Variational Continual Learning (VCL) strategy")
+        return VCLStrategy(
+            config=config,
+            mask=experiment.mask,
+            writer=experiment.tb_log.writer,
+            optimizer_fn=experiment._new_optimizer,
+            **self._strategy_kwargs(experiment),
+        )
+
+    def build(self, experiment: "Experiment") -> "Experiment":
+        return experiment

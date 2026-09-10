@@ -1,10 +1,5 @@
 import matplotlib
 
-from bayescl.methods.clora import CLoRAAdapterFactory, CLoRAPlugin
-from bayescl.methods.sdlora import SDLoRAAdapterFactory, SDLoRAPlugin
-from bayescl.methods.tball import TBALLAdapterFactory
-from bayescl.vbnn import replace_head
-
 matplotlib.use("Agg")
 
 import json
@@ -13,7 +8,7 @@ import random
 from dataclasses import asdict
 from pathlib import Path
 from pprint import pformat
-from typing import Any, Dict, List, Sequence
+from typing import TYPE_CHECKING, Any, Dict, List, Sequence
 
 import numpy as np
 import optuna
@@ -26,37 +21,25 @@ from avalanche.evaluation.metrics import (
     timing_metrics,
 )
 from avalanche.logging import BaseLogger, InteractiveLogger, TensorboardLogger
-from avalanche.training import Naive, ReservoirSamplingBuffer
-from avalanche.training.plugins import (
-    EvaluationPlugin,
-    EWCPlugin,
-    ReplayPlugin,
-    RWalkPlugin,
-    SupervisedPlugin,
-)
-from avalanche.training.templates import SupervisedTemplate
+from avalanche.training.plugins import EvaluationPlugin, SupervisedPlugin
 from loguru import logger
 from optuna import Trial
 from setproctitle import setproctitle
 from torch import BoolTensor
 
 from bayescl.benchmark import get_benchmark
-from bayescl.methods.ball import BALLAdapterFactory
-from bayescl.methods.inflora import InfLoRAAdapterFactory, InfLoRAPlugin
-from bayescl.methods.lora import LoRAAdapterFactory
-from bayescl.methods.train_mask import TrainTaskMask
-from bayescl.methods.vcl import VCLStrategy
 from bayescl.metrics.ece import (
     ExpectedCalibrationError,
 )
 from bayescl.metrics.plugin import MetricsPlugin
 from bayescl.model import get_model
-from bayescl.peft import (
-    RegexFilter,
-    add_adapters,
-    parameter_summary_str,
-)
+from bayescl.peft import parameter_summary_str
 from bayescl.spec import ExperimentSpec
+
+if TYPE_CHECKING:
+    from bayescl.datasets_spec import Dataset
+    from bayescl.methods._registry import ArmBase
+    from bayescl.scale import Scale
 
 
 def avalanche_class_schedule(
@@ -133,81 +116,6 @@ class Experiment:
         self.loggers.append(tb_logger)
         return tb_logger
 
-    def _build_peft(self):
-        peft = self.spec.peft
-        if peft is None:
-            return
-
-        regex_filter = RegexFilter(self.spec.adapter_filter)
-        # Make recreating the random projections in T-BALL easy.
-        torch.manual_seed(self.spec.seed + 7808)
-
-        match peft.type:
-            case "LoRA":
-                logger.info("Adding LoRA adapters")
-                add_adapters(self.model, regex_filter, LoRAAdapterFactory(peft))
-            case "BALL":
-                logger.info("Adding BALL adapters")
-                add_adapters(self.model, regex_filter, BALLAdapterFactory(peft))
-                if peft.bll:
-                    replace_head(self.model, self.spec.head_module, config=peft.vbnn)
-            case "SDLoRA":
-                logger.info("Adding SD-LoRA adapters")
-                factory = SDLoRAAdapterFactory(self.num_tasks, peft)
-                add_adapters(self.model, regex_filter, factory)
-                self.plugins.append(SDLoRAPlugin())
-            case "TBALL":
-                logger.info("Adding TBALL adapters")
-                add_adapters(self.model, regex_filter, TBALLAdapterFactory(peft))
-            case "CLoRA":
-                logger.info("Adding CLoRA adapters and plugin")
-                factory = CLoRAAdapterFactory(self.num_tasks, peft)
-                add_adapters(self.model, regex_filter, factory)
-                self.plugins.append(CLoRAPlugin(peft, self.tb_log.writer))
-            case "InfLoRA":
-                logger.info("Adding InfLoRA adapters and plugin")
-                add_adapters(self.model, regex_filter, InfLoRAAdapterFactory(peft))
-                self.plugins.append(
-                    InfLoRAPlugin(
-                        peft,
-                        total_tasks=self.num_tasks,
-                        optimizer_factory=self._new_optimizer,
-                        max_activation_batches=peft.max_activation_batches,
-                    )
-                )
-            case _:
-                raise ValueError(f"Unsupported PEFT method: {peft.type}")
-
-        self.model.get_submodule(self.spec.head_module).requires_grad_(True)
-
-    def _build_plugins(self):
-        if self.spec.use_local_ce:
-            logger.info("Add 'TrainTaskMask' plugin")
-            self.plugins.append(TrainTaskMask(self.mask, self._new_optimizer))
-        if self.spec.rwalk:
-            logger.info("Add 'RWalk' plugin")
-            rw = self.spec.rwalk
-            self.plugins.append(
-                RWalkPlugin(
-                    ewc_lambda=rw.ewc_lambda,
-                    ewc_alpha=rw.ewc_alpha,
-                    delta_t=rw.delta_t,
-                )
-            )
-        if self.spec.replay > 0:
-            logger.info(f"Add replay plugin with memory size: {self.spec.replay}")
-            self.plugins.append(
-                ReplayPlugin(
-                    mem_size=self.spec.replay,
-                    storage_policy=ReservoirSamplingBuffer(self.spec.replay),
-                )
-            )
-        if self.spec.ewc:
-            logger.info("Add 'EWCPlugin' plugin")
-            self.plugins.append(EWCPlugin(**asdict(self.spec.ewc), mode="online"))
-
-        self.plugins.append(self.metrics_plugin)
-
     def _preflight(self):
         logger.info("Resolved Spec:\n{}", pformat(asdict(self.spec)))
         logger.info("Parameter Counts:\n{}", parameter_summary_str(self.model))
@@ -220,8 +128,9 @@ class Experiment:
             np.random.seed(self.spec.seed)
             random.seed(self.spec.seed)
 
-    def __init__(self, spec: ExperimentSpec) -> None:
+    def __init__(self, spec: ExperimentSpec, arm) -> None:
         self.spec = spec
+        self.arm = arm
         self._seed_everything()
         self.plugins: List[SupervisedPlugin] = []
         self.loggers: List[BaseLogger] = []
@@ -237,8 +146,8 @@ class Experiment:
         self.eval_plugin: EvaluationPlugin = self._new_eval_plugin()
         self.metrics_plugin = MetricsPlugin(self.num_tasks, self.num_classes)
         self.model = get_model(spec, self.benchmark.n_classes)
-        self._build_peft()
-        self._build_plugins()
+        self.arm._build_peft(self)
+        self.arm._build_plugins(self)
 
     def _new_optimizer(self, parameters) -> torch.optim.Optimizer:
         return torch.optim.Adam(
@@ -256,40 +165,11 @@ class Experiment:
         logger.info(f"Saving checkpoint to '{filename}' ({numel} parameters)")
         torch.save(state, filename)
 
-    def _build_strategy(self) -> SupervisedTemplate:
-        strategy = self.spec.strategy
-        kwargs = dict(
-            model=self.model,
-            optimizer=self._new_optimizer(self.model.parameters()),
-            train_mb_size=self.spec.train_mb_size,
-            eval_mb_size=self.spec.eval_mb_size or self.spec.train_mb_size,
-            train_epochs=self.spec.epochs,
-            evaluator=self.eval_plugin,
-            device=self.spec.device,
-            plugins=self.plugins,
-            eval_every=self.spec.eval_every,
-            criterion=torch.nn.CrossEntropyLoss(),
-        )
-        match strategy.type:
-            case "Naive":
-                return Naive(**kwargs)  # type: ignore
-            case "VCL":
-                logger.info("Using Variational Continual Learning (VCL) strategy")
-                return VCLStrategy(
-                    config=strategy,
-                    mask=self.mask,
-                    writer=self.tb_log.writer,
-                    optimizer_fn=self._new_optimizer,
-                    **kwargs,
-                )
-            case _:
-                raise ValueError(f"Unsupported strategy: {strategy.type}")
-
     def run(
         self, trial: Trial | None = None, *, report_intermediate: bool = True
     ) -> tuple[float, float]:
         self._preflight()
-        strategy = self._build_strategy()
+        strategy = self.arm._build_strategy(self)
         strategy.mask = self.mask.to(self.spec.device)  # type: ignore
 
         # TRAINING LOOP
@@ -347,3 +227,38 @@ class Experiment:
 
     def count_parameters(self):
         print(parameter_summary_str(self.model))
+
+
+def build_experiment(
+    arm: "ArmBase",
+    *,
+    dataset: "Dataset",
+    scale: "Scale",
+    seed: int,
+    validation: bool,
+    run_dir: Path,
+    dataset_root: Path,
+    device: str = "cuda",
+) -> Experiment:
+    bb = dataset.backbone
+    spec = ExperimentSpec(
+        dataset=dataset.scenario,
+        n_tasks=dataset.n_tasks,
+        shuffle=dataset.shuffle,
+        dataset_root=Path(dataset_root),
+        standardize=dataset.standardize,
+        validation=validation,
+        backbone_name=bb.name,
+        freeze_backbone=bb.freeze_backbone,
+        adapter_filter=bb.adapter_filter,
+        head_module=bb.head_module,
+        lr=arm.lr,
+        epochs=scale.epochs(dataset),
+        train_mb_size=dataset.train_mb_size,
+        eval_mb_size=dataset.eval_mb_size,
+        num_workers=dataset.num_workers,
+        seed=seed,
+        run_dir=run_dir,
+    )
+    spec.device = device
+    return arm.build(Experiment(spec, arm))

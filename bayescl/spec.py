@@ -109,18 +109,8 @@ class ExperimentSpec:
     eval_mb_size: int | None
     num_workers: int
 
-    # --- method wiring ---
-    peft: PeftConfig | None
-    strategy: StrategyConfig
-    use_local_ce: bool
-
     # --- output ---
     run_dir: Path
-
-    # --- optional plugins ---
-    ewc: EWCConfig | None = None
-    rwalk: RWalkConfig | None = None
-    replay: int = 0
 
     # --- misc ---
     seed: int = 0

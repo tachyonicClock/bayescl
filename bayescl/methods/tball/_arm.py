@@ -1,9 +1,11 @@
 from dataclasses import dataclass, replace
 
-from bayescl.experiment import Experiment
+import torch
 from bayescl.methods._registry import ArmBase, register
-from bayescl.methods.tball import TBALLConfig
-from bayescl.spec import ExperimentSpec, VCLConfig
+from bayescl.methods.tball import TBALLAdapterFactory, TBALLConfig
+from bayescl.peft import RegexFilter, add_adapters
+from bayescl.spec import VCLConfig
+from loguru import logger
 
 
 @register("tball")
@@ -22,6 +24,29 @@ class TBALL(ArmBase):
     beta: float = 1.0
     train_samples: int = 1
     test_samples: int = 5
+
+    def _build_peft(self, experiment):
+        logger.info("Adding TBALL adapters")
+        torch.manual_seed(experiment.spec.seed + 7808)
+        add_adapters(
+            experiment.model,
+            RegexFilter(experiment.spec.adapter_filter),
+            TBALLAdapterFactory(self._peft()),
+        )
+        experiment.model.get_submodule(experiment.spec.head_module).requires_grad_(True)
+
+    def _build_plugins(self, experiment):
+        self._build_common_plugins(experiment, local_ce=False)
+
+    def _build_strategy(self, experiment):
+        return self._build_vcl_strategy(
+            experiment,
+            VCLConfig(
+                beta=self.beta,
+                train_samples=self.train_samples,
+                test_samples=self.test_samples,
+            ),
+        )
 
     @staticmethod
     def suggest_config(trial, base):
@@ -42,26 +67,6 @@ class TBALL(ArmBase):
             bnn=self.bnn,
             bias=self.bias,
         )
-
-    def build(self, *, dataset, scale, seed, validation, run_dir, dataset_root):
-        spec = ExperimentSpec(
-            **self.base_spec(
-                dataset=dataset,
-                scale=scale,
-                seed=seed,
-                validation=validation,
-                run_dir=run_dir,
-                dataset_root=dataset_root,
-                use_local_ce=False,  # TBALL implements local CE internally
-            ),
-            peft=self._peft(),
-            strategy=VCLConfig(
-                beta=self.beta,
-                train_samples=self.train_samples,
-                test_samples=self.test_samples,
-            ),
-        )
-        return Experiment(spec)
 
 
 @register("tball-mnd")

@@ -1,10 +1,12 @@
 from dataclasses import dataclass, replace
 
-from bayescl.experiment import Experiment
+import torch
 from bayescl.methods._registry import ArmBase, register
-from bayescl.methods.ball import BALLConfig
-from bayescl.spec import ExperimentSpec, VCLConfig
+from bayescl.methods.ball import BALLAdapterFactory, BALLConfig
+from bayescl.peft import RegexFilter, add_adapters
+from bayescl.spec import VCLConfig
 from bayescl.vbnn import VBNNConfig
+from loguru import logger
 
 
 @register("ball")
@@ -25,6 +27,50 @@ class BALL(ArmBase):
     init_sd: float = 1e-3
     init_sd_sd: float = 1e-5
 
+    def _peft(self):
+        return BALLConfig(
+            r=self.r,
+            lora_alpha=self.lora_alpha,
+            dropout=self.dropout,
+            bll=self.bll,
+            vbnn=VBNNConfig(
+                prior_mean=self.prior_mean,
+                prior_sd=self.prior_sd,
+                init_sd=self.init_sd,
+                init_sd_sd=self.init_sd_sd,
+            ),
+        )
+
+    def _build_peft(self, experiment):
+        logger.info("Adding BALL adapters")
+        torch.manual_seed(experiment.spec.seed + 7808)
+        peft = self._peft()
+        add_adapters(
+            experiment.model,
+            RegexFilter(experiment.spec.adapter_filter),
+            BALLAdapterFactory(peft),
+        )
+        if peft.bll:
+            from bayescl.vbnn import replace_head
+
+            replace_head(
+                experiment.model, experiment.spec.head_module, config=peft.vbnn
+            )
+        experiment.model.get_submodule(experiment.spec.head_module).requires_grad_(True)
+
+    def _build_plugins(self, experiment):
+        self._build_common_plugins(experiment, local_ce=False)
+
+    def _build_strategy(self, experiment):
+        return self._build_vcl_strategy(
+            experiment,
+            VCLConfig(
+                beta=self.beta,
+                train_samples=self.train_samples,
+                test_samples=self.test_samples,
+            ),
+        )
+
     @staticmethod
     def suggest_config(trial, base):
         return replace(
@@ -32,34 +78,3 @@ class BALL(ArmBase):
             lr=trial.suggest_float("lr", 1e-4, 1e-2, log=True),
             beta=trial.suggest_float("beta", 0.0, 2.0),
         )
-
-    def build(self, *, dataset, scale, seed, validation, run_dir, dataset_root):
-        spec = ExperimentSpec(
-            **self.base_spec(
-                dataset=dataset,
-                scale=scale,
-                seed=seed,
-                validation=validation,
-                run_dir=run_dir,
-                dataset_root=dataset_root,
-                use_local_ce=False,  # BALL implements local CE internally
-            ),
-            peft=BALLConfig(
-                r=self.r,
-                lora_alpha=self.lora_alpha,
-                dropout=self.dropout,
-                bll=self.bll,
-                vbnn=VBNNConfig(
-                    prior_mean=self.prior_mean,
-                    prior_sd=self.prior_sd,
-                    init_sd=self.init_sd,
-                    init_sd_sd=self.init_sd_sd,
-                ),
-            ),
-            strategy=VCLConfig(
-                beta=self.beta,
-                train_samples=self.train_samples,
-                test_samples=self.test_samples,
-            ),
-        )
-        return Experiment(spec)

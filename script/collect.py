@@ -15,7 +15,9 @@ from bayescl.runio import read_jsonl  # noqa: E402
 
 
 @click.command()
-@click.argument("runs_root", type=click.Path(exists=True, file_okay=False), default="./runs")
+@click.argument(
+    "runs_root", type=click.Path(exists=True, file_okay=False), default="./runs"
+)
 @click.argument("output", type=click.Path())
 @click.option(
     "--stage",
