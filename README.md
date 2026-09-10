@@ -62,9 +62,7 @@ runs/tune/full/cifar100/ball/<RUNID>/
 `<RUNID>` is a `%Y-%m-%d_%H-%M-%S` timestamp. The objective maximises
 `score = 0.5 * (accuracy + (1 - ECE))`.
 
-Add `--sampler` / `--pruner` to change the Optuna strategy (e.g.
-`--sampler BruteForceSampler` for a grid sweep). Add `--sqlite` to also write
-`runs/.../optuna.db` for the dashboard:
+Add `--sqlite` to also write `runs/.../optuna.db` for the dashboard:
 
 ```bash
 $ uv run optuna-dashboard runs/tune/full/cifar100/ball/<RUNID>/optuna.db
