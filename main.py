@@ -33,14 +33,16 @@ from loguru import logger
 from bayescl.arms import get_arm
 from bayescl.base import NumericError
 from bayescl.datasets_spec import dataset_names, get_dataset
-from bayescl.experiment import build_experiment
+from bayescl.experiment import Experiment
 from bayescl.methods._registry import arm_names
 from bayescl.runio import append_jsonl, latest_run, read_jsonl, score, write_json
 from bayescl.scale import get_scale, scale_names
-from bayescl.search import get_pruner, get_sampler
+from bayescl.spec import ExperimentSpec
 from bayescl.util.git import commit_message, commit_short_hash, is_git_status_clean
 
 _DATASET_PATH = os.environ.get("DATASETS")
+_SAMPLER = optuna.samplers.TPESampler()
+_PRUNER = optuna.pruners.MedianPruner()
 
 
 def _timestamp() -> str:
@@ -103,15 +105,13 @@ def main() -> None:
 
 @main.command()
 @_targets
-@click.option("--sampler", default="TPESampler", show_default=True)
-@click.option("--pruner", default="MedianPruner", show_default=True)
 @click.option(
     "--sqlite",
     is_flag=True,
     default=False,
     help="Also write optuna.db under the run dir for optuna-dashboard.",
 )
-def tune(scale, dataset, method, runs, dataset_path, device, sampler, pruner, sqlite):
+def tune(scale, dataset, method, runs, dataset_path, device, sqlite):
     """Search hyperparameters for METHOD on DATASET at the given SCALE."""
     if dataset_path is None:
         raise click.ClickException("Set $DATASETS or pass --dataset-path.")
@@ -134,15 +134,13 @@ def tune(scale, dataset, method, runs, dataset_path, device, sampler, pruner, sq
             runid,
             sc,
             ds,
-            sampler=sampler,
-            pruner=pruner,
         ),
     )
 
     study = optuna.create_study(
         direction="maximize",
-        sampler=get_sampler(sampler),
-        pruner=get_pruner(pruner),
+        sampler=_SAMPLER,
+        pruner=_PRUNER,
         study_name=f"bayescl/{scale}/{dataset}/{method}",
         storage=f"sqlite:///{run_dir / 'optuna.db'}" if sqlite else None,
         load_if_exists=bool(sqlite),
@@ -150,8 +148,7 @@ def tune(scale, dataset, method, runs, dataset_path, device, sampler, pruner, sq
 
     def objective(trial: optuna.Trial) -> float:
         arm = type(base).suggest_config(trial, base)
-        exp = build_experiment(
-            arm,
+        spec = ExperimentSpec.from_dataset(
             dataset=ds,
             scale=sc,
             seed=trial.number,
@@ -160,6 +157,7 @@ def tune(scale, dataset, method, runs, dataset_path, device, sampler, pruner, sq
             dataset_root=Path(dataset_path),
             device=device,
         )
+        exp = Experiment(spec, arm)
         row = {
             "trial": trial.number,
             "seed": trial.number,
@@ -224,8 +222,6 @@ def tune(scale, dataset, method, runs, dataset_path, device, sampler, pruner, sq
             runid,
             sc,
             ds,
-            sampler=sampler,
-            pruner=pruner,
             finished=_timestamp(),
             best={
                 "trial": best.number,
@@ -293,8 +289,7 @@ def test(scale, dataset, method, runs, dataset_path, device, from_tune):
     )
 
     for seed in range(sc.n_seeds):
-        exp = build_experiment(
-            arm,
+        spec = ExperimentSpec.from_dataset(
             dataset=ds,
             scale=sc,
             seed=seed,
@@ -303,6 +298,7 @@ def test(scale, dataset, method, runs, dataset_path, device, from_tune):
             dataset_root=Path(dataset_path),
             device=device,
         )
+        exp = Experiment(spec, arm)
         acc, ece = exp.run(None)
         append_jsonl(
             results,

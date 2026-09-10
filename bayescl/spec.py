@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
-from typing import ClassVar
+from typing import TYPE_CHECKING, ClassVar
 
 from bayescl.methods.ball import BALLConfig
 from bayescl.methods.clora import CLoRAConfig
@@ -18,6 +18,10 @@ from bayescl.methods.inflora import InfLoRAConfig
 from bayescl.methods.lora import LoRAConfig
 from bayescl.methods.sdlora import SDLoRAConfig
 from bayescl.methods.tball import TBALLConfig
+
+if TYPE_CHECKING:
+    from bayescl.datasets_spec import Dataset
+    from bayescl.scale import Scale
 
 # --- Strategy configs (only the two actually used survive the migration) ---
 
@@ -86,6 +90,39 @@ class RWalkConfig:
 
 @dataclass
 class ExperimentSpec:
+    @classmethod
+    def from_dataset(
+        cls,
+        *,
+        dataset: "Dataset",
+        scale: "Scale",
+        seed: int,
+        validation: bool,
+        run_dir: Path,
+        dataset_root: Path,
+        device: str = "cuda",
+    ) -> "ExperimentSpec":
+        backbone = dataset.backbone
+        return cls(
+            dataset=dataset.scenario,
+            n_tasks=dataset.n_tasks,
+            shuffle=dataset.shuffle,
+            dataset_root=Path(dataset_root),
+            standardize=dataset.standardize,
+            validation=validation,
+            backbone_name=backbone.name,
+            freeze_backbone=backbone.freeze_backbone,
+            adapter_filter=backbone.adapter_filter,
+            head_module=backbone.head_module,
+            epochs=scale.epochs(dataset),
+            train_mb_size=dataset.train_mb_size,
+            eval_mb_size=dataset.eval_mb_size,
+            num_workers=dataset.num_workers,
+            seed=seed,
+            run_dir=run_dir,
+            device=device,
+        )
+
     # --- benchmark ---
     dataset: str
     """Avalanche scenario name, e.g. ``"CIFAR100"``."""

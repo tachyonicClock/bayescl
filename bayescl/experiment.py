@@ -8,7 +8,7 @@ import random
 from dataclasses import asdict
 from pathlib import Path
 from pprint import pformat
-from typing import TYPE_CHECKING, Any, Dict, List, Sequence
+from typing import Any, Dict, List, Sequence
 
 import numpy as np
 import optuna
@@ -35,11 +35,6 @@ from bayescl.metrics.plugin import MetricsPlugin
 from bayescl.model import get_model
 from bayescl.peft import parameter_summary_str
 from bayescl.spec import ExperimentSpec
-
-if TYPE_CHECKING:
-    from bayescl.datasets_spec import Dataset
-    from bayescl.methods._registry import ArmBase
-    from bayescl.scale import Scale
 
 
 def avalanche_class_schedule(
@@ -222,37 +217,3 @@ class Experiment:
 
     def count_parameters(self):
         print(parameter_summary_str(self.model))
-
-
-def build_experiment(
-    arm: "ArmBase",
-    *,
-    dataset: "Dataset",
-    scale: "Scale",
-    seed: int,
-    validation: bool,
-    run_dir: Path,
-    dataset_root: Path,
-    device: str = "cuda",
-) -> Experiment:
-    bb = dataset.backbone
-    spec = ExperimentSpec(
-        dataset=dataset.scenario,
-        n_tasks=dataset.n_tasks,
-        shuffle=dataset.shuffle,
-        dataset_root=Path(dataset_root),
-        standardize=dataset.standardize,
-        validation=validation,
-        backbone_name=bb.name,
-        freeze_backbone=bb.freeze_backbone,
-        adapter_filter=bb.adapter_filter,
-        head_module=bb.head_module,
-        epochs=scale.epochs(dataset),
-        train_mb_size=dataset.train_mb_size,
-        eval_mb_size=dataset.eval_mb_size,
-        num_workers=dataset.num_workers,
-        seed=seed,
-        run_dir=run_dir,
-    )
-    spec.device = device
-    return arm.build(Experiment(spec, arm))
