@@ -17,28 +17,40 @@
 ## Variables
 ### Response Variables
 
-In continual learning we care about performance after each task not just at the end of tasks collectively.
-All response variables are micro average (each task contributes equally) of values evaluated at the end of each task.
-"Seen tasks" include all previous tasks including the one that was recently trained on.
-Conversely, "future tasks" are all tasks yet to be trained on.
+In continual learning, we care about performance after each task, not just after the final task.
+Each metric is evaluated in a class-incremental manner at the end of every task (an evaluation point): on a holdout validation set during hyperparameter tuning, and on a test set during final evaluation.
+"Seen tasks" are all tasks trained on so far, including the most recent one; "future tasks" are all tasks not yet trained on.
+
+Metrics over seen tasks are aggregated in two steps:
+
+1. take the mean across seen tasks at each evaluation point
+2. take the mean across evaluation points
+
+When evaluated on seen tasks, early tasks contribute more since they have been seen for longer, which emphasizes remembering.
+Conversely, when evaluated on future tasks, later tasks contribute more since they remain in the future for longer.
+Both biases reflect the nature of the continual learning problem.
 
 #### Primary Endpoint
 
-Primary endpoints calculated on the validation split are used for tuning each treatment's nuisance hyper-parameters.
+The primary endpoint, calculated on the validation split, is used for tuning each treatment's nuisance hyperparameters.
 
-- `brier`: Brier score on seen-tasks.
+- `brier` (lower is better): Multi-class Brier score on seen tasks, computed as the squared error between the predicted probability vector and the one-hot label, summed over classes and averaged over samples.
 
 #### Secondary Endpoints
 
-- `acc`: The average accuracy on seen tasks.
-- `ece`: Expected calibration error on seen tasks.
-- `ace`: Adaptive calibration error on seen tasks (Nixon et al., 2019).
-- `auroc_future`: AUROC for future tasks. The futureless final task is not aggregated in the mean.
-- `auroc_$ood_dataset`: AUROC for out-of-distribution detection using an auxiliary out-of-distribution dataset.
-  The in- vs out- distribution is defined in the dataset section.
-- `ece@$shift`: Expected calibration error on-seen tasks augmented with a synthetic distribution shift of a certain level.
-  Shift levels and type are defined in the dataset section.
-- `asce@$shift`: Like `ece@$shift` with `asce`.
+- `acc` (higher is better): Accuracy on seen tasks.
+- Calibration error (lower is better). All calibration metrics use 15 bins.
+  - `ece`: Expected calibration error on seen tasks, using top-label confidence and equal-width bins.
+  - `ace`: Adaptive calibration error on seen tasks, using the all-class variant with equal-mass bins (Nixon et al., 2019).
+  - `ece@$shift`: Expected calibration error on seen-task samples replaced by versions with a synthetic distribution shift at a given level.
+    Shift levels and types are defined in the dataset section.
+  - `ace@$shift`: Like `ece@$shift`, but with `ace`.
+- Out-of-distribution detection (higher is better). Calculated using the maximum softmax probability as the detection score, with in-distribution samples as the positive class.
+  - `auroc_future`: AUROC for distinguishing seen-task samples from future-task samples.
+    At each evaluation point, future-task samples are pooled into a single out-of-distribution set, so only the mean across evaluation points is taken.
+    The final evaluation point has no future tasks, so it is excluded from the mean.
+  - `auroc_$ood_dataset`: AUROC for distinguishing seen-task samples from an auxiliary out-of-distribution dataset.
+    The out-of-distribution dataset is defined in the dataset section.
 
 ### Control Variables
 
