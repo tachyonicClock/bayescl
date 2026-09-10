@@ -17,10 +17,10 @@ class LoRA(ArmBase):
 
     def _build_peft(self, experiment):
         logger.info("Adding LoRA adapters")
-        torch.manual_seed(experiment.seed + 7808)
+        torch.manual_seed(experiment.config.seed + 7808)
         add_adapters(
             experiment.model,
-            RegexFilter(experiment.adapter_filter),
+            RegexFilter(experiment.config.adapter_filter),
             LoRAAdapterFactory(
                 LoRAConfig(
                     r=self.r,
@@ -29,7 +29,7 @@ class LoRA(ArmBase):
                 )
             ),
         )
-        experiment.model.get_submodule(experiment.head_module).requires_grad_(True)
+        experiment.model.get_submodule(experiment.config.head_module).requires_grad_(True)
 
     def _build_strategy(self, experiment):
         return self._build_naive_strategy(experiment)

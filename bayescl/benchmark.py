@@ -1,4 +1,4 @@
-from typing import Any, Callable, List, Tuple
+from typing import TYPE_CHECKING, Any, Callable, List, Tuple
 
 from avalanche.benchmarks.classic import SplitMNIST
 from avalanche.benchmarks.scenarios import NCScenario
@@ -12,6 +12,8 @@ from bayescl.datasets import (
     SplitDomainNet,
     SplitImageNetR,
 )
+if TYPE_CHECKING:
+    from bayescl.experiment import ExperimentConfig
 Transform = Callable[[Any], Any]
 
 TRAIN_TRANSFORMS = {
@@ -76,69 +78,69 @@ def get_transforms(standardize: bool, dataset: str) -> Tuple[Transform, Transfor
     return (T.Compose(train_transform), T.Compose(eval_transform))
 
 
-def get_benchmark(experiment) -> NCScenario:
-    logger.info(f"Setting up '{experiment.dataset}' benchmark")
-    dataset_root = str(experiment.dataset_root)
-    validation_set = 0.1 if experiment.validation else 0
-    train_transform, eval_transform = get_transforms(experiment.standardize, experiment.dataset)
-    if experiment.dataset == "MNIST":
+def get_benchmark(config: "ExperimentConfig") -> NCScenario:
+    logger.info(f"Setting up '{config.dataset}' benchmark")
+    dataset_root = str(config.dataset_root)
+    validation_set = 0.1 if config.validation else 0
+    train_transform, eval_transform = get_transforms(config.standardize, config.dataset)
+    if config.dataset == "MNIST":
         return SplitMNIST(
             dataset_root=dataset_root,
-            n_experiences=experiment.n_tasks,
+            n_experiences=config.n_tasks,
             # train_transform=train_transform,
             # eval_transform=eval_transform,
             return_task_id=True,
-            shuffle=experiment.shuffle,
+            shuffle=config.shuffle,
         )
-    elif experiment.dataset == "CIFAR100":
+    elif config.dataset == "CIFAR100":
         return SplitCIFAR100(  # type: ignore
             dataset_root=dataset_root,
-            n_experiences=experiment.n_tasks,
+            n_experiences=config.n_tasks,
             train_transform=train_transform,
             eval_transform=eval_transform,
             return_task_id=True,
-            shuffle=experiment.shuffle,
+            shuffle=config.shuffle,
             validation_set=validation_set,
         )
-    elif experiment.dataset == "ImageNetR":
+    elif config.dataset == "ImageNetR":
         return SplitImageNetR(  # type: ignore
             dataset_root=dataset_root,
-            n_experiences=experiment.n_tasks,
+            n_experiences=config.n_tasks,
             train_transform=train_transform,
             eval_transform=eval_transform,
             return_task_id=True,
-            shuffle=experiment.shuffle,
+            shuffle=config.shuffle,
             validation_set=validation_set,
         )
-    elif experiment.dataset == "DomainNet":
+    elif config.dataset == "DomainNet":
         return SplitDomainNet(  # type: ignore
             dataset_root=dataset_root,
-            n_experiences=experiment.n_tasks,
+            n_experiences=config.n_tasks,
             train_transform=train_transform,
             eval_transform=eval_transform,
             return_task_id=True,
-            shuffle=experiment.shuffle,
+            shuffle=config.shuffle,
             validation_set=validation_set,
         )
-    elif experiment.dataset == "CORe50":
+    elif config.dataset == "CORe50":
         # SplitCORe50 takes a bool here, every other Split* takes a float fraction.
         return SplitCORe50(  # type: ignore
             dataset_root=dataset_root,
-            n_experiences=experiment.n_tasks,
+            n_experiences=config.n_tasks,
             train_transform=train_transform,
             eval_transform=eval_transform,
             return_task_id=True,
-            shuffle=experiment.shuffle,
-            validation_set=experiment.validation,
+            shuffle=config.shuffle,
+            validation_set=config.validation,
         )
-    elif experiment.dataset == "CUB200_2011":
+    elif config.dataset == "CUB200_2011":
         return SplitCUB200_2011(  # type: ignore
             dataset_root=dataset_root,
-            n_experiences=experiment.n_tasks,
+            n_experiences=config.n_tasks,
             train_transform=train_transform,
             eval_transform=eval_transform,
             return_task_id=True,
-            shuffle=experiment.shuffle,
+            shuffle=config.shuffle,
             validation_set=validation_set,
         )
-    raise ValueError(f"Unsupported scenario: {experiment.dataset}")
+    raise ValueError(f"Unsupported scenario: {config.dataset}")

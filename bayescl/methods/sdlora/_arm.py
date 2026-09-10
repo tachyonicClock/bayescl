@@ -15,15 +15,15 @@ class SDLoRA(ArmBase):
 
     def _build_peft(self, experiment):
         logger.info("Adding SD-LoRA adapters")
-        torch.manual_seed(experiment.seed + 7808)
+        torch.manual_seed(experiment.config.seed + 7808)
         peft = SDLoRAConfig(rank_per_task=self.rank_per_task)
         add_adapters(
             experiment.model,
-            RegexFilter(experiment.adapter_filter),
+            RegexFilter(experiment.config.adapter_filter),
             SDLoRAAdapterFactory(experiment.num_tasks, peft),
         )
         experiment.plugins.append(SDLoRAPlugin())
-        experiment.model.get_submodule(experiment.head_module).requires_grad_(True)
+        experiment.model.get_submodule(experiment.config.head_module).requires_grad_(True)
 
     def _build_strategy(self, experiment):
         return self._build_naive_strategy(experiment)

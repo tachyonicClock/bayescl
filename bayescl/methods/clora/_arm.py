@@ -20,15 +20,15 @@ class CLoRA(ArmBase):
 
     def _build_peft(self, experiment):
         logger.info("Adding CLoRA adapters and plugin")
-        torch.manual_seed(experiment.seed + 7808)
+        torch.manual_seed(experiment.config.seed + 7808)
         peft = self._peft()
         add_adapters(
             experiment.model,
-            RegexFilter(experiment.adapter_filter),
+            RegexFilter(experiment.config.adapter_filter),
             CLoRAAdapterFactory(experiment.num_tasks, peft),
         )
         experiment.plugins.append(CLoRAPlugin(peft, experiment.tb_log.writer))
-        experiment.model.get_submodule(experiment.head_module).requires_grad_(True)
+        experiment.model.get_submodule(experiment.config.head_module).requires_grad_(True)
 
     def _build_strategy(self, experiment):
         return self._build_naive_strategy(experiment)

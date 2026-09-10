@@ -5,6 +5,7 @@ matplotlib.use("Agg")
 import json
 import pickle
 import random
+from dataclasses import asdict, dataclass
 from pathlib import Path
 from pprint import pformat
 from typing import Any, Dict, List, Sequence
@@ -35,40 +36,41 @@ from bayescl.model import get_model
 from bayescl.peft import parameter_summary_str
 
 
-def build_experiment(
-    arm,
-    *,
-    dataset,
-    scale,
-    seed: int,
-    validation: bool,
-    run_dir: Path,
-    dataset_root: Path,
-    device: str = "cuda",
-) -> "Experiment":
-    backbone = dataset.backbone
-    return arm.build(
-        Experiment(
-            arm=arm,
-            dataset=dataset.scenario,
-            n_tasks=dataset.n_tasks,
-            shuffle=dataset.shuffle,
-            dataset_root=Path(dataset_root),
-            standardize=dataset.standardize,
-            validation=validation,
-            backbone_name=backbone.name,
-            freeze_backbone=backbone.freeze_backbone,
-            adapter_filter=backbone.adapter_filter,
-            head_module=backbone.head_module,
-            epochs=scale.epochs(dataset),
-            train_mb_size=dataset.train_mb_size,
-            eval_mb_size=dataset.eval_mb_size,
-            num_workers=dataset.num_workers,
-            seed=seed,
-            run_dir=run_dir,
-            device=device,
+@dataclass(frozen=True)
+class ExperimentConfig:
+    dataset: str
+    n_tasks: int
+    shuffle: bool
+    dataset_root: Path
+    standardize: bool
+    validation: bool
+    backbone_name: str
+    freeze_backbone: bool
+    adapter_filter: str | None
+    head_module: str
+    epochs: int
+    train_mb_size: int
+    eval_mb_size: int
+    num_workers: int
+    run_dir: Path
+    seed: int
+    device: str
+    first_exp_epochs: int | None = None
+    eval_every: int = -1
+    checkpoint: bool = False
+
+    @classmethod
+    def from_spec(cls, dataset, scale, *, seed, validation, run_dir, dataset_root, device="cuda"):
+        backbone = dataset.backbone
+        return cls(
+            dataset=dataset.scenario, n_tasks=dataset.n_tasks, shuffle=dataset.shuffle,
+            dataset_root=Path(dataset_root), standardize=dataset.standardize,
+            validation=validation, backbone_name=backbone.name,
+            freeze_backbone=backbone.freeze_backbone, adapter_filter=backbone.adapter_filter,
+            head_module=backbone.head_module, epochs=scale.epochs(dataset),
+            train_mb_size=dataset.train_mb_size, eval_mb_size=dataset.eval_mb_size,
+            num_workers=dataset.num_workers, run_dir=Path(run_dir), seed=seed, device=device,
         )
-    )
 
 
 def avalanche_class_schedule(
@@ -131,16 +133,16 @@ class Experiment:
         )
 
     def _prepare_run_dir(self) -> Path:
-        run_dir = self.run_dir
+        run_dir = self.config.run_dir
         run_dir.mkdir(parents=True, exist_ok=True)
-        setproctitle(f"bayescl.{self.dataset}")
+        setproctitle(f"bayescl.{self.config.dataset}")
         with open(run_dir / "spec.json", "w") as f:
             json.dump(self._config(), f, indent=2, default=str)
         logger.info(f"Logging to '{run_dir}'")
         return run_dir
 
     def _new_logger(self) -> TensorboardLogger:
-        tb_logger = TensorboardLogger(self.run_dir)
+        tb_logger = TensorboardLogger(self.config.run_dir)
         self.loggers.append(InteractiveLogger())
         self.loggers.append(tb_logger)
         return tb_logger
@@ -151,23 +153,24 @@ class Experiment:
         logger.info("Plugins:\n{}", [type(p).__name__ for p in self.plugins])
 
     def _seed_everything(self):
-        if self.seed is not None:
-            logger.info(f"Set random seed to {self.seed}")
-            torch.manual_seed(self.seed)
-            np.random.seed(self.seed)
-            random.seed(self.seed)
+        if self.config.seed is not None:
+            logger.info(f"Set random seed to {self.config.seed}")
+            torch.manual_seed(self.config.seed)
+            np.random.seed(self.config.seed)
+            random.seed(self.config.seed)
 
-    def __init__(self, *, arm, **config) -> None:
-        config.setdefault("first_exp_epochs", None)
-        config.setdefault("eval_every", -1)
-        config.setdefault("checkpoint", False)
-        self.__dict__.update(config)
+    def __init__(
+        self,
+        config: ExperimentConfig,
+        arm,
+    ) -> None:
+        self.config = config
         self.arm = arm
         self._seed_everything()
         self.plugins: List[SupervisedPlugin] = []
         self.loggers: List[BaseLogger] = []
 
-        self.benchmark = get_benchmark(self)
+        self.benchmark = get_benchmark(self.config)
         self.mask = class_schedule_to_task_mask(
             avalanche_class_schedule(self.benchmark), self.benchmark.n_classes
         )
@@ -177,9 +180,10 @@ class Experiment:
         self.tb_log = self._new_logger()
         self.eval_plugin: EvaluationPlugin = self._new_eval_plugin()
         self.metrics_plugin = MetricsPlugin(self.num_tasks, self.num_classes)
-        self.model = get_model(self, self.benchmark.n_classes)
+        self.model = get_model(self.config, self.benchmark.n_classes)
         self.arm._build_peft(self)
         self.arm._build_plugins(self)
+        self.arm.build(self)
 
     def save_checkpoint(self, filename: Path) -> None:
         # Only save learnable parameters (adapters)
@@ -193,23 +197,14 @@ class Experiment:
         torch.save(state, filename)
 
     def _config(self) -> dict:
-        return {
-            name: getattr(self, name)
-            for name in (
-                "dataset", "n_tasks", "shuffle", "dataset_root", "standardize",
-                "validation", "backbone_name", "freeze_backbone", "adapter_filter",
-                "head_module", "epochs", "train_mb_size", "eval_mb_size",
-                "num_workers", "run_dir", "seed", "device", "first_exp_epochs",
-                "eval_every", "checkpoint",
-            )
-        }
+        return asdict(self.config)
 
     def run(
         self, trial: Trial | None = None, *, report_intermediate: bool = True
     ) -> tuple[float, float]:
         self._preflight()
         strategy = self.arm._build_strategy(self)
-        strategy.mask = self.mask.to(self.device)  # type: ignore
+        strategy.mask = self.mask.to(self.config.device)  # type: ignore
 
         # TRAINING LOOP
         logger.info("Starting experiment...")
@@ -221,25 +216,25 @@ class Experiment:
 
             # If first_exp_epochs is set, use it for the first experience
             strategy.train_epochs = (
-                self.first_exp_epochs
-                if t == 0 and self.first_exp_epochs is not None
-                else self.epochs
+                self.config.first_exp_epochs
+                if t == 0 and self.config.first_exp_epochs is not None
+                else self.config.epochs
             )
 
             # train returns a dictionary which contains all the metric values
             strategy.train(
                 experience,
                 self.benchmark.test_stream[: t + 1],
-                num_workers=self.num_workers,
+                num_workers=self.config.num_workers,
             )
 
             results.append(
                 strategy.eval(
-                    self.benchmark.test_stream, num_workers=self.num_workers
+                    self.benchmark.test_stream, num_workers=self.config.num_workers
                 )
             )
-            if self.checkpoint:
-                checkpoint_path = self.run_dir / f"checkpoint-t{t:02d}.pth"
+            if self.config.checkpoint:
+                checkpoint_path = self.config.run_dir / f"checkpoint-t{t:02d}.pth"
                 self.save_checkpoint(checkpoint_path)
 
             if trial is not None and report_intermediate:
@@ -252,12 +247,12 @@ class Experiment:
                     raise optuna.exceptions.TrialPruned()
 
         # Save results to run directory
-        with open(self.run_dir / "avalanche_results.pkl", "wb") as f:
+        with open(self.config.run_dir / "avalanche_results.pkl", "wb") as f:
             pickle.dump(results, f)
 
         metrics, raw_data = self.metrics_plugin.evaluator.result()
-        pickle.dump(metrics, open(self.run_dir / "metrics.pkl", "wb"))
-        pickle.dump(raw_data, open(self.run_dir / "raw_data.pkl", "wb"))
+        pickle.dump(metrics, open(self.config.run_dir / "metrics.pkl", "wb"))
+        pickle.dump(raw_data, open(self.config.run_dir / "raw_data.pkl", "wb"))
 
         for key, value in metrics.items():
             if isinstance(value, (float, int)):

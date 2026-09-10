@@ -42,6 +42,8 @@ def get_arm(name: str) -> type["ArmBase"]:
 
 
 def arm_names() -> list[str]:
+    if not ARMS:
+        import bayescl.arms  # noqa: F401
     return sorted(ARMS)
 
 
@@ -99,13 +101,13 @@ class ArmBase:
         return dict(
             model=experiment.model,
             optimizer=self.configure_optimizers(experiment.model.parameters()),
-            train_mb_size=experiment.train_mb_size,
-            eval_mb_size=experiment.eval_mb_size or experiment.train_mb_size,
-            train_epochs=experiment.epochs,
+            train_mb_size=experiment.config.train_mb_size,
+            eval_mb_size=experiment.config.eval_mb_size or experiment.config.train_mb_size,
+            train_epochs=experiment.config.epochs,
             evaluator=experiment.eval_plugin,
-            device=experiment.device,
+            device=experiment.config.device,
             plugins=experiment.plugins,
-            eval_every=experiment.eval_every,
+            eval_every=experiment.config.eval_every,
             criterion=torch.nn.CrossEntropyLoss(),
         )
 

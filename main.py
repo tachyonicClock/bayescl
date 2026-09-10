@@ -33,7 +33,7 @@ from loguru import logger
 from bayescl.arms import get_arm
 from bayescl.base import NumericError
 from bayescl.datasets_spec import dataset_names, get_dataset
-from bayescl.experiment import build_experiment
+from bayescl.experiment import Experiment, ExperimentConfig
 from bayescl.methods._registry import arm_names
 from bayescl.runio import append_jsonl, latest_run, read_jsonl, score, write_json
 from bayescl.scale import get_scale, scale_names
@@ -147,15 +147,16 @@ def tune(scale, dataset, method, runs, dataset_path, device, sqlite):
 
     def objective(trial: optuna.Trial) -> float:
         arm = type(base).suggest_config(trial, base)
-        exp = build_experiment(
+        exp = Experiment(
+            ExperimentConfig.from_spec(
+                ds, sc,
+                seed=trial.number,
+                validation=True,
+                run_dir=run_dir / f"trial_{trial.number:04d}",
+                dataset_root=Path(dataset_path),
+                device=device,
+            ),
             arm,
-            dataset=ds,
-            scale=sc,
-            seed=trial.number,
-            validation=True,
-            run_dir=run_dir / f"trial_{trial.number:04d}",
-            dataset_root=Path(dataset_path),
-            device=device,
         )
         row = {
             "trial": trial.number,
@@ -288,15 +289,16 @@ def test(scale, dataset, method, runs, dataset_path, device, from_tune):
     )
 
     for seed in range(sc.n_seeds):
-        exp = build_experiment(
+        exp = Experiment(
+            ExperimentConfig.from_spec(
+                ds, sc,
+                seed=seed,
+                validation=False,
+                run_dir=run_dir / f"seed_{seed:02d}",
+                dataset_root=Path(dataset_path),
+                device=device,
+            ),
             arm,
-            dataset=ds,
-            scale=sc,
-            seed=seed,
-            validation=False,
-            run_dir=run_dir / f"seed_{seed:02d}",
-            dataset_root=Path(dataset_path),
-            device=device,
         )
         acc, ece = exp.run(None)
         append_jsonl(

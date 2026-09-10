@@ -27,13 +27,13 @@ class TBALL(ArmBase):
 
     def _build_peft(self, experiment):
         logger.info("Adding TBALL adapters")
-        torch.manual_seed(experiment.seed + 7808)
+        torch.manual_seed(experiment.config.seed + 7808)
         add_adapters(
             experiment.model,
-            RegexFilter(experiment.adapter_filter),
+            RegexFilter(experiment.config.adapter_filter),
             TBALLAdapterFactory(self._peft()),
         )
-        experiment.model.get_submodule(experiment.head_module).requires_grad_(True)
+        experiment.model.get_submodule(experiment.config.head_module).requires_grad_(True)
 
     def _build_plugins(self, experiment):
         self._build_common_plugins(experiment, local_ce=False)
