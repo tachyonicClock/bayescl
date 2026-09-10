@@ -12,8 +12,6 @@ from bayescl.datasets import (
     SplitDomainNet,
     SplitImageNetR,
 )
-from bayescl.spec import ExperimentSpec
-
 Transform = Callable[[Any], Any]
 
 TRAIN_TRANSFORMS = {
@@ -78,69 +76,69 @@ def get_transforms(standardize: bool, dataset: str) -> Tuple[Transform, Transfor
     return (T.Compose(train_transform), T.Compose(eval_transform))
 
 
-def get_benchmark(spec: ExperimentSpec) -> NCScenario:
-    logger.info(f"Setting up '{spec.dataset}' benchmark")
-    dataset_root = str(spec.dataset_root)
-    validation_set = 0.1 if spec.validation else 0
-    train_transform, eval_transform = get_transforms(spec.standardize, spec.dataset)
-    if spec.dataset == "MNIST":
+def get_benchmark(experiment) -> NCScenario:
+    logger.info(f"Setting up '{experiment.dataset}' benchmark")
+    dataset_root = str(experiment.dataset_root)
+    validation_set = 0.1 if experiment.validation else 0
+    train_transform, eval_transform = get_transforms(experiment.standardize, experiment.dataset)
+    if experiment.dataset == "MNIST":
         return SplitMNIST(
             dataset_root=dataset_root,
-            n_experiences=spec.n_tasks,
+            n_experiences=experiment.n_tasks,
             # train_transform=train_transform,
             # eval_transform=eval_transform,
             return_task_id=True,
-            shuffle=spec.shuffle,
+            shuffle=experiment.shuffle,
         )
-    elif spec.dataset == "CIFAR100":
+    elif experiment.dataset == "CIFAR100":
         return SplitCIFAR100(  # type: ignore
             dataset_root=dataset_root,
-            n_experiences=spec.n_tasks,
+            n_experiences=experiment.n_tasks,
             train_transform=train_transform,
             eval_transform=eval_transform,
             return_task_id=True,
-            shuffle=spec.shuffle,
+            shuffle=experiment.shuffle,
             validation_set=validation_set,
         )
-    elif spec.dataset == "ImageNetR":
+    elif experiment.dataset == "ImageNetR":
         return SplitImageNetR(  # type: ignore
             dataset_root=dataset_root,
-            n_experiences=spec.n_tasks,
+            n_experiences=experiment.n_tasks,
             train_transform=train_transform,
             eval_transform=eval_transform,
             return_task_id=True,
-            shuffle=spec.shuffle,
+            shuffle=experiment.shuffle,
             validation_set=validation_set,
         )
-    elif spec.dataset == "DomainNet":
+    elif experiment.dataset == "DomainNet":
         return SplitDomainNet(  # type: ignore
             dataset_root=dataset_root,
-            n_experiences=spec.n_tasks,
+            n_experiences=experiment.n_tasks,
             train_transform=train_transform,
             eval_transform=eval_transform,
             return_task_id=True,
-            shuffle=spec.shuffle,
+            shuffle=experiment.shuffle,
             validation_set=validation_set,
         )
-    elif spec.dataset == "CORe50":
+    elif experiment.dataset == "CORe50":
         # SplitCORe50 takes a bool here, every other Split* takes a float fraction.
         return SplitCORe50(  # type: ignore
             dataset_root=dataset_root,
-            n_experiences=spec.n_tasks,
+            n_experiences=experiment.n_tasks,
             train_transform=train_transform,
             eval_transform=eval_transform,
             return_task_id=True,
-            shuffle=spec.shuffle,
-            validation_set=spec.validation,
+            shuffle=experiment.shuffle,
+            validation_set=experiment.validation,
         )
-    elif spec.dataset == "CUB200_2011":
+    elif experiment.dataset == "CUB200_2011":
         return SplitCUB200_2011(  # type: ignore
             dataset_root=dataset_root,
-            n_experiences=spec.n_tasks,
+            n_experiences=experiment.n_tasks,
             train_transform=train_transform,
             eval_transform=eval_transform,
             return_task_id=True,
-            shuffle=spec.shuffle,
+            shuffle=experiment.shuffle,
             validation_set=validation_set,
         )
-    raise ValueError(f"Unsupported scenario: {spec.dataset}")
+    raise ValueError(f"Unsupported scenario: {experiment.dataset}")

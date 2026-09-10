@@ -2,9 +2,8 @@
 
 An *arm* is a single method / treatment: a dataclass holding that method's
 hyperparameters, a ``suggest_config`` that samples them from an Optuna trial,
-builder hooks for method-specific construction, and a ``build`` that assembles
-an :class:`~bayescl.spec.ExperimentSpec` and returns a runnable
-:class:`~bayescl.experiment.Experiment`.
+    builder hooks for method-specific construction, and a ``build`` hook that can
+    customize a runnable :class:`~bayescl.experiment.Experiment`.
 
 Register variants by subclassing an existing arm and changing field defaults,
 then ``@register("name")`` under a new key (see ``tball`` / ``tball-mnd``).
@@ -100,13 +99,13 @@ class ArmBase:
         return dict(
             model=experiment.model,
             optimizer=self.configure_optimizers(experiment.model.parameters()),
-            train_mb_size=experiment.spec.train_mb_size,
-            eval_mb_size=experiment.spec.eval_mb_size or experiment.spec.train_mb_size,
-            train_epochs=experiment.spec.epochs,
+            train_mb_size=experiment.train_mb_size,
+            eval_mb_size=experiment.eval_mb_size or experiment.train_mb_size,
+            train_epochs=experiment.epochs,
             evaluator=experiment.eval_plugin,
-            device=experiment.spec.device,
+            device=experiment.device,
             plugins=experiment.plugins,
-            eval_every=experiment.spec.eval_every,
+            eval_every=experiment.eval_every,
             criterion=torch.nn.CrossEntropyLoss(),
         )
 

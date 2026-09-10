@@ -5,7 +5,6 @@ matplotlib.use("Agg")
 import json
 import pickle
 import random
-from dataclasses import asdict
 from pathlib import Path
 from pprint import pformat
 from typing import Any, Dict, List, Sequence
@@ -34,7 +33,42 @@ from bayescl.metrics.ece import (
 from bayescl.metrics.plugin import MetricsPlugin
 from bayescl.model import get_model
 from bayescl.peft import parameter_summary_str
-from bayescl.spec import ExperimentSpec
+
+
+def build_experiment(
+    arm,
+    *,
+    dataset,
+    scale,
+    seed: int,
+    validation: bool,
+    run_dir: Path,
+    dataset_root: Path,
+    device: str = "cuda",
+) -> "Experiment":
+    backbone = dataset.backbone
+    return arm.build(
+        Experiment(
+            arm=arm,
+            dataset=dataset.scenario,
+            n_tasks=dataset.n_tasks,
+            shuffle=dataset.shuffle,
+            dataset_root=Path(dataset_root),
+            standardize=dataset.standardize,
+            validation=validation,
+            backbone_name=backbone.name,
+            freeze_backbone=backbone.freeze_backbone,
+            adapter_filter=backbone.adapter_filter,
+            head_module=backbone.head_module,
+            epochs=scale.epochs(dataset),
+            train_mb_size=dataset.train_mb_size,
+            eval_mb_size=dataset.eval_mb_size,
+            num_workers=dataset.num_workers,
+            seed=seed,
+            run_dir=run_dir,
+            device=device,
+        )
+    )
 
 
 def avalanche_class_schedule(
@@ -97,11 +131,11 @@ class Experiment:
         )
 
     def _prepare_run_dir(self) -> Path:
-        run_dir = self.spec.run_dir
+        run_dir = self.run_dir
         run_dir.mkdir(parents=True, exist_ok=True)
-        setproctitle(f"bayescl.{self.spec.dataset}")
+        setproctitle(f"bayescl.{self.dataset}")
         with open(run_dir / "spec.json", "w") as f:
-            json.dump(asdict(self.spec), f, indent=2, default=str)
+            json.dump(self._config(), f, indent=2, default=str)
         logger.info(f"Logging to '{run_dir}'")
         return run_dir
 
@@ -112,25 +146,28 @@ class Experiment:
         return tb_logger
 
     def _preflight(self):
-        logger.info("Resolved Spec:\n{}", pformat(asdict(self.spec)))
+        logger.info("Resolved Spec:\n{}", pformat(self._config()))
         logger.info("Parameter Counts:\n{}", parameter_summary_str(self.model))
         logger.info("Plugins:\n{}", [type(p).__name__ for p in self.plugins])
 
     def _seed_everything(self):
-        if self.spec.seed is not None:
-            logger.info(f"Set random seed to {self.spec.seed}")
-            torch.manual_seed(self.spec.seed)
-            np.random.seed(self.spec.seed)
-            random.seed(self.spec.seed)
+        if self.seed is not None:
+            logger.info(f"Set random seed to {self.seed}")
+            torch.manual_seed(self.seed)
+            np.random.seed(self.seed)
+            random.seed(self.seed)
 
-    def __init__(self, spec: ExperimentSpec, arm) -> None:
-        self.spec = spec
+    def __init__(self, *, arm, **config) -> None:
+        config.setdefault("first_exp_epochs", None)
+        config.setdefault("eval_every", -1)
+        config.setdefault("checkpoint", False)
+        self.__dict__.update(config)
         self.arm = arm
         self._seed_everything()
         self.plugins: List[SupervisedPlugin] = []
         self.loggers: List[BaseLogger] = []
 
-        self.benchmark = get_benchmark(spec)
+        self.benchmark = get_benchmark(self)
         self.mask = class_schedule_to_task_mask(
             avalanche_class_schedule(self.benchmark), self.benchmark.n_classes
         )
@@ -140,7 +177,7 @@ class Experiment:
         self.tb_log = self._new_logger()
         self.eval_plugin: EvaluationPlugin = self._new_eval_plugin()
         self.metrics_plugin = MetricsPlugin(self.num_tasks, self.num_classes)
-        self.model = get_model(spec, self.benchmark.n_classes)
+        self.model = get_model(self, self.benchmark.n_classes)
         self.arm._build_peft(self)
         self.arm._build_plugins(self)
 
@@ -155,12 +192,24 @@ class Experiment:
         logger.info(f"Saving checkpoint to '{filename}' ({numel} parameters)")
         torch.save(state, filename)
 
+    def _config(self) -> dict:
+        return {
+            name: getattr(self, name)
+            for name in (
+                "dataset", "n_tasks", "shuffle", "dataset_root", "standardize",
+                "validation", "backbone_name", "freeze_backbone", "adapter_filter",
+                "head_module", "epochs", "train_mb_size", "eval_mb_size",
+                "num_workers", "run_dir", "seed", "device", "first_exp_epochs",
+                "eval_every", "checkpoint",
+            )
+        }
+
     def run(
         self, trial: Trial | None = None, *, report_intermediate: bool = True
     ) -> tuple[float, float]:
         self._preflight()
         strategy = self.arm._build_strategy(self)
-        strategy.mask = self.mask.to(self.spec.device)  # type: ignore
+        strategy.mask = self.mask.to(self.device)  # type: ignore
 
         # TRAINING LOOP
         logger.info("Starting experiment...")
@@ -172,24 +221,24 @@ class Experiment:
 
             # If first_exp_epochs is set, use it for the first experience
             strategy.train_epochs = (
-                self.spec.first_exp_epochs
-                if t == 0 and self.spec.first_exp_epochs is not None
-                else self.spec.epochs
+                self.first_exp_epochs
+                if t == 0 and self.first_exp_epochs is not None
+                else self.epochs
             )
 
             # train returns a dictionary which contains all the metric values
             strategy.train(
                 experience,
                 self.benchmark.test_stream[: t + 1],
-                num_workers=self.spec.num_workers,
+                num_workers=self.num_workers,
             )
 
             results.append(
                 strategy.eval(
-                    self.benchmark.test_stream, num_workers=self.spec.num_workers
+                    self.benchmark.test_stream, num_workers=self.num_workers
                 )
             )
-            if self.spec.checkpoint:
+            if self.checkpoint:
                 checkpoint_path = self.run_dir / f"checkpoint-t{t:02d}.pth"
                 self.save_checkpoint(checkpoint_path)
 

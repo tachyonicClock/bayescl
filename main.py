@@ -33,11 +33,10 @@ from loguru import logger
 from bayescl.arms import get_arm
 from bayescl.base import NumericError
 from bayescl.datasets_spec import dataset_names, get_dataset
-from bayescl.experiment import Experiment
+from bayescl.experiment import build_experiment
 from bayescl.methods._registry import arm_names
 from bayescl.runio import append_jsonl, latest_run, read_jsonl, score, write_json
 from bayescl.scale import get_scale, scale_names
-from bayescl.spec import ExperimentSpec
 from bayescl.util.git import commit_message, commit_short_hash, is_git_status_clean
 
 _DATASET_PATH = os.environ.get("DATASETS")
@@ -148,7 +147,8 @@ def tune(scale, dataset, method, runs, dataset_path, device, sqlite):
 
     def objective(trial: optuna.Trial) -> float:
         arm = type(base).suggest_config(trial, base)
-        spec = ExperimentSpec.from_dataset(
+        exp = build_experiment(
+            arm,
             dataset=ds,
             scale=sc,
             seed=trial.number,
@@ -157,7 +157,6 @@ def tune(scale, dataset, method, runs, dataset_path, device, sqlite):
             dataset_root=Path(dataset_path),
             device=device,
         )
-        exp = Experiment(spec, arm)
         row = {
             "trial": trial.number,
             "seed": trial.number,
@@ -289,7 +288,8 @@ def test(scale, dataset, method, runs, dataset_path, device, from_tune):
     )
 
     for seed in range(sc.n_seeds):
-        spec = ExperimentSpec.from_dataset(
+        exp = build_experiment(
+            arm,
             dataset=ds,
             scale=sc,
             seed=seed,
@@ -298,7 +298,6 @@ def test(scale, dataset, method, runs, dataset_path, device, from_tune):
             dataset_root=Path(dataset_path),
             device=device,
         )
-        exp = Experiment(spec, arm)
         acc, ece = exp.run(None)
         append_jsonl(
             results,
