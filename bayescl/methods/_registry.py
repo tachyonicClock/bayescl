@@ -21,7 +21,7 @@ from loguru import logger
 
 if TYPE_CHECKING:
     from bayescl.experiment import Experiment
-    from bayescl.methods.vcl import VCLConfig
+    from bayescl.vcl import VCLConfig
 
 ARMS: dict[str, type["ArmBase"]] = {}
 
@@ -86,7 +86,7 @@ class ArmBase:
         append_metrics: bool = True,
     ) -> None:
         if local_ce:
-            from bayescl.methods.train_mask import TrainTaskMask
+            from bayescl.train_mask import TrainTaskMask
 
             logger.info("Add 'TrainTaskMask' plugin")
             experiment.plugins.append(
@@ -115,7 +115,7 @@ class ArmBase:
     def _build_vcl_strategy(
         self, experiment: "Experiment", config: "VCLConfig"
     ) -> Any:
-        from bayescl.methods.vcl import VCLStrategy
+        from bayescl.vcl import VCLStrategy
 
         logger.info("Using Variational Continual Learning (VCL) strategy")
         return VCLStrategy(
