@@ -6,7 +6,13 @@ Continual diffusion: Continual customization of text-to-image diffusion with c-L
 """
 
 from ._config import CLoRAConfig
-from ._module import CLoRAAdapterFactory
+from ._module import CLoRAAdapterFactory, CLoRAConv2d, CLoRALinear
 from ._plugin import CLoRAPlugin
 
-__all__ = ["CLoRAConfig", "CLoRAPlugin", "CLoRAAdapterFactory"]
+__all__ = [
+    "CLoRAConfig",
+    "CLoRAPlugin",
+    "CLoRAAdapterFactory",
+    "CLoRAConv2d",
+    "CLoRALinear",
+]
