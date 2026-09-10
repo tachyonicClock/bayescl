@@ -21,7 +21,7 @@ from loguru import logger
 
 if TYPE_CHECKING:
     from bayescl.experiment import Experiment
-    from bayescl.spec import StrategyConfig
+    from bayescl.methods.vcl import VCLConfig
 
 ARMS: dict[str, type["ArmBase"]] = {}
 
@@ -113,7 +113,7 @@ class ArmBase:
         return Naive(**self._strategy_kwargs(experiment))
 
     def _build_vcl_strategy(
-        self, experiment: "Experiment", config: "StrategyConfig"
+        self, experiment: "Experiment", config: "VCLConfig"
     ) -> Any:
         from bayescl.methods.vcl import VCLStrategy
 

@@ -4,7 +4,7 @@ import torch
 from bayescl.methods._registry import ArmBase, register
 from bayescl.methods.tball import TBALLAdapterFactory, TBALLConfig
 from bayescl.peft import RegexFilter, add_adapters
-from bayescl.spec import VCLConfig
+from bayescl.methods.vcl import VCLConfig
 from loguru import logger
 
 

@@ -1,5 +1,6 @@
 import math
-from typing import Any, Callable, Tuple
+from dataclasses import dataclass
+from typing import Any, Callable, ClassVar, Tuple
 
 import torch
 from avalanche.training.supervised import Naive
@@ -9,13 +10,39 @@ from torch.nn.functional import nll_loss
 from torch.utils.tensorboard import SummaryWriter
 
 from bayescl.base import NumericError
-from bayescl.spec import VCLConfig
 from bayescl.vbnn import (
     kl_divergence,
     posterior_to_prior,
 )
 
 torch.autograd.set_detect_anomaly(True)
+
+
+@dataclass
+class VCLConfig:
+    """Variational Continual Learning strategy.
+
+    Requires a model or PEFT module that implements Bayesian layers.
+    """
+
+    beta: float = 1.0
+    """Hyperparameter weighting the KL divergence loss."""
+    train_samples: int = 1
+    """Number of samples for each step of training."""
+    test_samples: int = 5
+    """Number of samples for each step of testing."""
+    softmax_avg: bool = False
+    """If true, softmax then average, otherwise average then softmax."""
+    train_mask: bool = True
+    """Should a mask be used during training."""
+
+    type: ClassVar[str] = "VCL"
+
+    def __post_init__(self) -> None:
+        if self.train_samples < 1:
+            raise ValueError("train_samples must be at least 1")
+        if self.test_samples < 1:
+            raise ValueError("test_samples must be at least 1")
 
 
 class VCLStrategy(Naive):
