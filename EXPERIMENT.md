@@ -58,12 +58,26 @@ The primary endpoint, calculated on the validation split, is used for tuning eac
 
 - **Network/LoRA architecture**. All architectures apart from difference introduced by treatments are the same.
 - **Task Order**. With the exception of `dCLEAR10/10` whose task orderings are meaningful, task orders shall be shuffled across seeds.
+- **HP search budget**. The hyperparameter search budget for each method is fixed.
+  The search space itself will differ between treatments and may represent a harder of easier HPO problem.
+  
+### 2.3 Metadata
 
-### 2.3 Confounding
+- `parameter_count`. Measure parameter counts.
+  The treatments have different parameter counts. Controlling for this is not possible in this experiment. Instead we shall measure and report the parameter count.
+- `inference_time`. Measure inference time.
+  The treatments will take difference amounts of time.
+- `train_time`. Measure the training time.
+  The treatments will take different amounts of time to train/converge.
+- `exit_epoch`. Measure the epoch that the model early stops at.
+  The treatments will converge at different rates.
 
-- **Parameter count**
+### 2.3 Hyperparameter search
 
-### 2.3 Nuisance Variables
+Nuisance hyperparameter are controlled via hyperparameter search using Optuna (TPE search algorithm).
+Each treatment configures a search space in `bayescl/treatments/$TREATMENT/_arm.py`.
+The tune phase's objective is brier score on the holdout validation set.
+The validation set is also used for early stopping.
 
 ## 3. Datasets
 
@@ -99,14 +113,23 @@ The pilot's test set shall be recycled as training data.
 
 ## 4. Analysis
 
+Mann-Whitney test ($\alpha=0.05$) comparing all methods pairwise ($C(9,2)=36$ comparisons) with Holm-Bonferroni correction, ran for all primary and secondary endpoints.
+
+During the pilot the number of test runs shall be determined such that an effect size in accuracy of 2% can be determined reliably.
+
 ## 5. Protocol
 
-- Pilot:
-  - Set the appropriate number of epochs to ensure methods converge.
-  - Approximate standard deviations to ensure effects are likely measurable:
-    - Power Study.
-  - Validate configurations.
-    - Did anything not work at all?
+| Scale | HP Trials | Runs | Max Epochs   |
+| ----- | --------- | ---- | ------------ |
+| full  |         3 |    5 |          100 |
+| pilot |        50 |    ? | set by pilot |
+
+### 5.1 Pilot
+- Set the appropriate number of epochs to ensure methods converge.
+- Approximate standard deviations to ensure effects are likely measurable:
+  - Power Study.
+- Validate configurations.
+  - Did anything not work at all?
   - Keep costs down by running with reduce hp search trials.
 
 ```bash
@@ -114,9 +137,9 @@ The pilot's test set shall be recycled as training data.
 ./main.py test pilot $dataset $treatment
 ```
 
-- Study:
+### 5.2 Full
 
 ```bash
-./main.py full pilot $dataset $treatment
-./main.py full pilot $dataset $treatment
+./main.py tune full $dataset $treatment
+./main.py test full $dataset $treatment
 ```
