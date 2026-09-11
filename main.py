@@ -40,8 +40,8 @@ from bayescl.config import (
     scale_names,
 )
 from bayescl.experiment import Experiment
-from bayescl.treatments._registry import arm_names
 from bayescl.runio import append_jsonl, latest_run, read_jsonl, score, write_json
+from bayescl.treatments._registry import arm_names
 from bayescl.util.git import commit_message, commit_short_hash, is_git_status_clean
 
 _DATASET_PATH = os.environ.get("DATASETS")
@@ -154,7 +154,8 @@ def tune(scale, dataset, method, runs, dataset_path, device, sqlite):
         arm = type(base).suggest_config(trial, base)
         exp = Experiment(
             ExperimentConfig.from_spec(
-                ds, sc,
+                ds,
+                sc,
                 seed=trial.number,
                 validation=True,
                 run_dir=run_dir / f"trial_{trial.number:04d}",
@@ -296,7 +297,8 @@ def test(scale, dataset, method, runs, dataset_path, device, from_tune):
     for seed in range(sc.n_seeds):
         exp = Experiment(
             ExperimentConfig.from_spec(
-                ds, sc,
+                ds,
+                sc,
                 seed=seed,
                 validation=False,
                 run_dir=run_dir / f"seed_{seed:02d}",
