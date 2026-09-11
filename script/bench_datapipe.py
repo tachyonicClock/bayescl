@@ -65,7 +65,7 @@ def main():
 
     t = time.time()
     if args.dataset == "imagenetr":
-        ds = ImageNetR(transform=train_tf, train=True)
+        ds = ImageNetR(transform=train_tf)
     elif args.dataset == "core50":
         ds = CORe50Dataset(split="train&valid", transform=train_tf)
     else:

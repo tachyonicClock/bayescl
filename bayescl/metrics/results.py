@@ -6,7 +6,8 @@ from typing import Any, BinaryIO, Dict, List
 
 import numpy as np
 import torch
-from sklearn.metrics import brier_score_loss
+import torch.nn.functional as F
+from sklearn.metrics import brier_score_loss, roc_auc_score
 from torch import Tensor
 from torchmetrics.utilities.compute import normalize_logits_if_needed
 
@@ -183,6 +184,13 @@ class ContinualLearningEvaluator:
         self._y_true: Dict[tuple[int, int], List[Tensor]] = {}
         #: Dictionary mapping (train_task_idx, test_task_idx) to list of predicted logits
         self._y_logit: Dict[tuple[int, int], List[Tensor]] = {}
+        #: Dictionary mapping (severity, train_task_idx) to logits/labels on
+        #: seen-task samples replaced by a shifted version (``ece@$shift``).
+        self._shift_logit: Dict[tuple[int, int], List[Tensor]] = {}
+        self._shift_true: Dict[tuple[int, int], List[Tensor]] = {}
+        #: Dictionary mapping (ood_dataset_name, train_task_idx) to logits on
+        #: an auxiliary OOD dataset (``auroc_$ood_dataset``).
+        self._ood_logit: Dict[tuple[str, int], List[Tensor]] = {}
         self._start_time = time.perf_counter()
 
     @torch.no_grad()
@@ -210,6 +218,24 @@ class ContinualLearningEvaluator:
             torch.tensor(1, dtype=torch.long),
             accumulate=True,
         )
+
+    @torch.no_grad()
+    def record_shift(
+        self, severity: int, train_task_idx: int, y_logit: Tensor, y_true: Tensor
+    ) -> None:
+        """Record predictions on seen-task samples replaced by a version
+        corrupted at ``severity`` (EXPERIMENT.md ยง2.1, ``ece@$shift``/``ace@$shift``).
+        """
+        key = (severity, train_task_idx)
+        self._shift_logit.setdefault(key, []).append(y_logit.cpu())
+        self._shift_true.setdefault(key, []).append(y_true.cpu())
+
+    @torch.no_grad()
+    def record_ood(self, name: str, train_task_idx: int, y_logit: Tensor) -> None:
+        """Record predictions on an auxiliary out-of-distribution dataset
+        (EXPERIMENT.md ยง2.1, ``auroc_$ood_dataset``)."""
+        key = (name, train_task_idx)
+        self._ood_logit.setdefault(key, []).append(y_logit.cpu())
 
     @torch.no_grad()
     def intermediate_result(self, t: int) -> tuple[float, float]:
@@ -291,9 +317,33 @@ class ContinualLearningEvaluator:
 
     @staticmethod
     def brier(y_logit: Tensor, y_true: Tensor) -> float:
-        """Brier score."""
+        """Brier score.
+
+        Passes ``labels`` explicitly: sklearn otherwise infers the class set
+        from ``y_true`` alone, which breaks as soon as a batch doesn't
+        contain every class -- always true for ``brier_seen`` early in
+        training, when only a handful of tasks (hence classes) have been seen.
+        """
         y_prob = normalize_logits_if_needed(y_logit, "softmax")
-        return float(brier_score_loss(y_true.numpy(), y_prob.numpy()))
+        labels = list(range(y_logit.shape[1]))
+        return float(brier_score_loss(y_true.numpy(), y_prob.numpy(), labels=labels))
+
+    @staticmethod
+    def nll(y_logit: Tensor, y_true: Tensor) -> float:
+        """Mean negative log-likelihood."""
+        log_prob = F.log_softmax(y_logit, dim=1)
+        return float(F.nll_loss(log_prob, y_true))
+
+    @staticmethod
+    def auroc(id_logit: Tensor, ood_logit: Tensor) -> float:
+        """AUROC distinguishing in-distribution (``id_logit``) samples from
+        out-of-distribution (``ood_logit``) samples, scored by max softmax
+        probability with in-distribution as the positive class."""
+        id_score = normalize_logits_if_needed(id_logit, "softmax").amax(dim=1)
+        ood_score = normalize_logits_if_needed(ood_logit, "softmax").amax(dim=1)
+        score = torch.cat([id_score, ood_score]).numpy()
+        label = np.concatenate([np.ones(id_score.shape[0]), np.zeros(ood_score.shape[0])])
+        return float(roc_auc_score(label, score))
 
     @torch.no_grad()
     def result(self) -> tuple[Dict[str, Any], Dict[str, Any]]:
@@ -332,8 +382,10 @@ class ContinualLearningEvaluator:
         ace_seen = np.zeros(self._task_count)
         sce_all = np.zeros(self._task_count)
         sce_seen = np.zeros(self._task_count)
-        # brier_seen = np.zeros(self._task_count)
         brier_all = np.zeros(self._task_count)
+        brier_seen = np.zeros(self._task_count)
+        nll_all = np.zeros(self._task_count)
+        nll_seen = np.zeros(self._task_count)
         for t in range(self._task_count):
             ece_all[t] = self.ece(y_logit_all[t], y_true_all[t])
             ece_seen[t] = self.ece(y_logit_seen[t], y_true_seen[t])
@@ -342,7 +394,9 @@ class ContinualLearningEvaluator:
             sce_all[t] = self.sce(y_logit_all[t], y_true_all[t])
             sce_seen[t] = self.sce(y_logit_seen[t], y_true_seen[t])
             brier_all[t] = self.brier(y_logit_all[t], y_true_all[t])
-            # brier_seen[t] = self.brier(y_logit_seen[t], y_true_seen[t])
+            brier_seen[t] = self.brier(y_logit_seen[t], y_true_seen[t])
+            nll_all[t] = self.nll(y_logit_all[t], y_true_all[t])
+            nll_seen[t] = self.nll(y_logit_seen[t], y_true_seen[t])
 
         correct = self._big_r.diagonal(dim1=2, dim2=3).sum(dim=-1)
         total = self._big_r.sum(dim=(2, 3))
@@ -366,9 +420,65 @@ class ContinualLearningEvaluator:
             "sce_final": sce_all[-1],
             "brier_all": brier_all,
             "brier_all_avg": brier_all.mean(),
+            "brier_seen": brier_seen,
+            "brier_seen_avg": brier_seen.mean(),
             "brier_final": brier_all[-1],
+            "nll_all": nll_all,
+            "nll_all_avg": nll_all.mean(),
+            "nll_seen": nll_seen,
+            "nll_seen_avg": nll_seen.mean(),
+            "nll_final": nll_all[-1],
             "duration_s": time.perf_counter() - self._start_time,
         }
+
+        T = self._task_count
+        # auroc_future: seen tasks vs. pooled future tasks at each checkpoint,
+        # excluding the final checkpoint (which has no future tasks left).
+        if T > 1:
+            auroc_future = np.array(
+                [
+                    self.auroc(
+                        torch.cat([y_logit[(t, j)] for j in range(t + 1)], dim=0),
+                        torch.cat([y_logit[(t, j)] for j in range(t + 1, T)], dim=0),
+                    )
+                    for t in range(T - 1)
+                ]
+            )
+            metrics["auroc_future"] = auroc_future
+            metrics["auroc_future_avg"] = auroc_future.mean()
+
+        # auroc_$ood_dataset: seen tasks vs. an auxiliary OOD dataset, at every
+        # checkpoint it was recorded at (see MetricsPlugin.capture / Experiment.run).
+        ood_names = sorted({name for name, _ in self._ood_logit})
+        for name in ood_names:
+            values = [
+                self.auroc(y_logit_seen[t], torch.cat(self._ood_logit[(name, t)], dim=0))
+                for t in range(T)
+                if (name, t) in self._ood_logit
+            ]
+            if values:
+                metrics[f"auroc_{name}"] = np.array(values)
+                metrics[f"auroc_{name}_avg"] = float(np.mean(values))
+
+        # ece@$shift / ace@$shift: seen-task samples replaced by a corrupted
+        # version at a given severity, at every checkpoint it was recorded at.
+        severities = sorted({severity for severity, _ in self._shift_logit})
+        for severity in severities:
+            ece_values, ace_values = [], []
+            for t in range(T):
+                key = (severity, t)
+                if key not in self._shift_logit:
+                    continue
+                shift_logit = torch.cat(self._shift_logit[key], dim=0)
+                shift_true = torch.cat(self._shift_true[key], dim=0)
+                ece_values.append(self.ece(shift_logit, shift_true))
+                ace_values.append(self.ace(shift_logit, shift_true))
+            if ece_values:
+                metrics[f"ece_shift_{severity}"] = np.array(ece_values)
+                metrics[f"ece_shift_{severity}_avg"] = float(np.mean(ece_values))
+                metrics[f"ace_shift_{severity}"] = np.array(ace_values)
+                metrics[f"ace_shift_{severity}_avg"] = float(np.mean(ace_values))
+
         raw_data = {
             "R": self._big_r.cpu().numpy().astype(np.int32),
             "y_true": {

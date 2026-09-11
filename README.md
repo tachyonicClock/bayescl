@@ -38,7 +38,7 @@ main.py <tune|test> <pilot|full> <dataset> <method>
 
 - `scale` — `pilot` is a fast smoke run (few trials, few epochs, one seed);
   `full` is the paper-quality budget (see `bayescl/config.py`).
-- `dataset` — one of `cifar100`, `core50`, `imagenetr`.
+- `dataset` — one of `cifar100`, `core50`, `imagenetr`, `clear10`.
 - `method` — one of `ball`, `clora`, `ewc`, `inflora`, `lora`, `rwalk`,
   `sdlora`, `tball`, `tball-mnd`.
 

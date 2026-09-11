@@ -53,6 +53,7 @@ DATASETS: dict[str, Dataset] = {
     # default 4 (measured ~1.8x from 4->8 workers on both pipelines).
     "core50": Dataset("core50", "CORe50", full_epochs=30, num_workers=8),
     "imagenetr": Dataset("imagenetr", "ImageNetR", full_epochs=60, num_workers=8),
+    "clear10": Dataset("clear10", "CLEAR10", full_epochs=60, num_workers=8),
 }
 
 
@@ -110,6 +111,7 @@ class ExperimentConfig:
     dataset_root: Path
     standardize: bool
     validation: bool
+    scale: str
     backbone_name: str
     freeze_backbone: bool
     adapter_filter: str
@@ -142,6 +144,7 @@ class ExperimentConfig:
             dataset_root=Path(dataset_root),
             standardize=dataset.standardize,
             validation=validation,
+            scale=scale.key,
             backbone_name=backbone.name,
             freeze_backbone=backbone.freeze_backbone,
             adapter_filter=backbone.adapter_filter,

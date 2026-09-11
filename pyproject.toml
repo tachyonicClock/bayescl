@@ -22,7 +22,12 @@ dependencies = [
     "transformers==4.47.1",
     "datasets>=5.0.1",
     "pytest>=9.1.1",
+    "scikit-image>=0.24",
+    "scipy>=1.13",
 ]
 
 [tool.uv.sources]
 bayesianize = { git = "https://github.com/microsoft/bayesianize.git", rev = "6aab95e" }
+
+[tool.pytest.ini_options]
+pythonpath = ["."]

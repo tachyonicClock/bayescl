@@ -17,12 +17,15 @@ from avalanche.benchmarks import (
     CLScenario,
     nc_benchmark,
 )
+from avalanche.benchmarks.scenarios.deprecated.generic_benchmark_creation import (
+    create_generic_benchmark_from_paths,
+)
 
-from datasets import load_dataset
+from datasets import concatenate_datasets, load_dataset
 from loguru import logger
 from PIL import Image
 from torch.utils.data import Dataset, Subset
-from torchvision.datasets import CIFAR100, ImageFolder
+from torchvision.datasets import ImageFolder
 
 
 def datasets_path() -> str:
@@ -43,7 +46,7 @@ def hf_cache_dir() -> str:
 
 
 @lru_cache(maxsize=None)
-def _load_hf(repo: str, split: str):
+def _load_hf(repo: str, split: str, name: str | None = None):
     """Load and cache a Hugging Face dataset split for the lifetime of the process.
 
     ``Split*`` helpers instantiate each dataset class two or three times (a length
@@ -51,35 +54,46 @@ def _load_hf(repo: str, split: str):
     re-open the Arrow table and re-run the class-balanced split. The cache is
     populated in the parent process before ``DataLoader`` workers fork, so workers
     inherit it for free; the underlying Arrow data is memory-mapped, not copied.
+
+    ``name`` selects a dataset config (e.g. SVHN's ``cropped_digits`` vs.
+    ``full_numbers``); most repos have only one and leave it ``None``.
     """
-    return load_dataset(repo, split=split, cache_dir=hf_cache_dir())
+    return load_dataset(repo, name, split=split, cache_dir=hf_cache_dir())
 
 
 @lru_cache(maxsize=None)
-def _imagenetr_split() -> tuple[Any, list[str], dict[str, int], list[int], list[int], list[int]]:
+def _imagenetr_targets() -> tuple[list[str], dict[str, int], list[int]]:
     ds = _load_hf(ImageNetR.HF_REPO, "test")
     classes = sorted(set(ds["wnid"]))
     wnid_to_idx = {wnid: i for i, wnid in enumerate(classes)}
     all_targets = [wnid_to_idx[wnid] for wnid in ds["wnid"]]
-    train_idx, test_idx = class_balanced_split(all_targets, 0.2, seed=0)
-    return (
-        ds,
-        classes,
-        wnid_to_idx,
-        all_targets,
-        [int(i) for i in train_idx],
-        [int(i) for i in test_idx],
-    )
+    return classes, wnid_to_idx, all_targets
+
+
+#: iImageNet-R200/10 split sizes (EXPERIMENT.md ยง4): the Hub dataset's single
+#: 30,000-image pool, class-balanced into train/valid/pilot_test/full_test.
+IMAGENETR_SPLIT_SIZES = {
+    "valid": 1250,
+    "pilot_test": 1250,
+    "full_test": 2500,
+    "train": 25000,
+}
+
+
+@lru_cache(maxsize=None)
+def _imagenetr_split_indices() -> dict[str, list[int]]:
+    _, _, all_targets = _imagenetr_targets()
+    return split_named(all_targets, IMAGENETR_SPLIT_SIZES, seed=0)
 
 
 class ImageNetR(Dataset):
     """ImageNet-R(endition) hosted on the Hugging Face Hub (``axiong/imagenet-r``).
 
     The Hub dataset ships a single ``test`` split of 30,000 images labelled by
-    WordNet id. Integer labels are derived from the sorted list of WordNet ids and
-    a deterministic class-balanced 80/20 split yields ~24,000 train / ~6,000 test
-    images (the per-class counts are not exactly equal, so the split is not a clean
-    150/30).
+    WordNet id; integer labels are derived from the sorted list of WordNet ids.
+    Exposes the full 30,000-image pool -- use :func:`split_named` /
+    :data:`IMAGENETR_SPLIT_SIZES` (see :func:`SplitImageNetR`) to carve out
+    train/valid/pilot_test/full_test partitions.
     """
 
     HF_REPO = "axiong/imagenet-r"
@@ -89,15 +103,12 @@ class ImageNetR(Dataset):
         root: str | Path | None = None,
         transform: Callable[..., Any] | None = None,
         target_transform: Callable[..., Any] | None = None,
-        train: bool = True,
     ):
-        ds, classes, wnid_to_idx, all_targets, train_idx, test_idx = _imagenetr_split()
+        classes, wnid_to_idx, all_targets = _imagenetr_targets()
         self.classes = classes
         self._wnid_to_idx = wnid_to_idx
-
-        idx = train_idx if train else test_idx
-        self._ds = ds.select(idx)
-        self.targets = [all_targets[i] for i in idx]
+        self._ds = _load_hf(self.HF_REPO, "test")
+        self.targets = all_targets
         self.transform = transform
         self.target_transform = target_transform
 
@@ -267,17 +278,98 @@ def class_balanced_split(
     return train_indices, valid_indices  # type: ignore
 
 
+def split_named(
+    targets: Sequence[int],
+    sizes: dict[str, int],
+    seed: int = 0,
+) -> dict[str, list[int]]:
+    """Class-balanced partition of ``targets`` into named splits of the given sizes.
+
+    Within each class, a share proportional to ``total/len(targets)`` is kept
+    (dropping the rest if ``total < len(targets)``) and apportioned among the
+    named splits by the largest-remainder method, so aggregate split sizes land
+    within a sample or two of ``sizes`` even for skewed per-class counts --
+    unlike sequential fractional peeling, whose truncation error compounds
+    across classes and splits. ``sum(sizes.values())`` must not exceed
+    ``len(targets)``.
+    """
+    total = sum(sizes.values())
+    n = len(targets)
+    assert total <= n, f"requested {total} samples from a pool of only {n}"
+    names = list(sizes)
+    fracs = [sizes[name] / total for name in names]
+
+    targets_t = torch.tensor(targets).int()
+    classes = torch.unique(targets_t)
+    rng = torch.Generator().manual_seed(seed)
+    out: dict[str, list[int]] = {name: [] for name in names}
+    for c in classes:
+        class_idx = torch.where(targets_t == c)[0]
+        class_idx = class_idx[torch.randperm(len(class_idx), generator=rng)]
+        keep = min(len(class_idx), round(len(class_idx) * total / n))
+        kept = class_idx[:keep]
+
+        raw = [keep * f for f in fracs]
+        counts = [int(x) for x in raw]
+        remainder = keep - sum(counts)
+        # Give the leftover units to the splits with the largest fractional
+        # part, so per-class allocations sum to ``keep`` exactly and aggregate
+        # split sizes converge to ``sizes`` rather than always rounding down.
+        order = sorted(range(len(names)), key=lambda i: raw[i] - counts[i], reverse=True)
+        for i in order[:remainder]:
+            counts[i] += 1
+
+        cursor = 0
+        for name, count in zip(names, counts):
+            out[name].extend(int(i) for i in kept[cursor : cursor + count])
+            cursor += count
+
+    logger.info(
+        f"Splitting {n} samples into {({k: len(v) for k, v in out.items()})} with class balance"
+    )
+    return out
+
+
+def resolve_split_indices(
+    named: dict[str, Sequence[int]],
+    scale: Literal["pilot", "full"],
+    validation: bool,
+) -> tuple[list[int], list[int]]:
+    """Resolve named train/valid/pilot_test/full_test partitions into a
+    ``(train, eval)`` index pair for a given scale and stage.
+
+    At ``full`` scale, the pilot's test set is recycled into the training pool
+    since it is no longer needed for evaluation once the pilot has validated
+    the setup (EXPERIMENT.md ยง4). ``validation`` selects the held-out ``valid``
+    split (used for tuning/early stopping) instead of the scale's test split.
+    """
+    train = list(named["train"])
+    if scale == "full":
+        train = train + list(named["pilot_test"])
+    if validation:
+        eval_ = named["valid"]
+    else:
+        eval_ = named["full_test"] if scale == "full" else named["pilot_test"]
+    return train, list(eval_)
+
+
 def SplitImageNetR(
     dataset_root: str | Path = datasets_path(),
-    n_experiences: int = 20,
+    n_experiences: int = 10,
     train_transform: Callable[..., Any] | None = None,
     eval_transform: Callable[..., Any] | None = None,
     seed: int | None = None,
     return_task_id: bool = False,
     shuffle: bool = True,
-    validation_set: float = 0.0,
+    scale: Literal["pilot", "full"] = "full",
+    validation: bool = False,
 ) -> CLScenario:
-    """Create SplitImageNetR200 by splitting ImageNet-R(endition)[#f1].
+    """Create iImageNet-R200/10 by splitting ImageNet-R(endition)[#f1] (EXPERIMENT.md ยง4).
+
+    The Hub dataset's single 30,000-image pool is class-balanced into
+    train/valid/pilot_test/full_test (:data:`IMAGENETR_SPLIT_SIZES`); ``scale``
+    and ``validation`` select which partitions become the train/eval streams
+    (see :func:`resolve_split_indices`).
 
     >>> benchmark = SplitImageNetR()
     >>> for experience in benchmark.train_stream:
@@ -295,22 +387,15 @@ def SplitImageNetR(
         of out-of-distribution generalization." Proceedings of the IEEE/CVF
         international conference on computer vision. 2021.
     """
-    if validation_set <= 0.0:
-        train_dataset = ImageNetR(dataset_root, train_transform, train=True)
-        test_dataset = ImageNetR(dataset_root, eval_transform, train=False)
-    else:
-        n = len(ImageNetR(dataset_root, train=True))
-        train_perm, test_perm = valid_split_indices(n, validation_set)
-        train_dataset = Subset(
-            ImageNetR(dataset_root, train_transform, train=True), train_perm
-        )  # type: ignore
-        test_dataset = Subset(
-            ImageNetR(dataset_root, eval_transform, train=True), test_perm
-        )  # type: ignore
+    train_idx, eval_idx = resolve_split_indices(
+        _imagenetr_split_indices(), scale, validation
+    )
+    train_dataset = Subset(ImageNetR(dataset_root, train_transform), train_idx)
+    eval_dataset = Subset(ImageNetR(dataset_root, eval_transform), eval_idx)
 
     return nc_benchmark(
         train_dataset=train_dataset,  # type: ignore
-        test_dataset=test_dataset,  # type: ignore
+        test_dataset=eval_dataset,  # type: ignore
         n_experiences=n_experiences,
         task_labels=return_task_id,
         seed=seed,
@@ -367,39 +452,350 @@ def SplitDomainNet(
     )
 
 
+@lru_cache(maxsize=None)
+def _cifar100_pool():
+    """The combined 60,000-image CIFAR-100 pool (Hub train + test splits).
+
+    EXPERIMENT.md ยง4 re-partitions CIFAR-100 into train/valid/pilot_test/
+    full_test from scratch (40k/5k/5k/10k) rather than reusing the dataset's
+    canonical 50k/10k train/test boundary, so pilot_test and full_test are a
+    disjoint split of a dedicated "test" pool instead of full_test being the
+    stock test set with pilot_test carved out of train.
+    """
+    return concatenate_datasets(
+        [_load_hf(CIFAR100Dataset.HF_REPO, "train"), _load_hf(CIFAR100Dataset.HF_REPO, "test")]
+    )
+
+
+@lru_cache(maxsize=None)
+def _cifar100_pool_targets() -> list[int]:
+    return [int(x) for x in _cifar100_pool()["fine_label"]]
+
+
+#: iCIFAR100/10 split sizes (EXPERIMENT.md ยง4).
+CIFAR100_SPLIT_SIZES = {"valid": 5000, "pilot_test": 5000, "full_test": 10000, "train": 40000}
+
+
+@lru_cache(maxsize=None)
+def _cifar100_split_indices() -> dict[str, list[int]]:
+    return split_named(_cifar100_pool_targets(), CIFAR100_SPLIT_SIZES, seed=0)
+
+
+class CIFAR100Dataset(Dataset):
+    """CIFAR-100 hosted on the Hugging Face Hub (``uoft-cs/cifar100``).
+
+    Exposes the full 60,000-image pool (Hub train + test splits combined) --
+    use :func:`split_named` / :data:`CIFAR100_SPLIT_SIZES` (see
+    :func:`SplitCIFAR100`) to carve out train/valid/pilot_test/full_test
+    partitions.
+    """
+
+    HF_REPO = "uoft-cs/cifar100"
+
+    def __init__(
+        self,
+        root: str | Path | None = None,
+        transform: Callable[..., Any] | None = None,
+    ):
+        self._ds = _cifar100_pool()
+        self.targets = _cifar100_pool_targets()
+        self.classes = list(range(100))
+        self.transform = transform
+
+    def __len__(self) -> int:
+        return len(self._ds)
+
+    def __getitem__(self, index: int) -> tuple[Any, int]:
+        row = self._ds[int(index)]
+        image = row["img"]
+        if image.mode != "RGB":
+            image = image.convert("RGB")
+        target = int(row["fine_label"])
+
+        if self.transform is not None:
+            image = self.transform(image)
+
+        return image, target
+
+
 def SplitCIFAR100(
     dataset_root: str | Path = datasets_path(),
-    n_experiences: int = 5,
+    n_experiences: int = 10,
     train_transform: Callable[..., Any] | None = None,
     eval_transform: Callable[..., Any] | None = None,
     seed: int | None = None,
     return_task_id: bool = False,
     shuffle: bool = True,
-    validation_set: float = 0.0,
+    scale: Literal["pilot", "full"] = "full",
+    validation: bool = False,
 ) -> CLScenario:
-    # Create train/test splits
-    n = 50000
-    if validation_set <= 0.0:
-        train_dataset = CIFAR100(dataset_root, train=True, transform=train_transform)  # type: ignore
-        test_dataset = CIFAR100(dataset_root, train=False, transform=eval_transform)  # type: ignore
-        assert len(train_dataset) == n
-    else:
-        train_perm, test_perm = valid_split_indices(n, validation_set)
-        train_dataset = Subset(
-            CIFAR100(dataset_root, train=True, transform=train_transform), train_perm
-        )
-        test_dataset = Subset(
-            CIFAR100(dataset_root, train=True, transform=eval_transform), test_perm
-        )
+    """Create iCIFAR100/10 by splitting CIFAR-100 (EXPERIMENT.md ยง4).
+
+    The combined 60,000-image pool is class-balanced into train/valid/
+    pilot_test/full_test (:data:`CIFAR100_SPLIT_SIZES`); ``scale`` and
+    ``validation`` select which partitions become the train/eval streams
+    (see :func:`resolve_split_indices`).
+    """
+    train_idx, eval_idx = resolve_split_indices(
+        _cifar100_split_indices(), scale, validation
+    )
+    train_dataset = Subset(CIFAR100Dataset(dataset_root, train_transform), train_idx)
+    eval_dataset = Subset(CIFAR100Dataset(dataset_root, eval_transform), eval_idx)
 
     return nc_benchmark(
         train_dataset=train_dataset,  # type: ignore
-        test_dataset=test_dataset,  # type: ignore
+        test_dataset=eval_dataset,  # type: ignore
         n_experiences=n_experiences,
         task_labels=return_task_id,
         seed=seed,
         shuffle=shuffle,
     )
+
+
+#: dCLEAR10/10 split fractions (EXPERIMENT.md ยง4): same proportions as
+#: iImageNet-R200/10 (25000/1250/1250/2500 over a 30,000-image pool), applied
+#: per time bucket since every bucket must keep its own class balance.
+#: Per-bucket share of dCLEAR10/10's train/valid/pilot_test/full_test totals
+#: (25000/1250/1250/2500 over 10 domains -- same totals as iImageNet-R200/10,
+#: divided evenly across the 10 buckets). CLEAR10's raw buckets are far larger
+#: than 3,000 images each, so :func:`split_named` also subsamples every bucket
+#: down to this per-bucket total.
+CLEAR10_SPLIT_SIZES = {"valid": 125, "pilot_test": 125, "full_test": 250, "train": 2500}
+
+
+def _patch_clear10_download_urls() -> None:
+    """Work around a URL bug in avalanche 0.6.0's ``clear_data.clear10`` entries.
+
+    Each entry's ``base_url`` already includes the filename (e.g. ``.../
+    clear10-train.zip``), but ``CLEARDataset._download_dataset`` does
+    ``os.path.join(base_url, name)``, appending the filename a second time and
+    404ing. The sibling ``clear10_neurips2021``/``clear100_cvpr2022`` entries
+    don't have this bug since their ``base_url`` correctly ends in ``main/``.
+    """
+    from avalanche.benchmarks.datasets.clear import clear_data
+
+    if clear_data.clear10[0][1].endswith(".zip"):
+        clear_data.clear10 = [
+            (name, url.rsplit("/", 1)[0] + "/") for name, url in clear_data.clear10
+        ]
+
+
+@lru_cache(maxsize=None)
+def _clear10_buckets(
+    dataset_root: str | Path = datasets_path(),
+) -> tuple[tuple[tuple[str, int], ...], ...]:
+    """Download CLEAR10 (Lin et al., 2021) and drop the 11th "BACKGROUND" class.
+
+    The Hub release actually ships 11 time buckets (0-10), but bucket 0 only
+    has metadata under ``test/`` -- ``train/`` starts at bucket 1 -- so it's a
+    test-only reference bucket that was never meant to be trained on. Dropping
+    it leaves exactly the 10 trainable domains EXPERIMENT.md ยง4 calls for.
+
+    Returns 10 time buckets, each a tuple of ``(image_path, class_idx)`` with
+    class indices remapped to the remaining 10 (non-background) classes.
+    """
+    _patch_clear10_download_urls()
+    from avalanche.benchmarks.datasets.clear import _CLEARImage
+
+    root = Path(dataset_root) / "clear10"
+    ds = _CLEARImage(
+        root=str(root), data_name="clear10", download=True, split="all", seed=None
+    )
+
+    background = next(
+        i for i, name in enumerate(ds.class_names) if name.strip().upper() == "BACKGROUND"
+    )
+    remap = {
+        old: new
+        for new, old in enumerate(i for i in range(len(ds.class_names)) if i != background)
+    }
+
+    all_buckets = ds.get_paths_and_targets(root_appended=True)
+    assert len(all_buckets) == 11, (
+        f"expected CLEAR10's usual 11 raw time buckets (dropping the test-only "
+        f"bucket 0 leaves the 10 EXPERIMENT.md domains), got {len(all_buckets)}"
+    )
+
+    return tuple(
+        tuple(
+            (str(path), remap[target])
+            for path, target in bucket
+            if target != background
+        )
+        for bucket in all_buckets[1:]
+    )
+
+
+@lru_cache(maxsize=None)
+def _clear10_bucket_splits() -> tuple[dict[str, list[int]], ...]:
+    buckets = _clear10_buckets()
+    return tuple(
+        split_named([target for _, target in bucket], CLEAR10_SPLIT_SIZES, seed=i)
+        for i, bucket in enumerate(buckets)
+    )
+
+
+def SplitCLEAR10(
+    dataset_root: str | Path = datasets_path(),
+    train_transform: Callable[..., Any] | None = None,
+    eval_transform: Callable[..., Any] | None = None,
+    return_task_id: bool = False,
+    scale: Literal["pilot", "full"] = "full",
+    validation: bool = False,
+) -> CLScenario:
+    """Create dCLEAR10/10, a domain-incremental scenario over CLEAR10's 10 time
+    buckets (Lin et al., 2021)[#f1], excluding the 11th "BACKGROUND" class
+    (EXPERIMENT.md ยง4).
+
+    Unlike the class-incremental Split* benchmarks above, every bucket
+    contains all 10 (non-background) classes, so experiences are the dataset's
+    native time buckets rather than an ``nc_benchmark`` class partition. Each
+    bucket is independently class-balanced into train/valid/pilot_test/
+    full_test in the same proportions as iImageNet-R200/10; ``scale`` and
+    ``validation`` select which partitions become the train/eval streams (see
+    :func:`resolve_split_indices`).
+
+    .. [#f1] Lin, Zhiqiu, et al. "The CLEAR Benchmark: Continual LEArning on
+        Real-World Imagery." NeurIPS Datasets and Benchmarks. 2021.
+    """
+    buckets = _clear10_buckets(dataset_root)
+    bucket_splits = _clear10_bucket_splits()
+
+    train_paths: list[list[tuple[str, int]]] = []
+    eval_paths: list[list[tuple[str, int]]] = []
+    for bucket, named in zip(buckets, bucket_splits):
+        train_idx, eval_idx = resolve_split_indices(named, scale, validation)
+        train_paths.append([bucket[i] for i in train_idx])
+        eval_paths.append([bucket[i] for i in eval_idx])
+
+    task_labels = list(range(len(buckets))) if return_task_id else [0] * len(buckets)
+    benchmark = create_generic_benchmark_from_paths(
+        train_paths,
+        eval_paths,
+        task_labels=task_labels,
+        complete_test_set_only=False,
+        train_transform=train_transform,
+        eval_transform=eval_transform,
+    )
+    # Unlike NCScenario, the generic path-based scenario doesn't compute this
+    # itself, but Experiment relies on ``benchmark.n_classes``.
+    benchmark.n_classes = 1 + max(target for bucket in buckets for _, target in bucket)
+    return benchmark
+
+
+#: OOD dataset split sizes (EXPERIMENT.md ยง4.1). There's no train/valid
+#: partition -- these datasets are only ever used as auxiliary
+#: out-of-distribution eval sets, never trained on.
+OOD_SPLIT_SIZES = {"pilot_test": 5000, "full_test": 5000}
+
+
+class CIFAR10Dataset(Dataset):
+    """CIFAR-10 test split hosted on the Hugging Face Hub (``uoft-cs/cifar10``).
+
+    Used as an auxiliary out-of-distribution dataset (EXPERIMENT.md ยง4.1); see
+    :func:`get_ood_dataset`.
+    """
+
+    HF_REPO = "uoft-cs/cifar10"
+
+    def __init__(
+        self,
+        root: str | Path | None = None,
+        transform: Callable[..., Any] | None = None,
+    ):
+        self._ds = _load_hf(self.HF_REPO, "test")
+        self.targets = [int(x) for x in self._ds["label"]]
+        self.classes = list(range(10))
+        self.transform = transform
+
+    def __len__(self) -> int:
+        return len(self._ds)
+
+    def __getitem__(self, index: int) -> tuple[Any, int]:
+        row = self._ds[int(index)]
+        image = row["img"]
+        if image.mode != "RGB":
+            image = image.convert("RGB")
+        target = int(row["label"])
+
+        if self.transform is not None:
+            image = self.transform(image)
+
+        return image, target
+
+
+class SVHNDataset(Dataset):
+    """SVHN ``cropped_digits`` test split, hosted on the Hugging Face Hub
+    (``ufldl-stanford/svhn``).
+
+    Used as an auxiliary out-of-distribution dataset (EXPERIMENT.md ยง4.1); see
+    :func:`get_ood_dataset`.
+    """
+
+    HF_REPO = "ufldl-stanford/svhn"
+
+    def __init__(
+        self,
+        root: str | Path | None = None,
+        transform: Callable[..., Any] | None = None,
+    ):
+        self._ds = _load_hf(self.HF_REPO, "test", name="cropped_digits")
+        self.targets = [int(x) for x in self._ds["label"]]
+        self.classes = list(range(10))
+        self.transform = transform
+
+    def __len__(self) -> int:
+        return len(self._ds)
+
+    def __getitem__(self, index: int) -> tuple[Any, int]:
+        row = self._ds[int(index)]
+        image = row["image"]
+        if image.mode != "RGB":
+            image = image.convert("RGB")
+        target = int(row["label"])
+
+        if self.transform is not None:
+            image = self.transform(image)
+
+        return image, target
+
+
+_OOD_DATASETS: dict[str, type[Dataset]] = {
+    "svhn": SVHNDataset,
+    "cifar10": CIFAR10Dataset,
+}
+
+
+@lru_cache(maxsize=None)
+def _ood_split_indices(name: str) -> dict[str, list[int]]:
+    dataset_cls = _OOD_DATASETS[name]
+    targets = dataset_cls().targets
+    return split_named(targets, OOD_SPLIT_SIZES, seed=0)
+
+
+def ood_dataset_names() -> list[str]:
+    return list(_OOD_DATASETS)
+
+
+def get_ood_dataset(
+    name: str,
+    scale: Literal["pilot", "full"],
+    dataset_root: str | Path = datasets_path(),
+    transform: Callable[..., Any] | None = None,
+) -> Dataset:
+    """Load an auxiliary out-of-distribution split (EXPERIMENT.md ยง4.1).
+
+    Used to compute ``auroc_$ood_dataset``: seen-task samples vs. this dataset,
+    scored by max softmax probability. ``scale`` selects the disjoint
+    pilot_test/full_test partition, matching the primary datasets' pilot/full
+    protocol -- there's no recycling here since OOD sets are never trained on.
+    """
+    indices = _ood_split_indices(name)[f"{scale}_test"]
+    return Subset(_OOD_DATASETS[name](dataset_root, transform), indices)
+
+
+#: Corruption severities used for ``ece@$shift``/``ace@$shift`` (EXPERIMENT.md ยง4.2).
+SHIFT_SEVERITIES = [1, 2, 3, 4, 5]
 
 
 def SplitCORe50(

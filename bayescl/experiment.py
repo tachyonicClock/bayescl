@@ -13,6 +13,9 @@ from typing import Any, Dict, List, Sequence
 import numpy as np
 import optuna
 import torch
+from avalanche.benchmarks.scenarios.deprecated.generic_benchmark_creation import (
+    create_multi_dataset_generic_benchmark,
+)
 from avalanche.evaluation.metrics import (
     StreamConfusionMatrix,
     accuracy_metrics,
@@ -26,9 +29,11 @@ from loguru import logger
 from optuna import Trial
 from setproctitle import setproctitle
 from torch import BoolTensor
+from torch.utils.data import ConcatDataset
 
-from bayescl.benchmark import get_benchmark
+from bayescl.benchmark import ShiftedTensorDataset, eval_transform_for, get_benchmark
 from bayescl.config import ExperimentConfig
+from bayescl.datasets import SHIFT_SEVERITIES, get_ood_dataset, ood_dataset_names
 from bayescl.metrics.ece import (
     ExpectedCalibrationError,
 )
@@ -154,12 +159,71 @@ class Experiment:
     def _config(self) -> dict:
         return asdict(self.config)
 
+    def _ood_test_streams(self) -> Dict[str, Any]:
+        """One-experience test stream per auxiliary OOD dataset (EXPERIMENT.md ยง4.1)."""
+        eval_transform = eval_transform_for(self.config)
+        streams = {}
+        for name in ood_dataset_names():
+            ood_dataset = get_ood_dataset(
+                name, self.config.scale, self.config.dataset_root, eval_transform
+            )
+            benchmark = create_multi_dataset_generic_benchmark(
+                train_datasets=[ood_dataset],
+                test_datasets=[ood_dataset],
+                complete_test_set_only=True,
+            )
+            streams[name] = benchmark.test_stream
+        return streams
+
+    def _shift_test_stream(self, severity: int, seen_task_count: int) -> Any:
+        """One-experience test stream of seen-task samples corrupted at
+        ``severity`` (EXPERIMENT.md ยง4.2, the ``ece@$shift``/``ace@$shift`` data)."""
+        shifted = [
+            ShiftedTensorDataset(
+                self.benchmark.test_stream[i].dataset, severity, self.config.standardize
+            )
+            for i in range(seen_task_count)
+        ]
+        combined = shifted[0] if len(shifted) == 1 else ConcatDataset(shifted)
+        benchmark = create_multi_dataset_generic_benchmark(
+            train_datasets=[combined],
+            test_datasets=[combined],
+            complete_test_set_only=True,
+        )
+        return benchmark.test_stream
+
+    def _eval_and_capture(self, strategy, stream, loader_kwargs: dict) -> tuple:
+        """Run ``strategy.eval(stream)`` without touching the main evaluator's
+        clean-data bookkeeping; returns the pooled ``(logits, y)``."""
+        buffer: List[tuple] = []
+        with self.metrics_plugin.capture(
+            lambda logits, y, buf=buffer: buf.append((logits.detach().cpu(), y.detach().cpu()))
+        ):
+            strategy.eval(stream, **loader_kwargs)
+        logits = torch.cat([logit for logit, _ in buffer], dim=0)
+        y = torch.cat([label for _, label in buffer], dim=0)
+        return logits, y
+
     def run(
         self, trial: Trial | None = None, *, report_intermediate: bool = True
     ) -> tuple[float, float]:
         self._preflight()
         strategy = self.arm._build_strategy(self)
         strategy.mask = self.mask.to(self.config.device)  # type: ignore
+
+        # OOD/shift metrics (auroc_$ood_dataset, ece@$shift, ace@$shift) require
+        # extra eval passes per checkpoint (1 per OOD dataset + 1 per shift
+        # severity) on top of the normal seen/future eval -- only worth paying
+        # for on the final ``test`` run, not on every ``tune`` HPO trial.
+        compute_shift_ood_metrics = trial is None
+        if compute_shift_ood_metrics:
+            logger.info(
+                "Computing OOD ({}) and shift (severities {}) metrics every "
+                "checkpoint -- multiplies per-checkpoint eval cost.",
+                ood_dataset_names(),
+                SHIFT_SEVERITIES,
+            )
+        ood_streams = self._ood_test_streams() if compute_shift_ood_metrics else {}
 
         # TRAINING LOOP
         logger.info("Starting experiment...")
@@ -190,6 +254,17 @@ class Experiment:
             results.append(
                 strategy.eval(self.benchmark.test_stream, **loader_kwargs)
             )
+
+            if compute_shift_ood_metrics:
+                for name, stream in ood_streams.items():
+                    logits, _ = self._eval_and_capture(strategy, stream, loader_kwargs)
+                    self.metrics_plugin.evaluator.record_ood(name, t, logits)
+
+                for severity in SHIFT_SEVERITIES:
+                    stream = self._shift_test_stream(severity, t + 1)
+                    logits, y = self._eval_and_capture(strategy, stream, loader_kwargs)
+                    self.metrics_plugin.evaluator.record_shift(severity, t, logits, y)
+
             if trial is not None and report_intermediate:
                 intermediate_acc, intermediate_ece = (
                     self.metrics_plugin.evaluator.intermediate_result(t)
