@@ -6,7 +6,7 @@ hyperparameters, a ``suggest_config`` that samples them from an Optuna trial,
     customize a runnable :class:`~bayescl.experiment.Experiment`.
 
 Register variants by subclassing an existing arm and changing field defaults,
-then ``@register("name")`` under a new key (see ``tball`` / ``tball-mnd``).
+then ``@register("name")`` under a new key (see ``tball`` / ``tball_mnd``).
 """
 
 from __future__ import annotations
@@ -16,7 +16,7 @@ from typing import TYPE_CHECKING, Any, Callable, ClassVar
 
 import torch
 import optuna
-from avalanche.training import Naive
+from avalanche.training import Cumulative, Naive
 from loguru import logger
 
 if TYPE_CHECKING:
@@ -113,6 +113,9 @@ class ArmBase:
 
     def _build_naive_strategy(self, experiment: "Experiment") -> Any:
         return Naive(**self._strategy_kwargs(experiment))
+
+    def _build_cumulative_strategy(self, experiment: "Experiment") -> Any:
+        return Cumulative(**self._strategy_kwargs(experiment))
 
     def _build_vcl_strategy(
         self, experiment: "Experiment", config: "VCLConfig"

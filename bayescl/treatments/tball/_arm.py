@@ -69,7 +69,7 @@ class TBALL(ArmBase):
         )
 
 
-@register("tball-mnd")
+@register("tball_mnd")
 @dataclass
 class TBALLMND(TBALL):
     # Registry variant: identical to TBALL except the Bayesian core is a matrix

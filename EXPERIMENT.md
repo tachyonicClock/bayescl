@@ -107,6 +107,8 @@ The pilot's test set shall be recycled as training data.
 | `svhn`    | 5,000      | 5,000     |
 | `cifar10` | 5,000      | 5,000     |
 
+Pilot and test are a disjoint split of the original test data.
+
 ### 4.2 Dataset Shift Augmentations
 
 [ImageNet-C-style corruptions](https://github.com/hendrycks/robustness/tree/master/ImageNet-C/imagenet_c) at 5 intensities for all datasets (Ovadia et al., 2019; Hendrycks & Dietterich, 2019).
@@ -117,6 +119,8 @@ Corruption types are sampled uniformly from the standard ImageNet-C corruption t
 | `cifar100`   | 5,000 x5   | 10,000 x5 |
 | `imagenet-r` | 1,250 x5   | 2,500 x5  |
 | `clear10`    | 1,250 x5   | 2,500 x5  |
+
+Pilot and test are a disjoint split of the original test data.
 
 ## 5. Analysis
 

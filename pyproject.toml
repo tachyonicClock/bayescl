@@ -21,6 +21,7 @@ dependencies = [
     "torchvision==0.23.0",
     "transformers==4.47.1",
     "datasets>=5.0.1",
+    "pytest>=9.1.1",
 ]
 
 [tool.uv.sources]
