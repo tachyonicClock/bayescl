@@ -6,9 +6,11 @@ Robustness is quantified through resistance to forgetting, calibration, and out-
 ## 1. Treatments
 
 - LoRA `lora` (control) standard deterministic low rank adaptation.
+- LoRA-Joint `lora_joint` standard determinist non-continual learner.
+- Ensemble `lora_ensemble` a LoRA ensemble with 5 models.
 - BALL `ball` (ours)
 - 3BALL `tball` (ours)
-- 3BALL-MND `tball-mnd` (ours)
+- 3BALL-MND `tball_mnd` (ours)
 - C-LoRA `clora` (Smith et al., 2024)
 - EWC `ewc` (Kirkpatrick et al., 2017)
 - InfLoRA `inflora` (Liang & Li, 2024)
@@ -19,7 +21,7 @@ Robustness is quantified through resistance to forgetting, calibration, and out-
 ### 2.1 Response Variables
 
 In continual learning, we care about performance after each task, not just after the final task.
-Each metric is evaluated in a class-incremental manner at the end of every task (an evaluation point): on a holdout validation set during hyperparameter tuning, and on a test set during final evaluation.
+Each metric is evaluated in a class-/domain- incremental manner depending on dataset at the end of every task (an evaluation point): on a holdout validation set during hyperparameter tuning, and on a test set during final evaluation.
 "Seen tasks" are all tasks trained on so far, including the most recent one; "future tasks" are all tasks not yet trained on.
 
 Metrics over seen tasks are aggregated in two steps:
@@ -31,14 +33,9 @@ When evaluated on seen tasks, early tasks contribute more since they have been s
 Conversely, when evaluated on future tasks, later tasks contribute more since they remain in the future for longer.
 Both biases reflect the nature of the continual learning problem.
 
-#### 2.1.1 Primary Endpoint
-
-The primary endpoint, calculated on the validation split, is used for tuning each treatment's nuisance hyperparameters.
-
-- `brier` (lower is better): Multi-class Brier score on seen tasks, computed as the squared error between the predicted probability vector and the one-hot label, summed over classes and averaged over samples.
-
-#### 2.1.2 Secondary Endpoints
-
+- `brier` (lower is better):
+  Multi-class Brier score on seen tasks, computed as the squared error between the predicted probability vector and the one-hot label, summed over classes and averaged over samples.
+  The **tuning objective**, calculated on the validation split, is used for tuning each treatment's nuisance hyperparameters.
 - `acc` (higher is better): Accuracy on seen tasks.
 - Calibration error (lower is better). All calibration metrics use 15 bins.
   - `nll`: Negative log-likelihood on seen-tasks.
@@ -65,11 +62,11 @@ The primary endpoint, calculated on the validation split, is used for tuning eac
 
 - `parameter_count`. Measure parameter counts.
   The treatments have different parameter counts. Controlling for this is not possible in this experiment. Instead we shall measure and report the parameter count.
-- `inference_time`. Measure inference time.
+- `inference_time`. Measure inference time per task.
   The treatments will take difference amounts of time.
-- `train_time`. Measure the training time.
+- `train_time`. Measure the training time per task.
   The treatments will take different amounts of time to train/converge.
-- `exit_epoch`. Measure the epoch that the model early stops at.
+- `exit_epoch`. Measure the epoch that the model early stops at each task.
   The treatments will converge at different rates.
 
 ### 2.3 Hyperparameter search
@@ -77,14 +74,22 @@ The primary endpoint, calculated on the validation split, is used for tuning eac
 Nuisance hyperparameter are controlled via hyperparameter search using Optuna (TPE search algorithm).
 Each treatment configures a search space in `bayescl/treatments/$TREATMENT/_arm.py`.
 The tune phase's objective is brier score on the holdout validation set.
+During the tune phase the order of tasks (except dCLEAR10/10) and initialization seeds are varied.
 The validation set is also used for early stopping.
 
-## 3. Datasets
+## 3. Architecture
+
+Use a standard ResNet18 pre-trained on ImageNet in the usual way. ResNet18 is used to keep the experiments efficient to run.
+
+To ensure models converge and avoid over fitting while supporting different LoRA architecture we will use early stopping with a patience of 5 evaluated every 2 epochs on the validation brier.
+
+## 4. Datasets
 
 Class-incremental and a Domain-incremental continual learning scenario constructed by splitting datasets based on classes:
 - `iCIFAR100/10` (10 tasks of 10 classes) based on CIFAR100.
-- `iImageNet-R200`/10 (10 tasks of 20 classes) based on ImageNet-R(endition).
-- `dCLEAR10/10` (10 classes in 10 domains).
+- `iImageNet-R200/10` (10 tasks of 20 classes) based on ImageNet-R(endition).
+- `dCLEAR10/10` (10 classes in 10 domains). (Excludes background class).
+  Note `auroc_future`'s interpretation changes when the task is domain incremental since new domains are not necessarily out-of-distribution and some generalization is possible.
 
 | Dataset      | Train  | Valid | Pilot Test | Full Test |
 | ------------ | ------ | ----- | ---------- | --------- |
@@ -94,16 +99,17 @@ Class-incremental and a Domain-incremental continual learning scenario construct
 
 The pilot's test set shall be recycled as training data.
 
-### 3.1 OOD Dataset Splits
+### 4.1 OOD Dataset Splits
 
 | Dataset   | Pilot Test | Full Test |
 | -------   | ---------- | --------- |
-| `svhn`    | 10,000     | 10,000    |
-| `cifar10` | 10,000     | 10,000    |
+| `svhn`    | 5,000      | 5,000     |
+| `cifar10` | 5,000      | 5,000     |
 
-### 3.2 Dataset shift augmentations
+### 4.2 Dataset shift augmentations
 
 [`ImageNet-C` style corruptions](https://github.com/hendrycks/robustness/tree/master/ImageNet-C/imagenet_c) at 5 intensities for all datasets (Ovadia et al., 2019; Hendrycks & Dietterich, 2019).
+The type of corruptions are sampled uniformly from the standard ImageNet-C corruption types.
 
 | Dataset     | Pilot Test | Full Test |
 | ----------- | ---------- | --------- |
@@ -111,20 +117,33 @@ The pilot's test set shall be recycled as training data.
 | `imagenet-r`| 1,250 x5   | 2,500  x5 |
 | `clear10`   | 1,250 x5   | 2,500  x5 |
 
-## 4. Analysis
+## 5. Analysis
 
-Mann-Whitney test ($\alpha=0.05$) comparing all methods pairwise ($C(9,2)=36$ comparisons) with Holm-Bonferroni correction, ran for all primary and secondary endpoints.
+Mann-Whitney test ($\alpha=0.05$) comparing each of our methods against each baseline and against each other with Holm-Bonferroni multiplicity correction.
+We shall compare the `brier`, the mean of `auroc_$ood_dataset` over OOD datasets, and the mean of `ece@$shift` over corruption intensities.
+Only these metrics were picked to ensure statistical power under multiplicity:
 
-During the pilot the number of test runs shall be determined such that an effect size in accuracy of 2% can be determined reliably.
+```python
+>>> n_our_methods = 3  # ball,tball,tball-mnd
+>>> n_baselines = 6    # lora, clora, ewc, inflora, rwalk, sdlora
+>>> n_datasets = 3     # cifar100, imagenet-r, clear10
+>>> n_endpoints = 3    # brier, mean(auroc_$ood_dataset), mean(ece@$shift)
+>>> ((n_our_methods * (n_our_methods-1))/2 + n_our_methods * n_baselines) * n_datasets * n_endpoints
+189.0
 
-## 5. Protocol
+```
 
-| Scale | HP Trials | Runs | Max Epochs   |
-| ----- | --------- | ---- | ------------ |
-| full  |         3 |    5 |          100 |
-| pilot |        50 |    ? | set by pilot |
+During the pilot, the number of test runs shall be determined such that absolute differences of 0.02 in `brier`, `mean(auroc_$ood_dataset)`, and `mean(ece@$shift)` can each be detected by a two-sided Mann-Whitney test with 80% power (by convention) at the strictest Holm-corrected significance level (α = 0.05/189), using the pilot's variance estimates.
+The number of runs shall be the maximum required across endpoints, datasets, and comparisons, and no fewer than 8.
 
-### 5.1 Pilot
+## 6. Protocol
+
+| Scale | HP Trials |         Runs | Max Epochs   |
+| ----- | --------- | ------------ | ------------ |
+| full  |        50 | set by pilot | set by pilot |
+| pilot |         3 |            5 |          100 |
+
+### 6.1 Pilot
 - Set the appropriate number of epochs to ensure methods converge.
 - Approximate standard deviations to ensure effects are likely measurable:
   - Power Study.
@@ -137,9 +156,17 @@ During the pilot the number of test runs shall be determined such that an effect
 ./main.py test pilot $dataset $treatment
 ```
 
-### 5.2 Full
+### 6.2 Full
 
 ```bash
 ./main.py tune full $dataset $treatment
 ./main.py test full $dataset $treatment
 ```
+
+## 7. Limitations
+
+- **Tuning/pilot use data from all tasks:**
+  in the strictest ideal of continual learning methods would work zero-shot without hyperparameter tuning or pilots.
+  But for research purposes relaxing this is allowed.
+- **No replay:**
+  treatments are limited to replay free.
