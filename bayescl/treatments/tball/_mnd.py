@@ -5,8 +5,8 @@ import torch.nn as nn
 from torch import Tensor
 from torch.nn import functional as F
 
-from bayescl.mnd.mnd import matrix_normal_kl_cholesky, matrix_normal_sample_cholesky
-from bayescl.vbnn import MatrixNormalPriorPosterior, inv_softplus
+from bayescl.bnn.mnd import matrix_normal_kl_cholesky, matrix_normal_sample_cholesky
+from bayescl.bnn.vbnn import MatrixNormalPriorPosterior, inv_softplus
 
 from ._config import TBALLConfig
 

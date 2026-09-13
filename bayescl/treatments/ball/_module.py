@@ -6,8 +6,8 @@ from torch import Tensor
 from torch.nn import functional as F
 from torch.nn.modules.utils import _pair
 
+from bayescl.bnn.vbnn import VariationalParameter
 from bayescl.peft._base import AdapterBase, AdapterFactory
-from bayescl.vbnn import VariationalParameter
 
 from ._config import BALLConfig
 

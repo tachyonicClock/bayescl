@@ -14,14 +14,14 @@ from __future__ import annotations
 from dataclasses import replace
 from typing import TYPE_CHECKING, Any, Callable, ClassVar
 
-import torch
 import optuna
+import torch
 from avalanche.training import Cumulative, Naive
 from loguru import logger
 
 if TYPE_CHECKING:
+    from bayescl.bnn.vcl import VCLConfig
     from bayescl.experiment import Experiment
-    from bayescl.vcl import VCLConfig
 
 ARMS: dict[str, type["ArmBase"]] = {}
 
@@ -102,7 +102,8 @@ class ArmBase:
             model=experiment.model,
             optimizer=self.configure_optimizers(experiment.model.parameters()),
             train_mb_size=experiment.config.train_mb_size,
-            eval_mb_size=experiment.config.eval_mb_size or experiment.config.train_mb_size,
+            eval_mb_size=experiment.config.eval_mb_size
+            or experiment.config.train_mb_size,
             train_epochs=experiment.config.epochs,
             evaluator=experiment.eval_plugin,
             device=experiment.config.device,
@@ -117,10 +118,8 @@ class ArmBase:
     def _build_cumulative_strategy(self, experiment: "Experiment") -> Any:
         return Cumulative(**self._strategy_kwargs(experiment))
 
-    def _build_vcl_strategy(
-        self, experiment: "Experiment", config: "VCLConfig"
-    ) -> Any:
-        from bayescl.vcl import VCLStrategy
+    def _build_vcl_strategy(self, experiment: "Experiment", config: "VCLConfig") -> Any:
+        from bayescl.bnn.vcl import VCLStrategy
 
         logger.info("Using Variational Continual Learning (VCL) strategy")
         return VCLStrategy(

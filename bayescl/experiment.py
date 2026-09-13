@@ -31,9 +31,13 @@ from setproctitle import setproctitle
 from torch import BoolTensor
 from torch.utils.data import ConcatDataset
 
-from bayescl.benchmark import ShiftedTensorDataset, eval_transform_for, get_benchmark
 from bayescl.config import ExperimentConfig
-from bayescl.datasets import SHIFT_SEVERITIES, get_ood_dataset, ood_dataset_names
+from bayescl.data.benchmark import (
+    ShiftedTensorDataset,
+    eval_transform_for,
+    get_benchmark,
+)
+from bayescl.data.datasets import SHIFT_SEVERITIES, get_ood_dataset, ood_dataset_names
 from bayescl.metrics.ece import (
     ExpectedCalibrationError,
 )

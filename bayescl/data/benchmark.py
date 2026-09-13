@@ -10,7 +10,7 @@ from PIL import Image
 from torch.utils.data import Dataset
 from torchvision import transforms as T
 
-from bayescl.datasets import (
+from bayescl.data.datasets import (
     SplitCIFAR100,
     SplitCLEAR10,
     SplitCORe50,

@@ -1,13 +1,14 @@
 from dataclasses import dataclass, field
 from typing import ClassVar
 
-from bayescl.vbnn import VBNNConfig
+from bayescl.bnn.vbnn import VBNNConfig
 
 
 @dataclass
 class BALLConfig:
     r: int = 4
     """Rank of the LoRA adapters."""
+
     lora_alpha: int = 1
     """Scaling factor for the LoRA adapters."""
     dropout: float = 0.0

@@ -1,11 +1,12 @@
 from dataclasses import dataclass, replace
 
 import torch
+from loguru import logger
+
+from bayescl.bnn.vcl import VCLConfig
+from bayescl.peft import RegexFilter, add_adapters
 from bayescl.treatments._registry import ArmBase, register
 from bayescl.treatments.tball import TBALLAdapterFactory, TBALLConfig
-from bayescl.peft import RegexFilter, add_adapters
-from bayescl.vcl import VCLConfig
-from loguru import logger
 
 
 @register("tball")
@@ -33,7 +34,9 @@ class TBALL(ArmBase):
             RegexFilter(experiment.config.adapter_filter),
             TBALLAdapterFactory(self._peft()),
         )
-        experiment.model.get_submodule(experiment.config.head_module).requires_grad_(True)
+        experiment.model.get_submodule(experiment.config.head_module).requires_grad_(
+            True
+        )
 
     def _build_plugins(self, experiment):
         self._build_common_plugins(experiment, local_ce=False)

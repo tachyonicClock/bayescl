@@ -3,11 +3,11 @@ from dataclasses import dataclass, replace
 import torch
 from loguru import logger
 
+from bayescl.bnn.vbnn import VBNNConfig
+from bayescl.bnn.vcl import VCLConfig
 from bayescl.peft import RegexFilter, add_adapters
 from bayescl.treatments._registry import ArmBase, register
 from bayescl.treatments.ball import BALLAdapterFactory, BALLConfig
-from bayescl.vbnn import VBNNConfig
-from bayescl.vcl import VCLConfig
 
 
 @register("ball")
@@ -52,7 +52,7 @@ class BALL(ArmBase):
             BALLAdapterFactory(peft),
         )
         if peft.bll:
-            from bayescl.vbnn import replace_head
+            from bayescl.bnn.vbnn import replace_head
 
             replace_head(
                 experiment.model, experiment.config.head_module, config=peft.vbnn
