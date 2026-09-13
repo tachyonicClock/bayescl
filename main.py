@@ -40,9 +40,9 @@ from bayescl.config import (
     scale_names,
 )
 from bayescl.experiment import Experiment
+from bayescl.git import commit_message, commit_short_hash, is_git_status_clean
 from bayescl.runio import append_jsonl, latest_run, read_jsonl, score, write_json
 from bayescl.treatments._registry import arm_names
-from bayescl.util.git import commit_message, commit_short_hash, is_git_status_clean
 
 _DATASET_PATH = os.environ.get("DATASETS")
 _SAMPLER = optuna.samplers.TPESampler()

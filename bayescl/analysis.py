@@ -37,9 +37,7 @@ def _mean_ood_auroc(metrics: dict) -> float:
 
 
 def _mean_shift_ece(metrics: dict) -> float:
-    return float(
-        np.mean([metrics[f"ece_shift_{s}_avg"] for s in SHIFT_SEVERITIES])
-    )
+    return float(np.mean([metrics[f"ece_shift_{s}_avg"] for s in SHIFT_SEVERITIES]))
 
 
 #: The three endpoints compared in the analysis: the tuning objective, mean
@@ -53,7 +51,10 @@ ENDPOINTS: Dict[str, Callable[[dict], float]] = {
 
 def our_vs_others_pairs() -> list[tuple[str, str]]:
     """Every pair among our methods, plus every (ours, baseline) pair."""
-    return [*itertools.combinations(OUR_METHODS, 2), *itertools.product(OUR_METHODS, BASELINES)]
+    return [
+        *itertools.combinations(OUR_METHODS, 2),
+        *itertools.product(OUR_METHODS, BASELINES),
+    ]
 
 
 #: Total comparisons in the family-wise correction: pairs x datasets x endpoints.
@@ -99,10 +100,10 @@ def holm_bonferroni(p_values: Sequence[float], alpha: float = 0.05) -> np.ndarra
     hypotheses are rejected (i.e. statistically significant) at family-wise
     level ``alpha``.
     """
-    p_values = np.asarray(p_values, dtype=float)
-    m = len(p_values)
-    order = np.argsort(p_values)
-    sorted_p = p_values[order]
+    p_values_ = np.asarray(p_values, dtype=float)
+    m = len(p_values_)
+    order = np.argsort(p_values_)
+    sorted_p = p_values_[order]
     thresholds = alpha / (m - np.arange(m))
     passes = sorted_p <= thresholds
     if not passes.all():
@@ -128,19 +129,29 @@ def run_comparisons(runs_dir: Path, scale: str = "full") -> list[Comparison]:
                     values[method_a], values[method_b], alternative="two-sided"
                 )
                 comparisons.append(
-                    Comparison(dataset, endpoint, method_a, method_b, statistic, p_value)
+                    Comparison(
+                        dataset, endpoint, method_a, method_b, statistic, p_value
+                    )
                 )
 
     rejected = holm_bonferroni([c.p_value for c in comparisons])
     return [
         Comparison(
-            c.dataset, c.endpoint, c.method_a, c.method_b, c.statistic, c.p_value, bool(sig)
+            c.dataset,
+            c.endpoint,
+            c.method_a,
+            c.method_b,
+            c.statistic,
+            c.p_value,
+            bool(sig),
         )
         for c, sig in zip(comparisons, rejected)
     ]
 
 
-def required_n_per_group(delta: float, sigma: float, alpha: float, power: float = 0.8) -> int:
+def required_n_per_group(
+    delta: float, sigma: float, alpha: float, power: float = 0.8
+) -> int:
     """Minimum per-group sample size for a two-sided Mann-Whitney U test to
     detect a mean shift of ``delta`` given pooled standard deviation
     ``sigma``, using Noether's (1987) normal-approximation formula.
@@ -154,9 +165,7 @@ def required_n_per_group(delta: float, sigma: float, alpha: float, power: float 
     return int(np.ceil(n))
 
 
-def required_test_runs(
-    runs_dir: Path, delta: float = 0.02, power: float = 0.8
-) -> int:
+def required_test_runs(runs_dir: Path, delta: float = 0.02, power: float = 0.8) -> int:
     """Number of ``test``-stage seeds the ``full`` scale should run, sized
     from the ``pilot`` scale's variance estimates so that a ``delta``-sized
     absolute difference in any endpoint is detectable at ``power`` under the
@@ -174,5 +183,7 @@ def required_test_runs(
             for method_a, method_b in our_vs_others_pairs():
                 a, b = values[method_a], values[method_b]
                 sigma = float(np.sqrt((a.var(ddof=1) + b.var(ddof=1)) / 2))
-                required = max(required, required_n_per_group(delta, sigma, alpha, power))
+                required = max(
+                    required, required_n_per_group(delta, sigma, alpha, power)
+                )
     return required

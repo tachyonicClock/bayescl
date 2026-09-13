@@ -1,9 +1,12 @@
-from torch import Tensor, nn
 from typing import TYPE_CHECKING
+
+from torch import Tensor, nn
 from transformers import AutoModelForImageClassification
 from transformers.models.resnet.modeling_resnet import ResNetForImageClassification
+
 if TYPE_CHECKING:
     from bayescl.config import ExperimentConfig
+
 
 class ResNetHuggingFaceAdapter(nn.Module):
     def __init__(self, model: nn.Module):

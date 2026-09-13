@@ -129,6 +129,11 @@ class ExperimentConfig:
     seed: int
     device: str
 
+    #: Evaluate validation Brier every N epochs; stop once it hasn't improved for
+    #: this many consecutive checks.
+    early_stop_eval_every: int = 2
+    early_stop_patience: int = 5
+
     @classmethod
     def from_spec(
         cls,

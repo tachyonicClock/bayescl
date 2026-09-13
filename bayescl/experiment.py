@@ -2,14 +2,13 @@ import matplotlib
 
 matplotlib.use("Agg")
 
-import copy
 import json
 import pickle
 import random
 from dataclasses import asdict, replace
 from pathlib import Path
 from pprint import pformat
-from typing import Any, Dict, List, Sequence
+from typing import Any, Dict, Sequence
 
 import numpy as np
 import optuna
@@ -39,16 +38,11 @@ from bayescl.metrics.ece import (
     ExpectedCalibrationError,
 )
 from bayescl.metrics.plugin import MetricsPlugin
-from bayescl.metrics.results import ContinualLearningEvaluator
 from bayescl.model import get_model
 from bayescl.peft import parameter_summary_str
+from bayescl.plugin.brier_early_stopping import BrierEarlyStopping
 
 __all__ = ["Experiment", "ExperimentConfig"]
-
-#: Evaluate validation Brier every N epochs; stop once it hasn't improved for
-#: this many consecutive checks.
-EARLY_STOP_EVAL_EVERY = 2
-EARLY_STOP_PATIENCE = 5
 
 
 def avalanche_class_schedule(
@@ -88,74 +82,6 @@ def class_schedule_to_task_mask(
     for i, classes in enumerate(class_schedule):
         task_mask[i, list(classes)] = True
     return BoolTensor(task_mask)
-
-
-class BrierEarlyStopping(SupervisedPlugin):
-    """Stops training the current task once its held-out validation Brier
-    score stops improving, restoring the best-checkpoint weights either way.
-
-    Runs its own periodic validation pass every ``eval_every`` epochs through
-    ``eval_and_capture`` (``Experiment._eval_and_capture``) so these extra
-    eval passes never reach the main evaluator's seen/future-task
-    bookkeeping -- the same isolation mechanism used for OOD/shift eval.
-    """
-
-    def __init__(
-        self,
-        eval_and_capture,
-        val_stream: Sequence[Any],
-        loader_kwargs: dict,
-        eval_every: int = EARLY_STOP_EVAL_EVERY,
-        patience: int = EARLY_STOP_PATIENCE,
-    ) -> None:
-        self._eval_and_capture = eval_and_capture
-        self.val_stream = val_stream
-        self.loader_kwargs = loader_kwargs
-        self.eval_every = eval_every
-        self.patience = patience
-        self._task_idx = -1
-        # Tracked locally rather than read off ``strategy.clock.train_exp_epochs``:
-        # avalanche's ``Clock`` plugin must run last to keep its counters correct
-        # for plugins after it, and this plugin isn't guaranteed that position.
-        self._epoch_in_task = 0
-        self._best_brier: float | None = None
-        self._epochs_without_improvement = 0
-        self._best_state: dict | None = None
-
-    def before_training_exp(self, strategy: Any, *args, **kwargs) -> None:
-        self._task_idx += 1
-        self._epoch_in_task = 0
-        self._best_brier = None
-        self._epochs_without_improvement = 0
-        self._best_state = None
-        self._check(strategy)
-
-    def before_training_epoch(self, strategy: Any, *args, **kwargs) -> None:
-        if self._epochs_without_improvement >= self.patience:
-            if self._best_state is not None:
-                strategy.model.load_state_dict(self._best_state)
-            strategy.stop_training()
-
-    def after_training_epoch(self, strategy: Any, *args, **kwargs) -> None:
-        self._epoch_in_task += 1
-        if self._epoch_in_task % self.eval_every == 0:
-            self._check(strategy)
-
-    def after_training_exp(self, strategy: Any, *args, **kwargs) -> None:
-        if self._best_state is not None:
-            strategy.model.load_state_dict(self._best_state)
-
-    def _check(self, strategy: Any) -> None:
-        logits, y = self._eval_and_capture(
-            strategy, self.val_stream[self._task_idx], self.loader_kwargs
-        )
-        brier = ContinualLearningEvaluator.brier(logits, y)
-        if self._best_brier is None or brier < self._best_brier:
-            self._best_brier = brier
-            self._epochs_without_improvement = 0
-            self._best_state = copy.deepcopy(strategy.model.state_dict())
-        else:
-            self._epochs_without_improvement += 1
 
 
 class Experiment:
@@ -213,8 +139,8 @@ class Experiment:
         self.config = config
         self.arm = arm
         self._seed_everything()
-        self.plugins: List[SupervisedPlugin] = []
-        self.loggers: List[BaseLogger] = []
+        self.plugins: list[SupervisedPlugin] = []
+        self.loggers: list[BaseLogger] = []
 
         self.benchmark = get_benchmark(self.config)
         self.mask = class_schedule_to_task_mask(
@@ -225,7 +151,9 @@ class Experiment:
         self.run_dir: Path = self._prepare_run_dir()
         self.tb_log = self._new_logger()
         self.eval_plugin: EvaluationPlugin = self._new_eval_plugin()
-        self.metrics_plugin = MetricsPlugin(self.num_tasks, self.num_classes)
+        self.metrics_plugin: MetricsPlugin = MetricsPlugin(
+            self.num_tasks, self.num_classes
+        )
         # ``persistent_workers`` avoids respawning the worker pool every epoch;
         # ``pin_memory`` speeds up the host->GPU copy. Both are forwarded by
         # Avalanche to the underlying ``DataLoader``.
@@ -243,6 +171,8 @@ class Experiment:
                 self._eval_and_capture,
                 self._val_stream(),
                 self.loader_kwargs,
+                eval_every=self.config.early_stop_eval_every,
+                patience=self.config.early_stop_patience,
             )
         )
 
@@ -297,9 +227,11 @@ class Experiment:
     def _eval_and_capture(self, strategy, stream, loader_kwargs: dict) -> tuple:
         """Run ``strategy.eval(stream)`` without touching the main evaluator's
         clean-data bookkeeping; returns the pooled ``(logits, y)``."""
-        buffer: List[tuple] = []
+        buffer: list[tuple] = []
         with self.metrics_plugin.capture(
-            lambda logits, y, buf=buffer: buf.append((logits.detach().cpu(), y.detach().cpu()))
+            lambda logits, y, buf=buffer: buf.append(
+                (logits.detach().cpu(), y.detach().cpu())
+            )
         ):
             strategy.eval(stream, **loader_kwargs)
         logits = torch.cat([logit for logit, _ in buffer], dim=0)

@@ -138,8 +138,12 @@ class ShiftedTensorDataset(Dataset):
         if self.standardize:
             x = x * self._std + self._mean
         arr = (x.clamp(0, 1).permute(1, 2, 0).numpy() * 255).astype(np.uint8)
-        image = corrupt(Image.fromarray(arr), random.choice(corruption_names()), self.severity)
-        out = torch.from_numpy(np.asarray(image, dtype=np.float32) / 255.0).permute(2, 0, 1)
+        image = corrupt(
+            Image.fromarray(arr), random.choice(corruption_names()), self.severity
+        )
+        out = torch.from_numpy(np.asarray(image, dtype=np.float32) / 255.0).permute(
+            2, 0, 1
+        )
         if self.standardize:
             out = (out - self._mean) / self._std
         return out, y
