@@ -78,16 +78,6 @@ def iter_adapter_parameters(
                 yield f"{prefix}.{name}", submodule.get_parameter(name)
 
 
-def iter_adapter_buffers(
-    module: nn.Module,
-) -> Generator[Tuple[str, torch.Tensor], None, None]:
-    """Iterate over all buffers in adapters."""
-    for prefix, submodule in iter_named_adapters(module):
-        if isinstance(submodule, nn.Module):
-            for name in submodule.adapter_buffers:
-                yield f"{prefix}.{name}", submodule.get_buffer(name)
-
-
 def only_adapters_require_grad(module: nn.Module) -> None:
     """Disable grad unless parameters are in adapters."""
     module.requires_grad_(False)
@@ -105,9 +95,6 @@ def count_adapter_parameters(module: nn.Module) -> int:
 #     for name, param in iter_adapter_parameters(module):
 #         assert name not in state
 #         state[name] = param.detach().cpu()
-#     for name, buffer in iter_adapter_buffers(module):
-#         assert name not in state
-#         state[name] = buffer.detach().cpu()
 #     torch.save(state, path)
 
 

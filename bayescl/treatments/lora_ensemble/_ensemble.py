@@ -20,13 +20,11 @@ class EnsembleStrategy(Naive):
     def __init__(
         self,
         *,
-        num_members: int,
         mask: BoolTensor,
         optimizer_fn: Callable[[Any], torch.optim.Optimizer],
         **kwargs,
     ):
         super().__init__(**kwargs)
-        self._num_members = num_members
         self._optimizer_fn = optimizer_fn
         self._mask = mask.to(self.device)
         self._member_optimizers: list[torch.optim.Optimizer] = []

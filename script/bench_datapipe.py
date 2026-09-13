@@ -63,7 +63,7 @@ def main():
         "core50": "CORe50",
         "cifar100": "CIFAR100",
     }[args.dataset]
-    train_tf, eval_tf = get_transforms(standardize=True, dataset=scenario)
+    train_tf, _ = get_transforms(standardize=True, dataset=scenario)
 
     t = time.time()
     if args.dataset == "imagenetr":

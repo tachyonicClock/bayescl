@@ -182,8 +182,6 @@ class VariationalLinear(nn.Module):
         config: VBNNConfig = VBNNConfig(),
     ):
         super().__init__()
-        self.dim_in = in_features
-        self.dim_out = out_features
 
         self.weight = VariationalParameter(
             shape=(out_features, in_features), config=config

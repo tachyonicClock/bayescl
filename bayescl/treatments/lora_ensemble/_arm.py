@@ -49,7 +49,6 @@ class LoRAEnsemble(ArmBase):
 
     def _build_strategy(self, experiment):
         return EnsembleStrategy(
-            num_members=self.num_members,
             mask=experiment.mask,
             optimizer_fn=self.configure_optimizers,
             **self._strategy_kwargs(experiment),

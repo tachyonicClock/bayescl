@@ -6,11 +6,6 @@ import json
 from pathlib import Path
 
 
-def score(acc: float, ece: float) -> float:
-    """Aggregate objective: balance accuracy against calibration error."""
-    return 0.5 * (acc + (1.0 - ece))
-
-
 def append_jsonl(path: Path, obj: dict) -> None:
     with path.open("a") as f:
         f.write(json.dumps(obj, default=str) + "\n")

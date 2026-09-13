@@ -42,6 +42,7 @@ from bayescl.metrics.ece import (
     ExpectedCalibrationError,
 )
 from bayescl.metrics.plugin import MetricsPlugin
+from bayescl.metrics.results import Result
 from bayescl.model import get_model
 from bayescl.peft import parameter_summary_str
 from bayescl.plugin.brier_early_stopping import BrierEarlyStopping
@@ -244,7 +245,7 @@ class Experiment:
 
     def run(
         self, trial: Trial | None = None, *, report_intermediate: bool = True
-    ) -> tuple[float, float]:
+    ) -> Result:
         self._preflight()
         strategy = self.arm._build_strategy(self)
         strategy.mask = self.mask.to(self.config.device)  # type: ignore
@@ -295,11 +296,9 @@ class Experiment:
                     self.metrics_plugin.evaluator.record_shift(severity, t, logits, y)
 
             if trial is not None and report_intermediate:
-                intermediate_acc, intermediate_ece = (
-                    self.metrics_plugin.evaluator.intermediate_result(t)
+                trial.report(
+                    self.metrics_plugin.evaluator.intermediate_result(t), step=t
                 )
-                intermediate_score = 0.5 * (intermediate_acc + (1 - intermediate_ece))
-                trial.report(intermediate_score, step=t)
                 if trial.should_prune():
                     raise optuna.exceptions.TrialPruned()
 
@@ -307,14 +306,13 @@ class Experiment:
         with open(self.config.run_dir / "avalanche_results.pkl", "wb") as f:
             pickle.dump(results, f)
 
-        metrics, raw_data = self.metrics_plugin.evaluator.result()
-        pickle.dump(metrics, open(self.config.run_dir / "metrics.pkl", "wb"))
-        pickle.dump(raw_data, open(self.config.run_dir / "raw_data.pkl", "wb"))
+        results = self.metrics_plugin.evaluator.result()
+        pickle.dump(results, open(self.config.run_dir / "results.pkl", "wb"))
 
-        for key, value in metrics.items():
+        for key, value in asdict(results).items():
             if isinstance(value, (float, int)):
                 logger.info(f"{key}: {value:.4f}")
-        return metrics["accuracy_seen_avg"], metrics["ece_seen_avg"]
+        return results
 
     def count_parameters(self):
         print(parameter_summary_str(self.model))

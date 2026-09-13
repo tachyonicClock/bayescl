@@ -1,6 +1,6 @@
 import pickle
 import time
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, replace
 from pathlib import Path
 from typing import Any, BinaryIO, Dict, List
 
@@ -102,6 +102,74 @@ class Result:
     ``R[i, j]`` is the accuracy on task :math:`j` after training on tasks
     :math:`1` through :math:`i`.
     """
+    ece_all: np.ndarray | None = None
+    r"""Expected calibration error over all tasks at each checkpoint."""
+    ece_all_avg: float | None = None
+    r"""Mean of :attr:`ece_all` across checkpoints."""
+    ece_seen: np.ndarray | None = None
+    r"""Expected calibration error averaged over seen tasks at each checkpoint."""
+    ece_seen_avg: float | None = None
+    r"""Mean of :attr:`ece_seen` across checkpoints."""
+    ece_final: float | None = None
+    r"""Expected calibration error over all tasks at the final checkpoint."""
+    ace_all: np.ndarray | None = None
+    r"""Adaptive calibration error over all tasks at each checkpoint."""
+    ace_all_avg: float | None = None
+    r"""Mean of :attr:`ace_all` across checkpoints."""
+    ace_seen: np.ndarray | None = None
+    r"""Adaptive calibration error averaged over seen tasks at each checkpoint."""
+    ace_seen_avg: float | None = None
+    r"""Mean of :attr:`ace_seen` across checkpoints."""
+    ace_final: float | None = None
+    r"""Adaptive calibration error over all tasks at the final checkpoint."""
+    sce_all: np.ndarray | None = None
+    r"""Static calibration error over all tasks at each checkpoint."""
+    sce_all_avg: float | None = None
+    r"""Mean of :attr:`sce_all` across checkpoints."""
+    sce_seen: np.ndarray | None = None
+    r"""Static calibration error averaged over seen tasks at each checkpoint."""
+    sce_seen_avg: float | None = None
+    r"""Mean of :attr:`sce_seen` across checkpoints."""
+    sce_final: float | None = None
+    r"""Static calibration error over all tasks at the final checkpoint."""
+    brier_all: np.ndarray | None = None
+    r"""Brier score over all tasks at each checkpoint."""
+    brier_all_avg: float | None = None
+    r"""Mean of :attr:`brier_all` across checkpoints."""
+    brier_seen: np.ndarray | None = None
+    r"""Brier score averaged over seen tasks at each checkpoint."""
+    brier_seen_avg: float | None = None
+    r"""Mean of :attr:`brier_seen` across checkpoints."""
+    brier_final: float | None = None
+    r"""Brier score over all tasks at the final checkpoint."""
+    nll_all: np.ndarray | None = None
+    r"""Negative log-likelihood over all tasks at each checkpoint."""
+    nll_all_avg: float | None = None
+    r"""Mean of :attr:`nll_all` across checkpoints."""
+    nll_seen: np.ndarray | None = None
+    r"""Negative log-likelihood averaged over seen tasks at each checkpoint."""
+    nll_seen_avg: float | None = None
+    r"""Mean of :attr:`nll_seen` across checkpoints."""
+    nll_final: float | None = None
+    r"""Negative log-likelihood over all tasks at the final checkpoint."""
+    auroc_future: np.ndarray | None = None
+    r"""AUROC for seen versus future-task samples at each non-final checkpoint."""
+    auroc_future_avg: float | None = None
+    r"""Mean of :attr:`auroc_future` across non-final checkpoints."""
+    auroc_ood: Dict[str, np.ndarray] | None = None
+    r"""AUROC arrays for seen-task versus auxiliary OOD datasets, keyed by name."""
+    auroc_ood_avg: Dict[str, float] | None = None
+    r"""Mean OOD AUROC values keyed by auxiliary dataset name."""
+    ece_shift: Dict[int, np.ndarray] | None = None
+    r"""Shifted-data ECE arrays keyed by corruption severity."""
+    ece_shift_avg: Dict[int, float] | None = None
+    r"""Mean shifted-data ECE values keyed by corruption severity."""
+    ace_shift: Dict[int, np.ndarray] | None = None
+    r"""Shifted-data ACE arrays keyed by corruption severity."""
+    ace_shift_avg: Dict[int, float] | None = None
+    r"""Mean shifted-data ACE values keyed by corruption severity."""
+    duration_s: float | None = None
+    r"""Elapsed time used to compute the evaluation metrics."""
 
     def __post_init__(self):
         t = self.n_tasks
@@ -118,49 +186,6 @@ class Result:
                 pickle.dump(asdict(self), file)
         elif isinstance(f, BinaryIO):
             pickle.dump(asdict(self), f)
-
-    @classmethod
-    @torch.no_grad()
-    def from_accuracy_matrix(cls, R: Tensor | np.ndarray) -> "Result":
-        """Create a Result object from task accuracy matrix.
-
-        :param R: R matrix of shape (n_tasks, n_tasks) where each element
-            :math:`R_{i,j}` contains the test accuracy on task :math:`j` after
-            sequentially training on tasks :math:`1` through :math:`i`.
-        :return: A Result object containing the metrics.
-        """
-        if isinstance(R, np.ndarray):
-            R = torch.from_numpy(R)
-        R = R.cpu()
-
-        def _accuracy_seen(t: int) -> float:
-            return R[t, : t + 1].mean().item()
-
-        assert R.T.shape == R.shape, "R must be a square matrix."
-        n_tasks = R.shape[0]
-        accuracy_all = R.mean(dim=1)
-        accuracy_all_avg = accuracy_all.mean().item()
-        accuracy_seen = torch.tensor([_accuracy_seen(t) for t in range(0, n_tasks)])
-        accuracy_seen_avg = accuracy_seen.mean().item()
-        accuracy_final = accuracy_all[n_tasks - 1].item()
-        task_index = torch.arange(n_tasks, dtype=torch.int64) + 1
-        forward_transfer = _forwards_transfer(R)
-        backward_transfer = _backwards_transfer(R)
-        accuracy_matrix = R
-
-        return cls(
-            n_tasks=n_tasks,
-            accuracy_all=accuracy_all.numpy(),
-            accuracy_all_avg=accuracy_all_avg,
-            accuracy_seen=accuracy_seen.numpy(),
-            accuracy_seen_avg=accuracy_seen_avg,
-            accuracy_final=accuracy_final,
-            task_index=task_index.numpy(),
-            forward_transfer=forward_transfer,
-            backward_transfer=backward_transfer,
-            accuracy_matrix=accuracy_matrix.numpy(),
-        )
-
 
 class ContinualLearningEvaluator:
     def __init__(
@@ -238,40 +263,21 @@ class ContinualLearningEvaluator:
         self._ood_logit.setdefault(key, []).append(y_logit.cpu())
 
     @torch.no_grad()
-    def intermediate_result(self, t: int) -> tuple[float, float]:
-        """Compute a pessimistic intermediate result after training on task ``t``.
-
-        Returns a lower bound on the final ``(accuracy_seen_avg, ece_seen_avg)``
-        by assuming all remaining tasks contribute zero accuracy and ECE of 1.0.
-        This makes the derived score monotonically non-decreasing with ``t``, so
-        it is safe to use with Optuna pruning.
-        """
-        T = self._task_count
-        acc_sum = 0.0
-        ece_sum = 0.0
+    def intermediate_result(self, t: int) -> float:
+        """Compute the seen-task Brier score after training on task ``t``."""
+        brier_sum = 0.0
         for t_prime in range(t + 1):
-            # accuracy_seen(t_prime)
-            r_seen = self._big_r[t_prime, : t_prime + 1]  # (t'+1, C, C)
-            correct = r_seen.diagonal(dim1=1, dim2=2).sum()
-            total = r_seen.sum()
-            acc_sum += (correct / total).item() if total > 0 else 0.0
-
-            # ece_seen(t_prime): mean of each seen task's own ECE, matching
-            # `result()`'s per-task-then-averaged aggregation.
-            per_task_ece = [
-                self.ece(
+            per_task_brier = [
+                self.brier(
                     torch.cat(self._y_logit[(t_prime, j)], dim=0),
                     torch.cat(self._y_true[(t_prime, j)], dim=0),
                 )
                 for j in range(t_prime + 1)
                 if (t_prime, j) in self._y_true
             ]
-            ece_sum += np.mean(per_task_ece) if per_task_ece else 1.0  # worst-case
+            brier_sum += np.mean(per_task_brier) if per_task_brier else 0.0
 
-        # Remaining (T - t - 1) tasks assumed: acc=0, ece=1
-        intermediate_acc = acc_sum / T
-        intermediate_ece = (ece_sum + (T - t - 1)) / T
-        return intermediate_acc, intermediate_ece
+        return brier_sum / (t + 1)
 
     @staticmethod
     def ece(y_logit: Tensor, y_true: Tensor, num_bins: int = N_BINS) -> float:
@@ -340,7 +346,7 @@ class ContinualLearningEvaluator:
         return float(roc_auc_score(label, score))
 
     @torch.no_grad()
-    def result(self) -> tuple[Dict[str, Any], Dict[str, Any]]:
+    def result(self) -> Result:
         y_true: Dict[tuple[int, int], Tensor] = {
             k: torch.cat(v, dim=0) for k, v in self._y_true.items()
         }
@@ -394,8 +400,24 @@ class ContinualLearningEvaluator:
         correct = self._big_r.diagonal(dim1=2, dim2=3).sum(dim=-1)
         total = self._big_r.sum(dim=(2, 3))
         accuracy = correct / total
+        accuracy_all = accuracy.mean(dim=1)
+        accuracy_seen = torch.tensor(
+            [accuracy[t, : t + 1].mean() for t in range(T)]
+        )
+        result = Result(
+            n_tasks=T,
+            accuracy_all=accuracy_all.numpy(),
+            accuracy_all_avg=accuracy_all.mean().item(),
+            accuracy_seen=accuracy_seen.numpy(),
+            accuracy_seen_avg=accuracy_seen.mean().item(),
+            accuracy_final=accuracy_all[-1].item(),
+            task_index=np.arange(1, T + 1),
+            forward_transfer=_forwards_transfer(accuracy),
+            backward_transfer=_backwards_transfer(accuracy),
+            accuracy_matrix=accuracy.numpy(),
+        )
         metrics = {
-            **asdict(Result.from_accuracy_matrix(accuracy)),
+            **asdict(result),
             "ece_all": ece_all,
             "ece_all_avg": ece_all.mean(),
             "ece_seen": ece_seen,
@@ -471,14 +493,43 @@ class ContinualLearningEvaluator:
                 metrics[f"ace_shift_{severity}"] = np.array(ace_values)
                 metrics[f"ace_shift_{severity}_avg"] = float(np.mean(ace_values))
 
-        raw_data = {
-            "R": self._big_r.cpu().numpy().astype(np.int32),
-            "y_true": {
-                k: v.cpu().numpy().astype(np.float16) for k, v in y_true.items()
+        result = replace(
+            result,
+            **{
+                key: metrics[key]
+                for key in (
+                    "ece_all", "ece_all_avg", "ece_seen", "ece_seen_avg", "ece_final",
+                    "ace_all", "ace_all_avg", "ace_seen", "ace_seen_avg", "ace_final",
+                    "sce_all", "sce_all_avg", "sce_seen", "sce_seen_avg", "sce_final",
+                    "brier_all", "brier_all_avg", "brier_seen", "brier_seen_avg", "brier_final",
+                    "nll_all", "nll_all_avg", "nll_seen", "nll_seen_avg", "nll_final",
+                    "duration_s",
+                )
             },
-            "y_logit": {
-                k: v.cpu().numpy().astype(np.float16) for k, v in y_logit.items()
-            },
-        }
+            auroc_future=metrics.get("auroc_future"),
+            auroc_future_avg=metrics.get("auroc_future_avg"),
+            auroc_ood={
+                name: metrics[f"auroc_{name}"] for name in ood_names
+            } or None,
+            auroc_ood_avg={
+                name: metrics[f"auroc_{name}_avg"] for name in ood_names
+            } or None,
+            ece_shift={
+                severity: metrics[f"ece_shift_{severity}"] for severity in severities
+                if f"ece_shift_{severity}" in metrics
+            } or None,
+            ece_shift_avg={
+                severity: metrics[f"ece_shift_{severity}_avg"] for severity in severities
+                if f"ece_shift_{severity}_avg" in metrics
+            } or None,
+            ace_shift={
+                severity: metrics[f"ace_shift_{severity}"] for severity in severities
+                if f"ace_shift_{severity}" in metrics
+            } or None,
+            ace_shift_avg={
+                severity: metrics[f"ace_shift_{severity}_avg"] for severity in severities
+                if f"ace_shift_{severity}_avg" in metrics
+            } or None,
+        )
 
-        return metrics, raw_data
+        return result

@@ -42,10 +42,9 @@ def _fill_evaluator(T: int = 3, C: int = 4, n: int = 16) -> ContinualLearningEva
 
 
 def test_brier_seen_is_populated_and_finite():
-    metrics, _ = _fill_evaluator().result()
-    assert "brier_seen" in metrics
-    assert np.all(np.isfinite(metrics["brier_seen"]))
-    assert metrics["brier_seen_avg"] == pytest.approx(metrics["brier_seen"].mean())
+    metrics = _fill_evaluator().result()
+    assert np.all(np.isfinite(metrics.brier_seen))
+    assert metrics.brier_seen_avg == pytest.approx(metrics.brier_seen.mean())
 
 
 def test_ece_seen_is_per_task_mean_not_pooled():
@@ -70,7 +69,7 @@ def test_ece_seen_is_per_task_mean_not_pooled():
     ev.update(1, 0, logit1_0, y1_0)
     ev.update(1, 1, logit1_1, y1_1)
 
-    metrics, _ = ev.result()
+    metrics = ev.result()
 
     expected_seen_1 = np.mean(
         [
@@ -82,10 +81,10 @@ def test_ece_seen_is_per_task_mean_not_pooled():
         torch.cat([logit1_0, logit1_1]), torch.cat([y1_0, y1_1])
     )
 
-    assert metrics["ece_seen"][1] == pytest.approx(expected_seen_1)
+    assert metrics.ece_seen[1] == pytest.approx(expected_seen_1)
     # Regression guard: pooling and per-task averaging genuinely differ here,
     # so this would catch a silent revert to the pooled approach.
-    assert metrics["ece_seen"][1] != pytest.approx(pooled_seen_1)
+    assert metrics.ece_seen[1] != pytest.approx(pooled_seen_1)
 
 
 def test_brier_handles_batches_missing_some_classes():
@@ -100,21 +99,21 @@ def test_brier_handles_batches_missing_some_classes():
 
 
 def test_nll_seen_is_populated_and_finite():
-    metrics, _ = _fill_evaluator().result()
-    assert np.all(np.isfinite(metrics["nll_seen"]))
-    assert np.all(np.isfinite(metrics["nll_all"]))
+    metrics = _fill_evaluator().result()
+    assert np.all(np.isfinite(metrics.nll_seen))
+    assert np.all(np.isfinite(metrics.nll_all))
 
 
 def test_auroc_future_excludes_final_checkpoint():
     T = 4
-    metrics, _ = _fill_evaluator(T=T).result()
-    assert metrics["auroc_future"].shape == (T - 1,)
-    assert np.all((metrics["auroc_future"] >= 0) & (metrics["auroc_future"] <= 1))
+    metrics = _fill_evaluator(T=T).result()
+    assert metrics.auroc_future.shape == (T - 1,)
+    assert np.all((metrics.auroc_future >= 0) & (metrics.auroc_future <= 1))
 
 
 def test_auroc_future_absent_for_single_task():
-    metrics, _ = _fill_evaluator(T=1).result()
-    assert "auroc_future" not in metrics
+    metrics = _fill_evaluator(T=1).result()
+    assert metrics.auroc_future is None
 
 
 def test_record_ood_produces_per_dataset_auroc():
@@ -122,11 +121,11 @@ def test_record_ood_produces_per_dataset_auroc():
     ev = _fill_evaluator(T=T, C=C)
     for t in range(T):
         ev.record_ood("svhn", t, torch.randn(10, C))
-    metrics, _ = ev.result()
-    assert metrics["auroc_svhn"].shape == (T,)
-    assert 0 <= metrics["auroc_svhn_avg"] <= 1
+    metrics = ev.result()
+    assert metrics.auroc_ood["svhn"].shape == (T,)
+    assert 0 <= metrics.auroc_ood_avg["svhn"] <= 1
     # An OOD dataset never recorded shouldn't show up at all.
-    assert "auroc_cifar10" not in metrics
+    assert metrics.auroc_ood is not None and "cifar10" not in metrics.auroc_ood
 
 
 def test_record_shift_produces_ece_and_ace_per_severity():
@@ -134,23 +133,19 @@ def test_record_shift_produces_ece_and_ace_per_severity():
     ev = _fill_evaluator(T=T, C=C)
     for t in range(T):
         ev.record_shift(3, t, torch.randn(20, C), torch.randint(0, C, (20,)))
-    metrics, _ = ev.result()
-    assert metrics["ece_shift_3"].shape == (T,)
-    assert metrics["ace_shift_3"].shape == (T,)
-    assert 0 <= metrics["ece_shift_3_avg"] <= 1
-    assert 0 <= metrics["ace_shift_3_avg"] <= 1
+    metrics = ev.result()
+    assert metrics.ece_shift[3].shape == (T,)
+    assert metrics.ace_shift[3].shape == (T,)
+    assert 0 <= metrics.ece_shift_avg[3] <= 1
+    assert 0 <= metrics.ace_shift_avg[3] <= 1
     # A severity never recorded shouldn't show up at all.
-    assert "ece_shift_1" not in metrics
+    assert metrics.ece_shift is not None and 1 not in metrics.ece_shift
 
 
 def test_shift_and_ood_absent_when_never_recorded():
-    metrics, _ = _fill_evaluator().result()
-    assert not [k for k in metrics if k.startswith("ece_shift_")]
-    assert not [
-        k
-        for k in metrics
-        if k.startswith("auroc_") and k != "auroc_future" and k != "auroc_future_avg"
-    ]
+    metrics = _fill_evaluator().result()
+    assert metrics.ece_shift is None
+    assert metrics.auroc_ood is None
 
 
 class _FakeStrategy:

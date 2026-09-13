@@ -41,7 +41,8 @@ from bayescl.config import (
 )
 from bayescl.experiment import Experiment
 from bayescl.git import commit_message, commit_short_hash, is_git_status_clean
-from bayescl.runio import append_jsonl, latest_run, read_jsonl, score, write_json
+from bayescl.metrics.results import Result
+from bayescl.runio import append_jsonl, latest_run, read_jsonl, write_json
 from bayescl.treatments._registry import arm_names
 
 _DATASET_PATH = os.environ.get("DATASETS")
@@ -51,6 +52,44 @@ _PRUNER = optuna.pruners.MedianPruner()
 
 def _timestamp() -> str:
     return time.strftime("%Y-%m-%d_%H-%M-%S")
+
+
+def record_result(
+    path: Path,
+    result: Result | None,
+    *,
+    row: dict,
+    trial: optuna.Trial | None = None,
+    state: str = "complete",
+    error: str | None = None,
+) -> float | None:
+    """Append non-OOD/non-shift metrics and optionally update an Optuna trial."""
+    brier = result.brier_seen_avg if result is not None else None
+    if trial is not None:
+        trial.set_user_attr("brier", brier)
+    result_values = asdict(result) if result is not None else {}
+    for key in (
+        "auroc_ood",
+        "auroc_ood_avg",
+        "ece_shift",
+        "ece_shift_avg",
+        "ace_shift",
+        "ace_shift_avg",
+    ):
+        result_values.pop(key, None)
+    append_jsonl(
+        path,
+        {
+            **row,
+            **result_values,
+            "params": trial.params if trial is not None else None,
+            "state": state,
+            "error": error,
+            "brier": brier,
+            "score": brier,
+        },
+    )
+    return brier
 
 
 def _targets(f):
@@ -171,49 +210,16 @@ def tune(scale, dataset, method, runs, dataset_path, device, sqlite):
             "ts": _timestamp(),
         }
         try:
-            acc, ece = exp.run(trial)
+            result = exp.run(trial)
         except optuna.TrialPruned:
-            append_jsonl(
-                results,
-                {
-                    **row,
-                    "params": trial.params,
-                    "state": "pruned",
-                    "acc": None,
-                    "ece": None,
-                    "score": None,
-                },
-            )
+            record_result(results, None, row=row, trial=trial, state="pruned")
             raise
         except NumericError as e:
-            append_jsonl(
-                results,
-                {
-                    **row,
-                    "params": trial.params,
-                    "state": "failed",
-                    "error": str(e),
-                    "acc": None,
-                    "ece": None,
-                    "score": None,
-                },
+            record_result(
+                results, None, row=row, trial=trial, state="failed", error=str(e)
             )
             raise
-        s = score(acc, ece)
-        trial.set_user_attr("acc", acc)
-        trial.set_user_attr("ece", ece)
-        append_jsonl(
-            results,
-            {
-                **row,
-                "params": trial.params,
-                "state": "complete",
-                "acc": acc,
-                "ece": ece,
-                "score": s,
-            },
-        )
-        return s
+        return record_result(results, result, row=row, trial=trial)
 
     study.optimize(objective, n_trials=sc.n_trials, catch=(NumericError,))
 
@@ -232,8 +238,7 @@ def tune(scale, dataset, method, runs, dataset_path, device, sqlite):
             best={
                 "trial": best.number,
                 "params": best.params,
-                "acc": best.user_attrs.get("acc"),
-                "ece": best.user_attrs.get("ece"),
+                "brier": best.user_attrs.get("brier"),
                 "score": best.value,
             },
         ),
@@ -307,18 +312,13 @@ def test(scale, dataset, method, runs, dataset_path, device, from_tune):
             ),
             arm,
         )
-        acc, ece = exp.run(None)
-        append_jsonl(
+        result = exp.run(None)
+        brier = record_result(
             results,
-            {
-                "seed": seed,
-                "acc": acc,
-                "ece": ece,
-                "score": score(acc, ece),
-                "ts": _timestamp(),
-            },
+            result,
+            row={"seed": seed, "ts": _timestamp()},
         )
-        logger.info(f"seed {seed}: acc={acc:.4f} ece={ece:.4f}")
+        logger.info(f"seed {seed}: brier={brier:.4f}")
 
 
 if __name__ == "__main__":
