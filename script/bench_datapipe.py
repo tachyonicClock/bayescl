@@ -11,8 +11,8 @@ import torch
 from torch.utils.data import DataLoader
 from torchvision.datasets import CIFAR100
 
-from bayescl.benchmark import get_transforms
-from bayescl.datasets import ImageNetR, CORe50Dataset, datasets_path
+from bayescl.data.benchmark import get_transforms
+from bayescl.data.datasets import CORe50Dataset, ImageNetR, datasets_path
 
 
 def time_raw(ds, n):
@@ -42,7 +42,9 @@ def time_loader(ds, batch_size, workers, batches):
         x, *_ = next(it)
         seen += x.shape[0]
     dt = time.time() - t
-    print(f"  DataLoader workers={workers:2d}: {seen / dt:8.1f} img/s ({dt:.2f}s for {seen})")
+    print(
+        f"  DataLoader workers={workers:2d}: {seen / dt:8.1f} img/s ({dt:.2f}s for {seen})"
+    )
     del it, dl
 
 

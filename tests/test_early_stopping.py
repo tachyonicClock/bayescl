@@ -19,7 +19,7 @@ def _make_plugin(monkeypatch, briers, eval_every=2, patience=2):
         return torch.zeros(1, 2), torch.zeros(1, dtype=torch.long)
 
     monkeypatch.setattr(
-        "bayescl.experiment.ContinualLearningEvaluator.brier",
+        "bayescl.metrics.results.ContinualLearningEvaluator.brier",
         staticmethod(lambda logits, y: next(calls)),
     )
     return BrierEarlyStopping(

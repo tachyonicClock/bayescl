@@ -146,7 +146,11 @@ def test_record_shift_produces_ece_and_ace_per_severity():
 def test_shift_and_ood_absent_when_never_recorded():
     metrics, _ = _fill_evaluator().result()
     assert not [k for k in metrics if k.startswith("ece_shift_")]
-    assert not [k for k in metrics if k.startswith("auroc_") and k != "auroc_future" and k != "auroc_future_avg"]
+    assert not [
+        k
+        for k in metrics
+        if k.startswith("auroc_") and k != "auroc_future" and k != "auroc_future_avg"
+    ]
 
 
 class _FakeStrategy:
@@ -210,7 +214,7 @@ def test_corrupt_rejects_out_of_range_severity():
 
 
 def test_shifted_tensor_dataset_preserves_shape_and_targets():
-    from bayescl.benchmark import ShiftedTensorDataset
+    from bayescl.data.benchmark import ShiftedTensorDataset
 
     torch.manual_seed(0)
     x = torch.rand(6, 3, 32, 32)

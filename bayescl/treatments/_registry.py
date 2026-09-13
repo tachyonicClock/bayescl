@@ -88,7 +88,7 @@ class ArmBase:
         append_metrics: bool = True,
     ) -> None:
         if local_ce:
-            from bayescl.train_mask import TrainTaskMask
+            from bayescl.plugin.train_mask import TrainTaskMask
 
             logger.info("Add 'TrainTaskMask' plugin")
             experiment.plugins.append(

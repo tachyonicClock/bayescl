@@ -34,7 +34,7 @@ class Backbone:
 @dataclass(frozen=True)
 class Dataset:
     key: str
-    #: Avalanche scenario name consumed by :func:`bayescl.benchmark.get_benchmark`.
+    #: Avalanche scenario name consumed by :func:`bayescl.data.benchmark.get_benchmark`.
     scenario: str
     n_tasks: int = 10
     shuffle: bool = False
