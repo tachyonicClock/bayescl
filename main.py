@@ -115,10 +115,16 @@ def _targets(f):
         show_default=True,
         help="Torch device for training.",
     )(f)
+    f = click.option(
+        "--epochs",
+        type=click.IntRange(min=1),
+        default=None,
+        help="Override the scale's number of epochs.",
+    )(f)
     return f
 
 
-def _meta(stage, scale, dataset, method, runid, sc, ds, **extra) -> dict:
+def _meta(stage, scale, dataset, method, runid, sc, ds, *, epochs=None, **extra) -> dict:
     return {
         "stage": stage,
         "scale": scale,
@@ -134,7 +140,7 @@ def _meta(stage, scale, dataset, method, runid, sc, ds, **extra) -> dict:
         "scale_knobs": {
             "n_trials": sc.n_trials,
             "n_seeds": sc.n_seeds,
-            "epochs": sc.epochs(ds),
+            "epochs": sc.epochs(ds) if epochs is None else epochs,
         },
         "created": _timestamp(),
         **extra,
@@ -154,7 +160,7 @@ def main() -> None:
     default=False,
     help="Also write optuna.db under the run dir for optuna-dashboard.",
 )
-def tune(scale, dataset, method, runs, dataset_path, device, sqlite):
+def tune(scale, dataset, method, runs, dataset_path, device, epochs, sqlite):
     """Search hyperparameters for METHOD on DATASET at the given SCALE."""
     if dataset_path is None:
         raise click.ClickException("Set $DATASETS or pass --dataset-path.")
@@ -177,6 +183,7 @@ def tune(scale, dataset, method, runs, dataset_path, device, sqlite):
             runid,
             sc,
             ds,
+            epochs=epochs,
         ),
     )
 
@@ -195,6 +202,7 @@ def tune(scale, dataset, method, runs, dataset_path, device, sqlite):
             ExperimentConfig.from_spec(
                 ds,
                 sc,
+                epochs=epochs,
                 seed=trial.number,
                 validation=True,
                 run_dir=run_dir / f"trial_{trial.number:04d}",
@@ -234,6 +242,7 @@ def tune(scale, dataset, method, runs, dataset_path, device, sqlite):
             runid,
             sc,
             ds,
+            epochs=epochs,
             finished=_timestamp(),
             best={
                 "trial": best.number,
@@ -256,7 +265,7 @@ def tune(scale, dataset, method, runs, dataset_path, device, sqlite):
     default=None,
     help="Tune run directory to read hyperparameters from (default: latest).",
 )
-def test(scale, dataset, method, runs, dataset_path, device, from_tune):
+def test(scale, dataset, method, runs, dataset_path, device, epochs, from_tune):
     """Evaluate METHOD's best tuned config on DATASET over `n_seeds` seeds."""
     if dataset_path is None:
         raise click.ClickException("Set $DATASETS or pass --dataset-path.")
@@ -292,6 +301,7 @@ def test(scale, dataset, method, runs, dataset_path, device, from_tune):
             runid,
             sc,
             ds,
+            epochs=epochs,
             source_tune=str(tune_dir),
             best_trial=best["trial"],
             best_params=best["params"],
@@ -304,6 +314,7 @@ def test(scale, dataset, method, runs, dataset_path, device, from_tune):
             ExperimentConfig.from_spec(
                 ds,
                 sc,
+                epochs=epochs,
                 seed=seed,
                 validation=False,
                 run_dir=run_dir / f"seed_{seed:02d}",
