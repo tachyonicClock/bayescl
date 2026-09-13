@@ -224,7 +224,7 @@ class ContinualLearningEvaluator:
         self, severity: int, train_task_idx: int, y_logit: Tensor, y_true: Tensor
     ) -> None:
         """Record predictions on seen-task samples replaced by a version
-        corrupted at ``severity`` (EXPERIMENT.md ยง2.1, ``ece@$shift``/``ace@$shift``).
+        corrupted at ``severity``, for the ``ece@$shift``/``ace@$shift`` metrics.
         """
         key = (severity, train_task_idx)
         self._shift_logit.setdefault(key, []).append(y_logit.cpu())
@@ -232,8 +232,8 @@ class ContinualLearningEvaluator:
 
     @torch.no_grad()
     def record_ood(self, name: str, train_task_idx: int, y_logit: Tensor) -> None:
-        """Record predictions on an auxiliary out-of-distribution dataset
-        (EXPERIMENT.md ยง2.1, ``auroc_$ood_dataset``)."""
+        """Record predictions on an auxiliary out-of-distribution dataset,
+        for the ``auroc_$ood_dataset`` metric."""
         key = (name, train_task_idx)
         self._ood_logit.setdefault(key, []).append(y_logit.cpu())
 
@@ -256,23 +256,17 @@ class ContinualLearningEvaluator:
             total = r_seen.sum()
             acc_sum += (correct / total).item() if total > 0 else 0.0
 
-            # ece_seen(t_prime)
-            y_true_parts = [
-                torch.cat(self._y_true[(t_prime, j)], dim=0)
+            # ece_seen(t_prime): mean of each seen task's own ECE, matching
+            # `result()`'s per-task-then-averaged aggregation.
+            per_task_ece = [
+                self.ece(
+                    torch.cat(self._y_logit[(t_prime, j)], dim=0),
+                    torch.cat(self._y_true[(t_prime, j)], dim=0),
+                )
                 for j in range(t_prime + 1)
                 if (t_prime, j) in self._y_true
             ]
-            y_logit_parts = [
-                torch.cat(self._y_logit[(t_prime, j)], dim=0)
-                for j in range(t_prime + 1)
-                if (t_prime, j) in self._y_logit
-            ]
-            if y_true_parts:
-                ece_sum += self.ece(
-                    torch.cat(y_logit_parts, dim=0), torch.cat(y_true_parts, dim=0)
-                )
-            else:
-                ece_sum += 1.0  # worst-case for missing data
+            ece_sum += np.mean(per_task_ece) if per_task_ece else 1.0  # worst-case
 
         # Remaining (T - t - 1) tasks assumed: acc=0, ece=1
         intermediate_acc = acc_sum / T
@@ -354,49 +348,48 @@ class ContinualLearningEvaluator:
             k: torch.cat(v, dim=0) for k, v in self._y_logit.items()
         }
 
-        # Squash and group by train task
-        y_true_seen: List[Tensor] = []
-        y_true_all: List[Tensor] = []
-        y_logit_seen: List[Tensor] = []
-        y_logit_all: List[Tensor] = []
-        for train_tid in range(self._task_count):
-            _y_true_seen = []
-            _y_true_all = []
-            _y_logit_seen = []
-            _y_logit_all = []
-            for test_tid in range(self._task_count):
-                _y_true_all.append(y_true[(train_tid, test_tid)])
-                _y_logit_all.append(y_logit[(train_tid, test_tid)])
-                if train_tid >= test_tid:
-                    _y_true_seen.append(y_true[(train_tid, test_tid)])
-                    _y_logit_seen.append(y_logit[(train_tid, test_tid)])
-            y_true_seen.append(torch.cat(_y_true_seen, dim=0))
-            y_true_all.append(torch.cat(_y_true_all, dim=0))
-            y_logit_seen.append(torch.cat(_y_logit_seen, dim=0))
-            y_logit_all.append(torch.cat(_y_logit_all, dim=0))
+        # Per-(train, test) task metric matrices, mirroring the accuracy
+        # matrix R: entry [train_tid, test_tid] is the metric computed only
+        # from that one test task's samples. "_all"/"_seen" then average
+        # across test tasks the same way `accuracy_all`/`accuracy_seen` do,
+        # so early (resp. late) tasks aren't overweighted just because a
+        # checkpoint's seen (resp. future) task pool happens to hold more
+        # raw samples than the others.
+        T = self._task_count
+        ece_matrix = np.zeros((T, T))
+        ace_matrix = np.zeros((T, T))
+        sce_matrix = np.zeros((T, T))
+        brier_matrix = np.zeros((T, T))
+        nll_matrix = np.zeros((T, T))
+        for train_tid in range(T):
+            for test_tid in range(T):
+                logit = y_logit[(train_tid, test_tid)]
+                true = y_true[(train_tid, test_tid)]
+                ece_matrix[train_tid, test_tid] = self.ece(logit, true)
+                ace_matrix[train_tid, test_tid] = self.ace(logit, true)
+                sce_matrix[train_tid, test_tid] = self.sce(logit, true)
+                brier_matrix[train_tid, test_tid] = self.brier(logit, true)
+                nll_matrix[train_tid, test_tid] = self.nll(logit, true)
 
-        # Compute expected calibration errors per task
-        ece_all = np.zeros(self._task_count)
-        ece_seen = np.zeros(self._task_count)
-        ace_all = np.zeros(self._task_count)
-        ace_seen = np.zeros(self._task_count)
-        sce_all = np.zeros(self._task_count)
-        sce_seen = np.zeros(self._task_count)
-        brier_all = np.zeros(self._task_count)
-        brier_seen = np.zeros(self._task_count)
-        nll_all = np.zeros(self._task_count)
-        nll_seen = np.zeros(self._task_count)
-        for t in range(self._task_count):
-            ece_all[t] = self.ece(y_logit_all[t], y_true_all[t])
-            ece_seen[t] = self.ece(y_logit_seen[t], y_true_seen[t])
-            ace_all[t] = self.ace(y_logit_all[t], y_true_all[t])
-            ace_seen[t] = self.ace(y_logit_seen[t], y_true_seen[t])
-            sce_all[t] = self.sce(y_logit_all[t], y_true_all[t])
-            sce_seen[t] = self.sce(y_logit_seen[t], y_true_seen[t])
-            brier_all[t] = self.brier(y_logit_all[t], y_true_all[t])
-            brier_seen[t] = self.brier(y_logit_seen[t], y_true_seen[t])
-            nll_all[t] = self.nll(y_logit_all[t], y_true_all[t])
-            nll_seen[t] = self.nll(y_logit_seen[t], y_true_seen[t])
+        def _all(matrix: np.ndarray) -> np.ndarray:
+            return matrix.mean(axis=1)
+
+        def _seen(matrix: np.ndarray) -> np.ndarray:
+            return np.array([matrix[t, : t + 1].mean() for t in range(T)])
+
+        ece_all, ece_seen = _all(ece_matrix), _seen(ece_matrix)
+        ace_all, ace_seen = _all(ace_matrix), _seen(ace_matrix)
+        sce_all, sce_seen = _all(sce_matrix), _seen(sce_matrix)
+        brier_all, brier_seen = _all(brier_matrix), _seen(brier_matrix)
+        nll_all, nll_seen = _all(nll_matrix), _seen(nll_matrix)
+
+        # Pooled (not per-task-averaged) seen-task logits: AUROC is a
+        # sample-level ranking metric, so the ID group is naturally the raw
+        # union of every seen task's samples rather than an average of
+        # per-task AUROC values.
+        y_logit_seen: List[Tensor] = [
+            torch.cat([y_logit[(t, j)] for j in range(t + 1)], dim=0) for t in range(T)
+        ]
 
         correct = self._big_r.diagonal(dim1=2, dim2=3).sum(dim=-1)
         total = self._big_r.sum(dim=(2, 3))
@@ -431,7 +424,6 @@ class ContinualLearningEvaluator:
             "duration_s": time.perf_counter() - self._start_time,
         }
 
-        T = self._task_count
         # auroc_future: seen tasks vs. pooled future tasks at each checkpoint,
         # excluding the final checkpoint (which has no future tasks left).
         if T > 1:

@@ -48,6 +48,46 @@ def test_brier_seen_is_populated_and_finite():
     assert metrics["brier_seen_avg"] == pytest.approx(metrics["brier_seen"].mean())
 
 
+def test_ece_seen_is_per_task_mean_not_pooled():
+    T, C = 2, 3
+    ev = ContinualLearningEvaluator(T, C)
+    torch.manual_seed(0)
+
+    logit0 = torch.randn(50, C)
+    y0 = torch.randint(0, C, (50,))
+    ev.update(0, 0, logit0, y0)
+    # (0, 1): task 1 evaluated zero-shot before it's been trained on -- every
+    # checkpoint evaluates the full test stream, seen and future tasks alike.
+    ev.update(0, 1, torch.randn(30, C), torch.randint(0, C, (30,)))
+
+    # Deliberately unequal per-task sample counts, so pooling samples before
+    # computing ECE (nonlinear due to binning) diverges from averaging each
+    # seen task's own ECE.
+    logit1_0 = torch.randn(5, C)
+    y1_0 = torch.randint(0, C, (5,))
+    logit1_1 = torch.randn(200, C)
+    y1_1 = torch.randint(0, C, (200,))
+    ev.update(1, 0, logit1_0, y1_0)
+    ev.update(1, 1, logit1_1, y1_1)
+
+    metrics, _ = ev.result()
+
+    expected_seen_1 = np.mean(
+        [
+            ContinualLearningEvaluator.ece(logit1_0, y1_0),
+            ContinualLearningEvaluator.ece(logit1_1, y1_1),
+        ]
+    )
+    pooled_seen_1 = ContinualLearningEvaluator.ece(
+        torch.cat([logit1_0, logit1_1]), torch.cat([y1_0, y1_1])
+    )
+
+    assert metrics["ece_seen"][1] == pytest.approx(expected_seen_1)
+    # Regression guard: pooling and per-task averaging genuinely differ here,
+    # so this would catch a silent revert to the pooled approach.
+    assert metrics["ece_seen"][1] != pytest.approx(pooled_seen_1)
+
+
 def test_brier_handles_batches_missing_some_classes():
     # sklearn's brier_score_loss infers the class set from y_true alone unless
     # told otherwise, which breaks as soon as a batch doesn't contain every
@@ -152,7 +192,7 @@ def test_corruption_names_and_corrupt_roundtrip():
 
     img = Image.fromarray((np.random.rand(64, 64, 3) * 255).astype(np.uint8))
     names = corruption_names()
-    assert len(names) == 11
+    assert len(names) == 13
     for name in names:
         out = corrupt(img, name, severity=2)
         assert out.size == img.size

@@ -48,11 +48,14 @@ class Dataset:
 
 
 DATASETS: dict[str, Dataset] = {
-    "cifar100": Dataset("cifar100", "CIFAR100", full_epochs=30),
+    "cifar100": Dataset("cifar100", "CIFAR100", shuffle=True, full_epochs=30),
     # 224px decode+augment is CPU-bound; these benefit from more workers than the
     # default 4 (measured ~1.8x from 4->8 workers on both pipelines).
     "core50": Dataset("core50", "CORe50", full_epochs=30, num_workers=8),
-    "imagenetr": Dataset("imagenetr", "ImageNetR", full_epochs=60, num_workers=8),
+    "imagenetr": Dataset(
+        "imagenetr", "ImageNetR", shuffle=True, full_epochs=60, num_workers=8
+    ),
+    # CLEAR10's task order is chronological and meaningful, so it stays fixed.
     "clear10": Dataset("clear10", "CLEAR10", full_epochs=60, num_workers=8),
 }
 
@@ -84,8 +87,10 @@ class Scale:
         return dataset.full_epochs if self.pilot_epochs is None else self.pilot_epochs
 
 
-PILOT = Scale("pilot", n_trials=4, n_seeds=1, pilot_epochs=2)
-FULL = Scale("full", n_trials=30, n_seeds=3, pilot_epochs=None)
+PILOT = Scale("pilot", n_trials=3, n_seeds=5, pilot_epochs=100)
+# n_seeds is a floor: the pilot's variance estimates should drive a power
+# analysis that may raise this count for a given dataset/metric combination.
+FULL = Scale("full", n_trials=50, n_seeds=8, pilot_epochs=None)
 
 SCALES: dict[str, Scale] = {s.key: s for s in (PILOT, FULL)}
 

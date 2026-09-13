@@ -100,8 +100,8 @@ def eval_transform_for(config: "ExperimentConfig") -> Transform:
 
 class ShiftedTensorDataset(Dataset):
     """Wraps an already-preprocessed experience dataset and applies a random
-    ImageNet-C-style corruption to each sample (EXPERIMENT.md ยง4.2, the
-    ``$shift`` = ``severity`` eval data for ``ece@$shift``/``ace@$shift``).
+    ImageNet-C-style corruption to each sample -- the ``severity``-level shift
+    eval data consumed by the ``ece@$shift``/``ace@$shift`` metrics.
 
     Every dataset construction path in :func:`get_benchmark` (``nc_benchmark``
     for CIFAR100/ImageNet-R, ``create_generic_benchmark_from_paths`` for

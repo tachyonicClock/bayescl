@@ -1,16 +1,19 @@
-"""ImageNet-C-style synthetic distribution shift (EXPERIMENT.md §4.2).
+"""ImageNet-C-style synthetic distribution shift.
 
 Source: https://github.com/bethgelab/imagecorruptions (Apache-2.0), by
 Michaelis et al., reimplementing Hendrycks & Dietterich's ImageNet-C
-corruptions. Trimmed to the subset of the 15 "common" corruption types that
-need neither ``opencv-python`` (whose GUI build requires a system ``libGL``
-we have no way to install) nor ``numba`` (a heavy JIT dependency needed by
-only one corruption, ``glass_blur``). The remaining functions are otherwise
-unmodified aside from replacing the deprecated
-``scipy.ndimage.interpolation`` import path.
+corruptions. Ported to avoid ``opencv-python`` (whose GUI build requires a
+system ``libGL`` we have no way to install): ``cv2.GaussianBlur``/
+``cv2.filter2D`` become ``skimage``/``scipy.ndimage`` equivalents, and
+``cv2.cvtColor(..., COLOR_RGB2GRAY)`` becomes ``skimage.color.rgb2gray``. The
+remaining functions are otherwise unmodified aside from replacing the
+deprecated ``scipy.ndimage.interpolation`` import path.
 
-Dropped relative to the full 15: ``defocus_blur``, ``frost``, ``snow``
-(all need ``cv2``) and ``glass_blur`` (needs ``numba``).
+Dropped relative to the full 15:
+- ``glass_blur`` needs ``numba`` (a heavy JIT dependency) for its pixel-shuffle
+  loop to run at a usable speed.
+- ``frost`` blends in one of six bundled frost photographs shipped as package
+  data with the upstream library; we don't vendor those image assets.
 """
 
 import math
@@ -19,7 +22,7 @@ from io import BytesIO
 import numpy as np
 import skimage as sk
 from PIL import Image
-from scipy.ndimage import map_coordinates
+from scipy.ndimage import convolve, map_coordinates
 from scipy.ndimage import zoom as scizoom
 from skimage.filters import gaussian
 
@@ -175,6 +178,24 @@ def motion_blur(x, severity=1):
     return np.clip(x, 0, 255)
 
 
+def _disk(radius, alias_blur=0.1):
+    span = np.arange(-8, 8 + 1) if radius <= 8 else np.arange(-radius, radius + 1)
+    xx, yy = np.meshgrid(span, span)
+    aliased_disk = np.array((xx**2 + yy**2) <= radius**2, dtype=np.float32)
+    aliased_disk /= np.sum(aliased_disk)
+    # supersample disk to antialias
+    return gaussian(aliased_disk, sigma=alias_blur, mode="reflect")
+
+
+def defocus_blur(x, severity=1):
+    c = [(3, 0.1), (4, 0.5), (6, 0.5), (8, 0.5), (10, 0.5)][severity - 1]
+    x = np.array(x) / 255.0
+    kernel = _disk(radius=c[0], alias_blur=c[1])
+    channels = [convolve(x[:, :, d], kernel, mode="reflect") for d in range(3)]
+    channels = np.array(channels).transpose((1, 2, 0))
+    return np.clip(channels, 0, 1) * 255
+
+
 def zoom_blur(x, severity=1):
     c = [
         np.arange(1, 1.11, 0.01),
@@ -232,6 +253,43 @@ def fog(x, severity=1):
             ][..., np.newaxis]
         )
     return np.clip(x * max_val / (max_val + c[0]), 0, 1) * 255
+
+
+def snow(x, severity=1):
+    c = [
+        (0.1, 0.3, 3, 0.5, 10, 4, 0.8),
+        (0.2, 0.3, 2, 0.5, 12, 4, 0.7),
+        (0.55, 0.3, 4, 0.9, 12, 8, 0.7),
+        (0.55, 0.3, 4.5, 0.85, 12, 8, 0.65),
+        (0.55, 0.3, 2.5, 0.85, 12, 12, 0.55),
+    ][severity - 1]
+
+    x = np.array(x, dtype=np.float32) / 255.0
+    snow_layer = np.random.normal(size=x.shape[:2], loc=c[0], scale=c[1])
+
+    snow_layer = clipped_zoom(snow_layer[..., np.newaxis], c[2])
+    snow_layer[snow_layer < c[3]] = 0
+    snow_layer = np.clip(snow_layer.squeeze(), 0, 1)
+
+    snow_layer = _motion_blur(
+        snow_layer, radius=c[4], sigma=c[5], angle=np.random.uniform(-135, -45)
+    )
+
+    # The snow layer is rounded and cropped to the img dims
+    snow_layer = np.round(snow_layer * 255).astype(np.uint8) / 255.0
+    snow_layer = snow_layer[..., np.newaxis]
+    snow_layer = snow_layer[: x.shape[0], : x.shape[1], :]
+
+    gray = sk.color.rgb2gray(x).reshape(x.shape[0], x.shape[1], 1)
+    x = c[6] * x + (1 - c[6]) * np.maximum(x, gray * 1.5 + 0.5)
+
+    try:
+        return np.clip(x + snow_layer + np.rot90(snow_layer, k=2), 0, 1) * 255
+    except ValueError:
+        x[: snow_layer.shape[0], : snow_layer.shape[1]] += snow_layer + np.rot90(
+            snow_layer, k=2
+        )
+        return np.clip(x, 0, 1) * 255
 
 
 def contrast(x, severity=1):
@@ -335,8 +393,10 @@ CORRUPTIONS = {
     "gaussian_noise": gaussian_noise,
     "shot_noise": shot_noise,
     "impulse_noise": impulse_noise,
+    "defocus_blur": defocus_blur,
     "motion_blur": motion_blur,
     "zoom_blur": zoom_blur,
+    "snow": snow,
     "fog": fog,
     "brightness": brightness,
     "contrast": contrast,

@@ -70,8 +70,8 @@ def _imagenetr_targets() -> tuple[list[str], dict[str, int], list[int]]:
     return classes, wnid_to_idx, all_targets
 
 
-#: iImageNet-R200/10 split sizes (EXPERIMENT.md ยง4): the Hub dataset's single
-#: 30,000-image pool, class-balanced into train/valid/pilot_test/full_test.
+#: iImageNet-R200/10 split sizes: the Hub dataset's single 30,000-image pool,
+#: class-balanced into train/valid/pilot_test/full_test.
 IMAGENETR_SPLIT_SIZES = {
     "valid": 1250,
     "pilot_test": 1250,
@@ -340,8 +340,8 @@ def resolve_split_indices(
 
     At ``full`` scale, the pilot's test set is recycled into the training pool
     since it is no longer needed for evaluation once the pilot has validated
-    the setup (EXPERIMENT.md ยง4). ``validation`` selects the held-out ``valid``
-    split (used for tuning/early stopping) instead of the scale's test split.
+    the setup. ``validation`` selects the held-out ``valid`` split (used for
+    tuning/early stopping) instead of the scale's test split.
     """
     train = list(named["train"])
     if scale == "full":
@@ -364,7 +364,7 @@ def SplitImageNetR(
     scale: Literal["pilot", "full"] = "full",
     validation: bool = False,
 ) -> CLScenario:
-    """Create iImageNet-R200/10 by splitting ImageNet-R(endition)[#f1] (EXPERIMENT.md ยง4).
+    """Create iImageNet-R200/10 by splitting ImageNet-R(endition)[#f1].
 
     The Hub dataset's single 30,000-image pool is class-balanced into
     train/valid/pilot_test/full_test (:data:`IMAGENETR_SPLIT_SIZES`); ``scale``
@@ -456,11 +456,11 @@ def SplitDomainNet(
 def _cifar100_pool():
     """The combined 60,000-image CIFAR-100 pool (Hub train + test splits).
 
-    EXPERIMENT.md ยง4 re-partitions CIFAR-100 into train/valid/pilot_test/
-    full_test from scratch (40k/5k/5k/10k) rather than reusing the dataset's
-    canonical 50k/10k train/test boundary, so pilot_test and full_test are a
-    disjoint split of a dedicated "test" pool instead of full_test being the
-    stock test set with pilot_test carved out of train.
+    Re-partitioned into train/valid/pilot_test/full_test from scratch
+    (40k/5k/5k/10k) rather than reusing the dataset's canonical 50k/10k
+    train/test boundary, so pilot_test and full_test are a disjoint split of
+    a dedicated "test" pool instead of full_test being the stock test set
+    with pilot_test carved out of train.
     """
     return concatenate_datasets(
         [_load_hf(CIFAR100Dataset.HF_REPO, "train"), _load_hf(CIFAR100Dataset.HF_REPO, "test")]
@@ -472,7 +472,7 @@ def _cifar100_pool_targets() -> list[int]:
     return [int(x) for x in _cifar100_pool()["fine_label"]]
 
 
-#: iCIFAR100/10 split sizes (EXPERIMENT.md ยง4).
+#: iCIFAR100/10 split sizes.
 CIFAR100_SPLIT_SIZES = {"valid": 5000, "pilot_test": 5000, "full_test": 10000, "train": 40000}
 
 
@@ -529,7 +529,7 @@ def SplitCIFAR100(
     scale: Literal["pilot", "full"] = "full",
     validation: bool = False,
 ) -> CLScenario:
-    """Create iCIFAR100/10 by splitting CIFAR-100 (EXPERIMENT.md ยง4).
+    """Create iCIFAR100/10 by splitting CIFAR-100.
 
     The combined 60,000-image pool is class-balanced into train/valid/
     pilot_test/full_test (:data:`CIFAR100_SPLIT_SIZES`); ``scale`` and
@@ -552,9 +552,6 @@ def SplitCIFAR100(
     )
 
 
-#: dCLEAR10/10 split fractions (EXPERIMENT.md ยง4): same proportions as
-#: iImageNet-R200/10 (25000/1250/1250/2500 over a 30,000-image pool), applied
-#: per time bucket since every bucket must keep its own class balance.
 #: Per-bucket share of dCLEAR10/10's train/valid/pilot_test/full_test totals
 #: (25000/1250/1250/2500 over 10 domains -- same totals as iImageNet-R200/10,
 #: divided evenly across the 10 buckets). CLEAR10's raw buckets are far larger
@@ -589,7 +586,7 @@ def _clear10_buckets(
     The Hub release actually ships 11 time buckets (0-10), but bucket 0 only
     has metadata under ``test/`` -- ``train/`` starts at bucket 1 -- so it's a
     test-only reference bucket that was never meant to be trained on. Dropping
-    it leaves exactly the 10 trainable domains EXPERIMENT.md ยง4 calls for.
+    it leaves exactly the 10 intended trainable domains.
 
     Returns 10 time buckets, each a tuple of ``(image_path, class_idx)`` with
     class indices remapped to the remaining 10 (non-background) classes.
@@ -613,7 +610,7 @@ def _clear10_buckets(
     all_buckets = ds.get_paths_and_targets(root_appended=True)
     assert len(all_buckets) == 11, (
         f"expected CLEAR10's usual 11 raw time buckets (dropping the test-only "
-        f"bucket 0 leaves the 10 EXPERIMENT.md domains), got {len(all_buckets)}"
+        f"bucket 0 leaves the 10 intended domains), got {len(all_buckets)}"
     )
 
     return tuple(
@@ -644,8 +641,7 @@ def SplitCLEAR10(
     validation: bool = False,
 ) -> CLScenario:
     """Create dCLEAR10/10, a domain-incremental scenario over CLEAR10's 10 time
-    buckets (Lin et al., 2021)[#f1], excluding the 11th "BACKGROUND" class
-    (EXPERIMENT.md ยง4).
+    buckets (Lin et al., 2021)[#f1], excluding the 11th "BACKGROUND" class.
 
     Unlike the class-incremental Split* benchmarks above, every bucket
     contains all 10 (non-background) classes, so experiences are the dataset's
@@ -683,16 +679,16 @@ def SplitCLEAR10(
     return benchmark
 
 
-#: OOD dataset split sizes (EXPERIMENT.md ยง4.1). There's no train/valid
-#: partition -- these datasets are only ever used as auxiliary
-#: out-of-distribution eval sets, never trained on.
+#: OOD dataset split sizes. There's no train/valid partition -- these
+#: datasets are only ever used as auxiliary out-of-distribution eval sets,
+#: never trained on.
 OOD_SPLIT_SIZES = {"pilot_test": 5000, "full_test": 5000}
 
 
 class CIFAR10Dataset(Dataset):
     """CIFAR-10 test split hosted on the Hugging Face Hub (``uoft-cs/cifar10``).
 
-    Used as an auxiliary out-of-distribution dataset (EXPERIMENT.md ยง4.1); see
+    Used as an auxiliary out-of-distribution dataset; see
     :func:`get_ood_dataset`.
     """
 
@@ -728,7 +724,7 @@ class SVHNDataset(Dataset):
     """SVHN ``cropped_digits`` test split, hosted on the Hugging Face Hub
     (``ufldl-stanford/svhn``).
 
-    Used as an auxiliary out-of-distribution dataset (EXPERIMENT.md ยง4.1); see
+    Used as an auxiliary out-of-distribution dataset; see
     :func:`get_ood_dataset`.
     """
 
@@ -783,7 +779,7 @@ def get_ood_dataset(
     dataset_root: str | Path = datasets_path(),
     transform: Callable[..., Any] | None = None,
 ) -> Dataset:
-    """Load an auxiliary out-of-distribution split (EXPERIMENT.md ยง4.1).
+    """Load an auxiliary out-of-distribution split.
 
     Used to compute ``auroc_$ood_dataset``: seen-task samples vs. this dataset,
     scored by max softmax probability. ``scale`` selects the disjoint
@@ -794,7 +790,7 @@ def get_ood_dataset(
     return Subset(_OOD_DATASETS[name](dataset_root, transform), indices)
 
 
-#: Corruption severities used for ``ece@$shift``/``ace@$shift`` (EXPERIMENT.md ยง4.2).
+#: Corruption severities used for ``ece@$shift``/``ace@$shift``.
 SHIFT_SEVERITIES = [1, 2, 3, 4, 5]
 
 

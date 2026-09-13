@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 
 import torch
 from bayescl.treatments._registry import ArmBase, register
@@ -47,3 +47,14 @@ class InfLoRA(ArmBase):
 
     def _build_strategy(self, experiment):
         return self._build_naive_strategy(experiment)
+
+    @staticmethod
+    def suggest_config(trial, base):
+        threshold_start = trial.suggest_float("threshold_start", 0.80, 0.99)
+        threshold_end = trial.suggest_float("threshold_end", threshold_start, 0.999)
+        return replace(
+            base,
+            lr=trial.suggest_float("lr", 1e-4, 1e-2, log=True),
+            threshold_start=threshold_start,
+            threshold_end=threshold_end,
+        )
