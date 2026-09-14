@@ -13,6 +13,7 @@ Mann-Whitney comparison between our methods and the baselines, Holm-Bonferroni
 corrected across the full family of comparisons.
 """
 
+import os
 import sys
 from pathlib import Path
 
@@ -22,6 +23,8 @@ import pandas as pd
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from bayescl.analysis import required_test_runs, run_comparisons  # noqa: E402
 
+_RUNS_PATH = Path(os.environ.get("LOGDIR", "logs")) / "bayescl"
+
 
 @click.group()
 def cli() -> None:
@@ -30,7 +33,7 @@ def cli() -> None:
 
 @cli.command()
 @click.argument(
-    "runs", type=click.Path(exists=True, file_okay=False), default="./runs"
+    "runs", type=click.Path(exists=True, file_okay=False), default=str(_RUNS_PATH)
 )
 @click.option("--delta", type=float, default=0.02, show_default=True)
 @click.option("--power", "target_power", type=float, default=0.8, show_default=True)
@@ -42,7 +45,7 @@ def power(runs: str, delta: float, target_power: float) -> None:
 
 @cli.command()
 @click.argument(
-    "runs", type=click.Path(exists=True, file_okay=False), default="./runs"
+    "runs", type=click.Path(exists=True, file_okay=False), default=str(_RUNS_PATH)
 )
 @click.option("--scale", type=click.Choice(["pilot", "full"]), default="full")
 def compare(runs: str, scale: str) -> None:

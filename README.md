@@ -54,7 +54,7 @@ $ uv run main.py tune full cifar100 ball
 Runs an Optuna study against a validation split and writes:
 
 ```
-runs/tune/full/cifar100/ball/<RUNID>/
+$LOGDIR/bayescl/tune/full/cifar100/ball/<RUNID>/
     results.jsonl   # one line per trial: {trial, arm, params, acc, ece, score, state}
     meta.json       # git provenance, scale knobs, best trial
     trial_0000/ ...  # per-trial Experiment output (TensorBoard, metrics.pkl, ...)
@@ -63,10 +63,10 @@ runs/tune/full/cifar100/ball/<RUNID>/
 `<RUNID>` is a `%Y-%m-%d_%H-%M-%S` timestamp. The objective maximises
 `score = 0.5 * (accuracy + (1 - ECE))`.
 
-Add `--sqlite` to also write `runs/.../optuna.db` for the dashboard:
+Add `--sqlite` to also write `$LOGDIR/bayescl/.../optuna.db` for the dashboard:
 
 ```bash
-$ uv run optuna-dashboard runs/tune/full/cifar100/ball/<RUNID>/optuna.db
+$ uv run optuna-dashboard $LOGDIR/bayescl/tune/full/cifar100/ball/<RUNID>/optuna.db
 ```
 
 ### 2. Test
@@ -75,12 +75,12 @@ $ uv run optuna-dashboard runs/tune/full/cifar100/ball/<RUNID>/optuna.db
 $ uv run main.py test full cifar100 ball
 ```
 
-Finds the most recent `runs/tune/full/cifar100/ball/*/` (or use `--from-tune
+Finds the most recent `$LOGDIR/bayescl/tune/full/cifar100/ball/*/` (or use `--from-tune
 PATH`), picks the trial with the best `score`, reconstructs the arm, and runs it
 for `n_seeds` seeds against the test set:
 
 ```
-runs/test/full/cifar100/ball/<RUNID>/
+$LOGDIR/bayescl/test/full/cifar100/ball/<RUNID>/
     results.jsonl   # one line per seed: {seed, acc, ece, score}
     meta.json
     seed_00/ ...
@@ -95,8 +95,8 @@ runs/test/full/cifar100/ball/<RUNID>/
 Collect run results into a CSV:
 
 ```bash
-$ uv run script/collect.py ./runs results.csv --stage test
-$ uv run script/collect.py ./runs trials.csv --stage tune
+$ uv run script/collect.py $LOGDIR/bayescl results.csv --stage test
+$ uv run script/collect.py $LOGDIR/bayescl trials.csv --stage tune
 ```
 
 You can find my runs and hyperparameter search metrics in the `results`

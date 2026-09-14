@@ -6,11 +6,11 @@
 
 Artifacts are written to::
 
-    runs/tune/{scale}/{dataset}/{method}/{RUNID}/
+    $LOGDIR/bayescl/tune/{scale}/{dataset}/{method}/{RUNID}/
         results.jsonl   # one line per trial; consumed by `test`
         meta.json       # provenance + best trial
         trial_XXXX/      # per-trial Experiment output
-    runs/test/{scale}/{dataset}/{method}/{RUNID}/
+    $LOGDIR/bayescl/test/{scale}/{dataset}/{method}/{RUNID}/
         results.jsonl   # one line per seed
         meta.json
         seed_XX/
@@ -46,6 +46,7 @@ from bayescl.runio import append_jsonl, latest_run, read_jsonl, write_json
 from bayescl.treatments._registry import arm_names
 
 _DATASET_PATH = os.environ.get("DATASETS")
+_RUNS_PATH = Path(os.environ.get("LOGDIR", "logs")) / "bayescl"
 _SAMPLER = optuna.samplers.TPESampler()
 _PRUNER = optuna.pruners.MedianPruner()
 
@@ -92,7 +93,7 @@ def _targets(f):
     f = click.option(
         "--runs",
         type=click.Path(file_okay=False),
-        default="./runs",
+        default=str(_RUNS_PATH),
         show_default=True,
         help="Directory to store run outputs.",
     )(f)

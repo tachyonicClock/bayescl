@@ -1,9 +1,10 @@
 """Collect run results into a CSV for analysis.
 
-Walks ``runs/{stage}/{scale}/{dataset}/{method}/{runid}/results.jsonl`` and
+Walks ``$LOGDIR/bayescl/{stage}/{scale}/{dataset}/{method}/{runid}/results.jsonl`` and
 flattens every record into one CSV row.
 """
 
+import os
 import sys
 from pathlib import Path
 
@@ -13,10 +14,12 @@ import pandas as pd
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from bayescl.runio import read_jsonl  # noqa: E402
 
+_RUNS_PATH = Path(os.environ.get("LOGDIR", "logs")) / "bayescl"
+
 
 @click.command()
 @click.argument(
-    "runs_root", type=click.Path(exists=True, file_okay=False), default="./runs"
+    "runs_root", type=click.Path(exists=True, file_okay=False), default=str(_RUNS_PATH)
 )
 @click.argument("output", type=click.Path())
 @click.option(

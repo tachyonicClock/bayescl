@@ -1,4 +1,6 @@
 - Use `uv`.
+- Environment variable `DATASETS` sets the datasets to be used.
+- Environment variable `LOGDIR` sets the directory where runs/logs are stored.
 - MUST NOT add Co-Authored-By: Claude <noreply@anthropic.com> (or similar) to commit messages.
 - MUST add Assisted-by: AGENT_NAME:MODEL_VERSION [TOOL1] [TOOL2] ... to the end of commit messages and PR descriptions.
     - AGENT_NAME is the name of the harness (/tool/framework)
