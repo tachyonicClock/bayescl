@@ -72,11 +72,14 @@ Both biases reflect the nature of the continual learning problem.
 
 ### 2.4 Hyperparameter Search
 
-Nuisance hyperparameters are controlled via hyperparameter search using Optuna (TPE search algorithm).
-Each treatment configures a search space in `bayescl/treatments/$TREATMENT/_arm.py`.
-The tune phase's objective is the Brier score on the holdout validation set.
-During the tune phase, the task order (except for dCLEAR10/10) and initialization seeds are varied.
-The validation set is also used for early stopping.
+Nuisance hyperparameters are controlled via hyperparameter search using Optuna (TPE
+search algorithm). Each treatment configures a search space in
+`bayescl/treatments/$TREATMENT/_arm.py`. The tune phase's objective is the Brier score
+on the holdout validation set. During the tune phase, the task order (except for
+dCLEAR10/10) and initialization seeds are varied. The validation set is also used for
+early stopping. To further reduce the computational burden we adopt median pruning in
+Optuna to stop unpromising trials early. The pruning strategy considers the brier score
+on the seen tasks' validation sets.
 
 ## 3. Architecture
 
@@ -124,9 +127,12 @@ Pilot and test are a disjoint split of the original test data.
 
 ## 5. Analysis
 
-Mann-Whitney tests ($\alpha=0.05$) comparing each of our methods against each baseline and against each other, with Holm-Bonferroni multiplicity correction.
-We shall compare `brier`, the mean of `auroc_$ood_dataset` over OOD datasets, and the mean of `ece@$shift` over corruption intensities.
-Only these metrics were picked, to ensure statistical power under multiplicity:
+Wilcoxon signed-rank tests ($\alpha=0.05$) comparing each of our methods against each
+baseline and against each other, with Holm-Bonferroni multiplicity correction. As a
+paired test, comparisons use matched observations sharing identical initialization seeds
+and task orderings. We shall compare `brier`, the mean of `auroc_$ood_dataset` over OOD
+datasets, and the mean of `ece@$shift` over corruption intensities. Only these metrics
+were picked, to ensure statistical power under multiplicity:
 
 ```python
 >>> n_our_methods = 3  # ball, tball, tball_mnd
@@ -138,8 +144,13 @@ Only these metrics were picked, to ensure statistical power under multiplicity:
 
 ```
 
-During the pilot, the number of test runs shall be determined such that absolute differences of 0.02 in `brier`, `mean(auroc_$ood_dataset)`, and `mean(ece@$shift)` can each be detected by a two-sided Mann-Whitney test with 80% power (by convention) at the strictest Holm-corrected significance level (α = 0.05/189), using the pilot's variance estimates.
-The number of runs shall be the maximum required across endpoints, datasets, and comparisons, and no fewer than 8.
+During the pilot, the number of test runs shall be determined such that absolute
+differences of 0.02 in `brier`, `mean(auroc_$ood_dataset)`, and `mean(ece@$shift)` can
+each be detected by a two-sided Wilcoxon signed-rank test with 80% power at the
+strictest Holm-corrected significance level ($\alpha = 0.05/189$), calculated using the
+pilot's variance of paired differences. The number of runs shall be the maximum required
+across endpoints, datasets, and comparisons, and no fewer than 8.
+
 
 ## 6. Protocol
 
@@ -176,3 +187,6 @@ The number of runs shall be the maximum required across endpoints, datasets, and
   However, for research purposes, relaxing this is allowed.
 - **No replay:**
   Treatments are limited to replay-free methods.
+- **Early Stopping Dynamics:**
+  Early stopping on brier score on the current tasks validation set may prematurely halt
+  consolidation of prior task knowledge. Mitigated by using a generous patience parameter.
