@@ -160,10 +160,14 @@ class Result:
     r"""AUROC arrays for seen-task versus auxiliary OOD datasets, keyed by name."""
     auroc_ood_avg: Dict[str, float] | None = None
     r"""Mean OOD AUROC values keyed by auxiliary dataset name."""
+    mean_auroc_ood: float | None = None
+    r"""Mean AUROC across the recorded auxiliary OOD datasets."""
     ece_shift: Dict[int, np.ndarray] | None = None
     r"""Shifted-data ECE arrays keyed by corruption severity."""
     ece_shift_avg: Dict[int, float] | None = None
     r"""Mean shifted-data ECE values keyed by corruption severity."""
+    mean_ece_shift: float | None = None
+    r"""Mean shifted-data ECE across the recorded corruption severities."""
     ace_shift: Dict[int, np.ndarray] | None = None
     r"""Shifted-data ACE arrays keyed by corruption severity."""
     ace_shift_avg: Dict[int, float] | None = None
@@ -514,6 +518,11 @@ class ContinualLearningEvaluator:
             auroc_ood_avg={
                 name: metrics[f"auroc_{name}_avg"] for name in ood_names
             } or None,
+            mean_auroc_ood=(
+                float(np.mean([metrics[f"auroc_{name}_avg"] for name in ood_names]))
+                if any(f"auroc_{name}_avg" in metrics for name in ood_names)
+                else None
+            ),
             ece_shift={
                 severity: metrics[f"ece_shift_{severity}"] for severity in severities
                 if f"ece_shift_{severity}" in metrics
@@ -522,6 +531,19 @@ class ContinualLearningEvaluator:
                 severity: metrics[f"ece_shift_{severity}_avg"] for severity in severities
                 if f"ece_shift_{severity}_avg" in metrics
             } or None,
+            mean_ece_shift=(
+                float(
+                    np.mean(
+                        [
+                            metrics[f"ece_shift_{severity}_avg"]
+                            for severity in severities
+                            if f"ece_shift_{severity}_avg" in metrics
+                        ]
+                    )
+                )
+                if any(f"ece_shift_{severity}_avg" in metrics for severity in severities)
+                else None
+            ),
             ace_shift={
                 severity: metrics[f"ace_shift_{severity}"] for severity in severities
                 if f"ace_shift_{severity}" in metrics

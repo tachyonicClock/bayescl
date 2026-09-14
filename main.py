@@ -63,20 +63,13 @@ def record_result(
     state: str = "complete",
     error: str | None = None,
 ) -> float | None:
-    """Append non-OOD/non-shift metrics and optionally update an Optuna trial."""
+    """Append metrics and experiment-level OOD/shift aggregates."""
     brier = result.brier_seen_avg if result is not None else None
     if trial is not None:
         trial.set_user_attr("brier", brier)
     result_values = asdict(result) if result is not None else {}
-    for key in (
-        "auroc_ood",
-        "auroc_ood_avg",
-        "ece_shift",
-        "ece_shift_avg",
-        "ace_shift",
-        "ace_shift_avg",
-    ):
-        result_values.pop(key, None)
+    # filter to only float values
+    result_values = {k: v for k, v in result_values.items() if isinstance(v, float)}
     append_jsonl(
         path,
         {
@@ -188,7 +181,7 @@ def tune(scale, dataset, method, runs, dataset_path, device, epochs, sqlite):
     )
 
     study = optuna.create_study(
-        direction="maximize",
+        direction="minimize",
         sampler=_SAMPLER,
         pruner=_PRUNER,
         study_name=f"bayescl/{scale}/{dataset}/{method}",
@@ -281,7 +274,7 @@ def test(scale, dataset, method, runs, dataset_path, device, epochs, from_tune):
     ]
     if not rows:
         raise SystemExit(f"No complete trials in {tune_dir / 'results.jsonl'}")
-    best = max(rows, key=lambda r: r["score"])
+    best = min(rows, key=lambda r: r["score"])
     arm = arm_cls(**best["arm"])
     logger.info(
         f"Loaded best config from {tune_dir} (trial {best['trial']}): {best['arm']}"

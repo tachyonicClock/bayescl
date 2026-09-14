@@ -287,12 +287,16 @@ class Experiment:
 
             if compute_shift_ood_metrics:
                 for name, stream in ood_streams.items():
-                    logits, _ = self._eval_and_capture(strategy, stream, loader_kwargs)
+                    logits, _ = self._eval_and_capture(
+                        strategy, stream, self.loader_kwargs
+                    )
                     self.metrics_plugin.evaluator.record_ood(name, t, logits)
 
                 for severity in SHIFT_SEVERITIES:
                     stream = self._shift_test_stream(severity, t + 1)
-                    logits, y = self._eval_and_capture(strategy, stream, loader_kwargs)
+                    logits, y = self._eval_and_capture(
+                        strategy, stream, self.loader_kwargs
+                    )
                     self.metrics_plugin.evaluator.record_shift(severity, t, logits, y)
 
             if trial is not None and report_intermediate:
