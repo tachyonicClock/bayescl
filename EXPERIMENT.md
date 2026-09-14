@@ -72,14 +72,17 @@ Both biases reflect the nature of the continual learning problem.
 
 ### 2.4 Hyperparameter Search
 
-Nuisance hyperparameters are controlled via hyperparameter search using Optuna (TPE
-search algorithm). Each treatment configures a search space in
+Nuisance hyperparameters are controlled via hyperparameter search using Optuna
+(multivariate TPE search algorithm, which models interactions between hyperparameters
+instead of treating them independently). Each treatment configures a search space in
 `bayescl/treatments/$TREATMENT/_arm.py`. The tune phase's objective is the Brier score
-on the holdout validation set. During the tune phase, the task order (except for
-dCLEAR10/10) and initialization seeds are varied. The validation set is also used for
-early stopping. To further reduce the computational burden we adopt median pruning in
-Optuna to stop unpromising trials early. The pruning strategy considers the brier score
-on the seen tasks' validation sets.
+on the holdout validation set. All trials within a tune run share one fixed
+initialization seed and task order (except for dCLEAR10/10, whose order is always
+fixed); varying seeds during tuning would force TPE to spend trials distinguishing
+hyperparameter quality from seed luck. Seed variation is reserved for the `test` phase.
+The validation set is also used for early stopping. To further reduce the computational
+burden we adopt median pruning in Optuna to stop unpromising trials early. The pruning
+strategy considers the brier score on the seen tasks' validation sets.
 
 ## 3. Architecture
 
@@ -156,7 +159,7 @@ across endpoints, datasets, and comparisons, and no fewer than 8.
 
 | Scale | HP Trials | Runs         | Max Epochs   |
 | ----- | --------- | ------------ | ------------ |
-| full  | 50        | set by pilot | set by pilot |
+| full  | 25        | set by pilot | set by pilot |
 | pilot | 3         | 5            | 100          |
 
 ### 6.1 Pilot

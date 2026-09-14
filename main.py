@@ -78,8 +78,14 @@ logging.basicConfig(handlers=[_InterceptHandler()], level=logging.INFO, force=Tr
 
 _DATASET_PATH = os.environ.get("DATASETS")
 _RUNS_PATH = Path(os.environ.get("LOGDIR", "logs")) / "bayescl"
-_SAMPLER = optuna.samplers.TPESampler()
+# multivariate=True models interactions between hyperparameters (e.g. lr vs.
+# LoRA alpha) instead of treating them independently, converging faster.
+_SAMPLER = optuna.samplers.TPESampler(multivariate=True)
 _PRUNER = optuna.pruners.MedianPruner()
+# All trials in a tune run share this seed (model init + task order) so TPE
+# compares hyperparameters against a fixed target instead of also having to
+# average out seed variance. Multi-seed evaluation happens in `test`.
+_TUNE_SEED = 0
 
 
 def _timestamp() -> str:
@@ -228,7 +234,7 @@ def tune(scale, dataset, method, runs, dataset_path, device, epochs, sqlite):
                 ds,
                 sc,
                 epochs=epochs,
-                seed=trial.number,
+                seed=_TUNE_SEED,
                 validation=True,
                 run_dir=run_dir / f"trial_{trial.number:04d}",
                 dataset_root=Path(dataset_path),
@@ -238,7 +244,7 @@ def tune(scale, dataset, method, runs, dataset_path, device, epochs, sqlite):
         )
         row = {
             "trial": trial.number,
-            "seed": trial.number,
+            "seed": _TUNE_SEED,
             "arm": asdict(arm),
             "ts": _timestamp(),
         }

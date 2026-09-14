@@ -8,9 +8,9 @@
 ``full``-scale test seeds are needed to reliably detect an absolute
 difference of ``--delta`` in any compared endpoint.
 
-``compare`` reads the ``full`` scale's ``test`` runs and reports every
-Mann-Whitney comparison between our methods and the baselines, Holm-Bonferroni
-corrected across the full family of comparisons.
+``compare`` reads the ``full`` scale's ``test`` runs and reports every paired
+Wilcoxon signed-rank comparison between our methods and the baselines,
+Holm-Bonferroni corrected across the full family of comparisons.
 """
 
 import os
@@ -49,7 +49,7 @@ def power(runs: str, delta: float, target_power: float) -> None:
 )
 @click.option("--scale", type=click.Choice(["pilot", "full"]), default="full")
 def compare(runs: str, scale: str) -> None:
-    """Mann-Whitney + Holm-Bonferroni comparisons across all treatments."""
+    """Wilcoxon signed-rank + Holm-Bonferroni comparisons across all treatments."""
     comparisons = run_comparisons(Path(runs), scale=scale)
     df = pd.DataFrame([vars(c) for c in comparisons])
     with pd.option_context("display.max_rows", None, "display.width", None):

@@ -93,7 +93,9 @@ class Scale:
 PILOT = Scale("pilot", n_trials=3, n_seeds=5, pilot_epochs=100)
 # n_seeds is a floor: the pilot's variance estimates should drive a power
 # analysis that may raise this count for a given dataset/metric combination.
-FULL = Scale("full", n_trials=50, n_seeds=8, pilot_epochs=None)
+# 25 trials (paired with multivariate TPE + median pruning) is enough density
+# for the 1-3 parameter search spaces in bayescl/treatments/*/_arm.py.
+FULL = Scale("full", n_trials=25, n_seeds=8, pilot_epochs=None)
 
 SCALES: dict[str, Scale] = {s.key: s for s in (PILOT, FULL)}
 

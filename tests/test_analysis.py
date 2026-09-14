@@ -102,7 +102,11 @@ def test_run_comparisons_flags_a_clearly_separated_pair(tmp_path):
     method_means = _all_methods_close_together()
     # Give "ball" a clearly better (lower) brier than every baseline on every dataset.
     method_means["ball"] = (0.1, 0.7, 0.3)
-    _populate_runs(tmp_path, "full", n_seeds=8, method_means=method_means)
+    # A paired Wilcoxon signed-rank test's exact null distribution only has
+    # 2**n sign patterns (vs. an unpaired rank-sum test's much larger
+    # C(2n, n)), so it needs more matched samples than 8 to clear the very
+    # strict Holm-Bonferroni threshold here even for a clearly separated pair.
+    _populate_runs(tmp_path, "full", n_seeds=16, method_means=method_means)
 
     comparisons = run_comparisons(tmp_path, scale="full")
 
