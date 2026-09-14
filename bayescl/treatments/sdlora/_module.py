@@ -47,6 +47,13 @@ class SDLoRALinear(nn.Linear, SDLoRAModule):
             nn.init.zeros_(B_k)
         nn.init.ones_(self.M)
 
+        adapter_parameters = ["M"]
+        for name, _ in self.A.named_parameters(prefix="A"):
+            adapter_parameters.append(name)
+        for name, _ in self.B.named_parameters(prefix="B"):
+            adapter_parameters.append(name)
+        self.adapter_parameters = tuple(adapter_parameters)
+
         self.set_task(0)
 
     def set_task(self, task: int):
@@ -66,7 +73,7 @@ class SDLoRALinear(nn.Linear, SDLoRAModule):
         """
         h_prime = nn.functional.linear(input, self.weight, self.bias)
 
-        for k in range(self.task):
+        for k in range(self.task + 1):
             A_k, B_k, alpha_k = self.A[k], self.B[k], self.M[k]
 
             # Compute Adaptation Matrix
@@ -204,7 +211,15 @@ class SDLoRAAdapterFactory(AdapterFactory):
         self.n_tasks = n_tasks
 
     def _get_replacement(self, module: nn.Module) -> nn.Module:
-        if isinstance(module, nn.Conv2d):
+        if isinstance(module, nn.Linear):
+            return SDLoRALinear(
+                module.in_features,
+                module.out_features,
+                rank_per_task=self.config.rank_per_task,
+                n_tasks=self.n_tasks,
+                bias=module.bias is not None,
+            )
+        elif isinstance(module, nn.Conv2d):
             return SDLoRAConv2d(
                 module.in_channels,
                 module.out_channels,

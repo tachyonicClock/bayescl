@@ -14,7 +14,7 @@ from bayescl.treatments.ball import BALLAdapterFactory, BALLConfig
 @dataclass
 class BALL(ArmBase):
     lr: float = 1e-3
-    r: int = 10
+    r: int = 8
     lora_alpha: int = 1
     dropout: float = 0.0
     bll: bool = False
@@ -57,9 +57,9 @@ class BALL(ArmBase):
             replace_head(
                 experiment.model, experiment.config.head_module, config=peft.vbnn
             )
-            experiment.model.get_submodule(
-                experiment.config.head_module
-            ).requires_grad_(True)
+        experiment.model.get_submodule(experiment.config.head_module).requires_grad_(
+            True
+        )
 
     def _build_plugins(self, experiment):
         self._build_common_plugins(experiment, local_ce=False)

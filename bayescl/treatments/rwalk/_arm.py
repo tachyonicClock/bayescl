@@ -12,7 +12,7 @@ from loguru import logger
 @dataclass
 class RWalk(ArmBase):
     lr: float = 1e-3
-    r: int = 10
+    r: int = 8
     ewc_lambda: float = 0.1
     ewc_alpha: float = 0.9
     delta_t: int = 10

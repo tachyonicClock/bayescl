@@ -16,7 +16,7 @@ from ._module import EnsembleModule
 @dataclass
 class LoRAEnsemble(ArmBase):
     lr: float = 1e-3
-    r: int = 10
+    r: int = 8
     lora_alpha: int = 1
     lora_dropout: float = 0.0
     num_members: int = 5

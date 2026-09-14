@@ -13,7 +13,7 @@ from bayescl.treatments.lora import LoRAAdapterFactory, LoRAConfig
 @dataclass
 class EWC(ArmBase):
     lr: float = 1e-3
-    r: int = 10
+    r: int = 8
     ewc_lambda: float = 1.0
     decay_factor: float = 0.9
 

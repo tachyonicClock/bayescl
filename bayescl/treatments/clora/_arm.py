@@ -12,7 +12,7 @@ from bayescl.treatments.clora import CLoRAAdapterFactory, CLoRAConfig, CLoRAPlug
 @dataclass
 class CLoRA(ArmBase):
     lr: float = 1e-3
-    rank: int = 10
+    rank: int = 8
     alpha: float = 1.0
     lambda_: float = 1.0
 

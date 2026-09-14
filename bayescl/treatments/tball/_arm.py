@@ -13,7 +13,7 @@ from bayescl.treatments.tball import TBALLAdapterFactory, TBALLConfig
 @dataclass
 class TBALL(ArmBase):
     lr: float = 1e-3
-    rank: int = 10
+    rank: int = 8
     alpha: float = 1.0
     prior_mean: float = 0.0
     prior_weight_sd: float = 1.0

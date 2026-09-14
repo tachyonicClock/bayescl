@@ -11,7 +11,7 @@ from loguru import logger
 @dataclass
 class InfLoRA(ArmBase):
     lr: float = 1e-3
-    rank: int = 10
+    rank: int = 8
     threshold_start: float = 0.90
     threshold_end: float = 0.98
     max_activation_batches: int | None = 16

@@ -26,8 +26,11 @@ from pathlib import Path
 class Backbone:
     name: str = "WinKawaks/vit-small-patch16-224"
     freeze_backbone: bool = True
-    #: Regex selecting which submodules receive adapters.
-    adapter_filter: str = r".*vit\.encoder\.layer\.[0-9]+\..*(query|key|value|dense)"
+    #: Regex selecting which submodules receive adapters: attention's q/k/v and
+    #: output projection ("qkv+proj"), excluding the MLP's dense layers.
+    adapter_filter: str = (
+        r".*vit\.encoder\.layer\.[0-9]+\.attention\.(attention\.(query|key|value)|output\.dense)"
+    )
     head_module: str = "model.classifier"
 
 
