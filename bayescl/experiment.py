@@ -128,9 +128,9 @@ class Experiment:
         return tb_logger
 
     def _preflight(self):
-        logger.info("Resolved Spec:\n{}", pformat(self._config()))
         logger.info("Parameter Counts:\n{}", parameter_summary_str(self.model))
-        logger.info("Plugins:\n{}", [type(p).__name__ for p in self.plugins])
+        logger.info("Resolved Spec: {}", self._config())
+        logger.info("Plugins:{}", [type(p).__name__ for p in self.plugins])
 
     def _seed_everything(self):
         if self.config.seed is not None:
@@ -297,6 +297,11 @@ class Experiment:
             results.append(
                 strategy.eval(self.benchmark.test_stream, **self.loader_kwargs)
             )
+            brier_all, brier_seen = (
+                self.metrics_plugin.evaluator.checkpoint_brier_scores(t)
+            )
+            self.tb_log.writer.add_scalar(f"Brier/{t:02d}/all", brier_all, t)
+            self.tb_log.writer.add_scalar(f"Brier/{t:02d}/seen", brier_seen, t)
             for test_tid, scores in sorted(
                 self.metrics_plugin.evaluator.per_task_scores(t).items()
             ):

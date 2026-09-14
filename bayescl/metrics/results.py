@@ -284,6 +284,27 @@ class ContinualLearningEvaluator:
         return brier_sum / (t + 1)
 
     @torch.no_grad()
+    def checkpoint_brier_scores(self, train_task_idx: int) -> tuple[float, float]:
+        """Return the all-task and seen-task Brier scores at a checkpoint."""
+        scores = [
+            self.brier(
+                torch.cat(self._y_logit[(train_task_idx, test_task_idx)], dim=0),
+                torch.cat(self._y_true[(train_task_idx, test_task_idx)], dim=0),
+            )
+            for test_task_idx in range(self._task_count)
+            if (train_task_idx, test_task_idx) in self._y_true
+        ]
+        seen_scores = [
+            self.brier(
+                torch.cat(self._y_logit[(train_task_idx, test_task_idx)], dim=0),
+                torch.cat(self._y_true[(train_task_idx, test_task_idx)], dim=0),
+            )
+            for test_task_idx in range(train_task_idx + 1)
+            if (train_task_idx, test_task_idx) in self._y_true
+        ]
+        return float(np.mean(scores)), float(np.mean(seen_scores))
+
+    @torch.no_grad()
     def per_task_scores(self, train_task_idx: int) -> Dict[int, Dict[str, float]]:
         """Brier and ECE for each test task evaluated at this checkpoint,
         from the logits already captured by the per-checkpoint eval on

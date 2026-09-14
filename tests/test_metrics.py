@@ -47,6 +47,20 @@ def test_brier_seen_is_populated_and_finite():
     assert metrics.brier_seen_avg == pytest.approx(metrics.brier_seen.mean())
 
 
+def test_checkpoint_brier_scores_returns_all_and_seen_means():
+    evaluator = _fill_evaluator(T=2, C=3)
+    all_score, seen_score = evaluator.checkpoint_brier_scores(1)
+    expected = [
+        evaluator.brier(
+            torch.cat(evaluator._y_logit[(1, test_task)]),
+            torch.cat(evaluator._y_true[(1, test_task)]),
+        )
+        for test_task in range(2)
+    ]
+    assert all_score == pytest.approx(np.mean(expected))
+    assert seen_score == pytest.approx(np.mean(expected))
+
+
 def test_ece_seen_is_per_task_mean_not_pooled():
     T, C = 2, 3
     ev = ContinualLearningEvaluator(T, C)
