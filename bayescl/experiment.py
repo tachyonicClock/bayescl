@@ -6,6 +6,7 @@ import json
 import pickle
 import random
 from dataclasses import asdict, replace
+from functools import partial
 from pathlib import Path
 from pprint import pformat
 from typing import Any, Dict, Sequence
@@ -38,7 +39,7 @@ from bayescl.data.benchmark import (
     get_benchmark,
 )
 from bayescl.data.datasets import SHIFT_SEVERITIES, get_ood_dataset, ood_dataset_names
-from bayescl.metrics.agent_logger import AgentLogger
+from bayescl.metrics.agent_logger import AgentLogger, set_log_file
 from bayescl.metrics.ece import (
     ExpectedCalibrationError,
 )
@@ -116,6 +117,7 @@ class Experiment:
         setproctitle(f"bayescl.{self.config.dataset}")
         with open(run_dir / "spec.json", "w") as f:
             json.dump(self._config(), f, indent=2, default=str)
+        set_log_file(run_dir / "run.log")
         logger.info(f"Logging to '{run_dir}'")
         return run_dir
 
@@ -174,7 +176,7 @@ class Experiment:
         self.arm.build(self)
         self.plugins.append(
             BrierEarlyStopping(
-                self._eval_and_capture,
+                partial(self._eval_and_capture, tag="early_stop"),
                 self._val_stream(),
                 self.loader_kwargs,
                 eval_every=self.config.early_stop_eval_every,
@@ -230,14 +232,25 @@ class Experiment:
         )
         return benchmark.test_stream
 
-    def _eval_and_capture(self, strategy, stream, loader_kwargs: dict) -> tuple:
+    def _eval_and_capture(
+        self, strategy, stream, loader_kwargs: dict, *, tag: str
+    ) -> tuple:
         """Run ``strategy.eval(stream)`` without touching the main evaluator's
-        clean-data bookkeeping; returns the pooled ``(logits, y)``."""
+        clean-data bookkeeping; returns the pooled ``(logits, y)``.
+
+        ``tag`` is attached to the eval's log lines (via ``logger.contextualize``)
+        so these auxiliary passes -- early-stopping probes, OOD/shift eval --
+        are distinguishable from the real per-checkpoint eval on
+        ``self.benchmark.test_stream``, which doesn't go through this method.
+        """
         buffer: list[tuple] = []
-        with self.metrics_plugin.capture(
-            lambda logits, y, buf=buffer: buf.append(
-                (logits.detach().cpu(), y.detach().cpu())
-            )
+        with (
+            self.metrics_plugin.capture(
+                lambda logits, y, buf=buffer: buf.append(
+                    (logits.detach().cpu(), y.detach().cpu())
+                )
+            ),
+            logger.contextualize(eval_tag=tag),
         ):
             strategy.eval(stream, **loader_kwargs)
         logits = torch.cat([logit for logit, _ in buffer], dim=0)
@@ -266,7 +279,6 @@ class Experiment:
         ood_streams = self._ood_test_streams() if compute_shift_ood_metrics else {}
 
         # TRAINING LOOP
-        logger.info("Starting experiment...")
         results: Sequence[Dict[str, float]] = []
         for t, experience in enumerate(self.benchmark.train_stream):
             logger.info(f"Start of experience: {experience.current_experience}")
@@ -285,18 +297,25 @@ class Experiment:
             results.append(
                 strategy.eval(self.benchmark.test_stream, **self.loader_kwargs)
             )
+            for test_tid, scores in sorted(
+                self.metrics_plugin.evaluator.per_task_scores(t).items()
+            ):
+                logger.info(
+                    f"checkpoint={t} task={test_tid} | "
+                    f"brier={scores['brier']:.4f} ece={scores['ece']:.4f}"
+                )
 
             if compute_shift_ood_metrics:
                 for name, stream in ood_streams.items():
                     logits, _ = self._eval_and_capture(
-                        strategy, stream, self.loader_kwargs
+                        strategy, stream, self.loader_kwargs, tag=f"ood:{name}"
                     )
                     self.metrics_plugin.evaluator.record_ood(name, t, logits)
 
                 for severity in SHIFT_SEVERITIES:
                     stream = self._shift_test_stream(severity, t + 1)
                     logits, y = self._eval_and_capture(
-                        strategy, stream, self.loader_kwargs
+                        strategy, stream, self.loader_kwargs, tag=f"shift:{severity}"
                     )
                     self.metrics_plugin.evaluator.record_shift(severity, t, logits, y)
 

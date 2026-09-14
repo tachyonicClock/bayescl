@@ -3,12 +3,13 @@ from typing import TYPE_CHECKING
 from torch import Tensor, nn
 from transformers import AutoModelForImageClassification
 from transformers.models.resnet.modeling_resnet import ResNetForImageClassification
+from transformers.models.vit.modeling_vit import ViTForImageClassification
 
 if TYPE_CHECKING:
     from bayescl.config import ExperimentConfig
 
 
-class ResNetHuggingFaceAdapter(nn.Module):
+class HuggingFaceImageClassifierAdapter(nn.Module):
     def __init__(self, model: nn.Module):
         super().__init__()
         self.model = model
@@ -27,6 +28,6 @@ def get_model(config: "ExperimentConfig", num_classes: int) -> nn.Module:
         model.requires_grad_(False)  # Freeze the backbone
         model.classifier.requires_grad_(True)  # Unfreeze the classifier layer
 
-    if isinstance(model, ResNetForImageClassification):
-        return ResNetHuggingFaceAdapter(model)
+    if isinstance(model, (ResNetForImageClassification, ViTForImageClassification)):
+        return HuggingFaceImageClassifierAdapter(model)
     raise NotImplementedError(f"Got unsupported model type: {type(model)}")

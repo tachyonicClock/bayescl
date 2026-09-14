@@ -2,6 +2,7 @@ import copy
 from typing import Any, Sequence
 
 from avalanche.training.plugins import SupervisedPlugin
+from loguru import logger
 
 from bayescl.metrics.results import ContinualLearningEvaluator
 
@@ -66,6 +67,12 @@ class BrierEarlyStopping(SupervisedPlugin):
             strategy, self.val_stream[self._task_idx], self.loader_kwargs
         )
         brier = ContinualLearningEvaluator.brier(logits, y)
+        ece = ContinualLearningEvaluator.ece(logits, y)
+        with logger.contextualize(eval_tag="early_stop"):
+            logger.info(
+                f"task={self._task_idx} epoch={self._epoch_in_task} | "
+                f"brier={brier:.4f} ece={ece:.4f}"
+            )
         if self._best_brier is None or brier < self._best_brier:
             self._best_brier = brier
             self._epochs_without_improvement = 0

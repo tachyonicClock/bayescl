@@ -283,6 +283,24 @@ class ContinualLearningEvaluator:
 
         return brier_sum / (t + 1)
 
+    @torch.no_grad()
+    def per_task_scores(self, train_task_idx: int) -> Dict[int, Dict[str, float]]:
+        """Brier and ECE for each test task evaluated at this checkpoint,
+        from the logits already captured by the per-checkpoint eval on
+        ``self.benchmark.test_stream`` -- no extra eval pass needed."""
+        scores = {}
+        for test_task_idx in range(train_task_idx + 1):
+            key = (train_task_idx, test_task_idx)
+            if key not in self._y_true:
+                continue
+            logit = torch.cat(self._y_logit[key], dim=0)
+            true = torch.cat(self._y_true[key], dim=0)
+            scores[test_task_idx] = {
+                "brier": self.brier(logit, true),
+                "ece": self.ece(logit, true),
+            }
+        return scores
+
     @staticmethod
     def ece(y_logit: Tensor, y_true: Tensor, num_bins: int = N_BINS) -> float:
         """Expected Calibration Error. Use probabilities from the predicted class only."""

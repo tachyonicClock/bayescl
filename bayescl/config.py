@@ -24,11 +24,11 @@ from pathlib import Path
 
 @dataclass(frozen=True)
 class Backbone:
-    name: str = "microsoft/resnet-18"
+    name: str = "WinKawaks/vit-small-patch16-224"
     freeze_backbone: bool = True
     #: Regex selecting which submodules receive adapters.
-    adapter_filter: str = r".*layer\.[0-9]\.convolution"
-    head_module: str = "model.classifier.1"
+    adapter_filter: str = r".*vit\.encoder\.layer\.[0-9]+\..*(query|key|value|dense)"
+    head_module: str = "model.classifier"
 
 
 @dataclass(frozen=True)

@@ -1,5 +1,6 @@
 import re
 import sys
+from pathlib import Path
 from typing import Any, Dict
 
 from avalanche.evaluation.metric_results import AlternativeValues, TensorImage
@@ -19,30 +20,63 @@ _METRIC_NAME_NOISE = re.compile(r"/(train|eval)_phase/\w+_stream(?:/Task\d+)?(?:
 _METRIC_GRANULARITY_SUFFIX = re.compile(r"_(Epoch|Exp|MB|Stream)$")
 
 
-def _short_metric_name(name: str) -> str:
+def _short_metric_name(name: str, *, drop_granularity: bool) -> str:
     name = _METRIC_NAME_NOISE.sub("", name)
-    return _METRIC_GRANULARITY_SUFFIX.sub("", name)
+    if drop_granularity:
+        name = _METRIC_GRANULARITY_SUFFIX.sub("", name)
+    return name
 
 
-_format_configured = False
+_LOCATION_WIDTH = 36
 
 
-def _configure_format() -> None:
-    """Swap loguru's default sink for a leaner one, once.
-
-    The default format prints ``module:function:line`` on every line, which
-    is redundant noise for training logs that already state their own
-    context (phase/experience/epoch) in the message body.
-    """
-    global _format_configured
-    if _format_configured:
-        return
-    logger.remove()
-    logger.add(
-        sys.stderr,
-        format="{time:HH:mm:ss} | {message}",
+def _format_record(record) -> str:
+    # ``eval_tag`` is set via ``logger.contextualize`` around auxiliary eval
+    # passes (early-stopping probes, OOD/shift eval) so they're visually
+    # distinguishable from the real per-checkpoint eval, which carries no tag.
+    tag = record["extra"].get("eval_tag")
+    prefix = f"<yellow>[{tag}]</yellow> " if tag else ""
+    # ``module`` (e.g. "agent_logger") rather than ``name`` (the fully
+    # qualified "bayescl.metrics.agent_logger") -- shorter, and padded to a
+    # fixed width so messages line up in a consistent column. If it's still
+    # too long, truncate from the front (the line number and function name
+    # are more useful than the module name) and mark the cut with ".." so it
+    # doesn't read as a real, oddly-truncated module name.
+    location = f"{record['module']}:{record['function']}:{record['line']}"
+    if len(location) > _LOCATION_WIDTH:
+        location = ".." + location[-(_LOCATION_WIDTH - 2) :].lstrip(":")
+    location = location.replace("<", r"\<")  # "<" starts a loguru color tag
+    # Colors are auto-disabled by loguru when the sink isn't a tty (e.g.
+    # redirected to a file or piped to an agent), so this stays plain text
+    # there without any extra handling on our part.
+    return (
+        "<green>{time:HH:mm:ss}</green>  "
+        f"<cyan>{location:<{_LOCATION_WIDTH}}</cyan> "
+        f"{prefix}<level>{{message}}</level>\n"
     )
-    _format_configured = True
+
+
+# Configured at import time (rather than lazily in ``AgentLogger.__init__``)
+# so every ``logger.info`` call in the process uses this format -- including
+# the ones that fire before an ``Experiment`` (and its ``AgentLogger``) is
+# ever constructed.
+logger.remove()
+logger.add(sys.stderr, format=_format_record)
+
+_file_sink_id: int | None = None
+
+
+def set_log_file(path: Path) -> None:
+    """(Re)point the file sink at ``path``, replacing any previous one.
+
+    ``tune``/``test`` construct one ``Experiment`` per trial/seed, each with
+    its own ``run_dir`` -- call this from there so every run gets its own log
+    file instead of all of them piling into a single one.
+    """
+    global _file_sink_id
+    if _file_sink_id is not None:
+        logger.remove(_file_sink_id)
+    _file_sink_id = logger.add(path, format=_format_record)
 
 
 class AgentLogger(BaseLogger, SupervisedPlugin):
@@ -54,7 +88,6 @@ class AgentLogger(BaseLogger, SupervisedPlugin):
 
     def __init__(self) -> None:
         super().__init__()
-        _configure_format()
         self.metric_vals: Dict[str, Any] = {}
 
     def log_single_metric(self, name: str, value: Any, x_plot: int) -> None:
@@ -75,15 +108,32 @@ class AgentLogger(BaseLogger, SupervisedPlugin):
         return str(value)
 
     def _flush(self, header: str) -> None:
-        if self.metric_vals:
-            metrics = ", ".join(
-                f"{_short_metric_name(k)}={self._format_value(v)}"
-                for k, v in sorted(self.metric_vals.items())
+        # depth=1 attributes the log line to ``_flush``'s caller (e.g.
+        # ``after_eval_exp``), which is what's actually meaningful here --
+        # every flush otherwise reports this same helper as its origin.
+        log = logger.opt(depth=1)
+        if not self.metric_vals:
+            log.info(header)
+            return
+        # Drop the granularity suffix (e.g. "_Epoch") only when it's safe to --
+        # some metrics (e.g. loss_metrics(minibatch=True, epoch=True)) report
+        # the same base name at multiple granularities in the same flush, and
+        # collapsing those would silently clobber one value with the other.
+        collapsed_counts: Dict[str, int] = {}
+        for k in self.metric_vals:
+            collapsed = _short_metric_name(k, drop_granularity=True)
+            collapsed_counts[collapsed] = collapsed_counts.get(collapsed, 0) + 1
+
+        parts = []
+        for k, v in sorted(self.metric_vals.items()):
+            collapsed = _short_metric_name(k, drop_granularity=True)
+            name = collapsed if collapsed_counts[collapsed] == 1 else _short_metric_name(
+                k, drop_granularity=False
             )
-            logger.info(f"{header} | {metrics}")
-            self.metric_vals = {}
-        else:
-            logger.info(header)
+            parts.append(f"{name}={self._format_value(v)}")
+
+        log.info(f"{header} | {', '.join(parts)}")
+        self.metric_vals = {}
 
     def _exp_header(self, strategy, action: str) -> str:
         exp_id = strategy.experience.current_experience
@@ -92,10 +142,6 @@ class AgentLogger(BaseLogger, SupervisedPlugin):
         if task_id is None:
             return f"{action} exp={exp_id} stream={stream}"
         return f"{action} exp={exp_id} task={task_id} stream={stream}"
-
-    def before_training(self, strategy, metric_values, **kwargs) -> None:
-        super().before_training(strategy, metric_values, **kwargs)
-        logger.info("-- training started --")
 
     def before_training_exp(self, strategy, metric_values, **kwargs) -> None:
         super().before_training_exp(strategy, metric_values, **kwargs)
@@ -107,21 +153,10 @@ class AgentLogger(BaseLogger, SupervisedPlugin):
         epoch = strategy.clock.train_exp_epochs
         self._flush(f"train exp={exp_id} epoch={epoch}")
 
-    def after_training(self, strategy, metric_values, **kwargs) -> None:
-        super().after_training(strategy, metric_values, **kwargs)
-        logger.info("-- training ended --")
-
-    def before_eval(self, strategy, metric_values, **kwargs) -> None:
-        super().before_eval(strategy, metric_values, **kwargs)
-        logger.info("-- eval started --")
-
-    def before_eval_exp(self, strategy, metric_values, **kwargs) -> None:
-        super().before_eval_exp(strategy, metric_values, **kwargs)
-
     def after_eval_exp(self, strategy, metric_values, **kwargs) -> None:
         super().after_eval_exp(strategy, metric_values, **kwargs)
         self._flush(self._exp_header(strategy, "eval"))
 
     def after_eval(self, strategy, metric_values, **kwargs) -> None:
         super().after_eval(strategy, metric_values, **kwargs)
-        self._flush("-- eval ended --")
+        self._flush("eval stream summary")

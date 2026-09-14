@@ -20,6 +20,8 @@ RUNID is a %Y-%m-%d_%H-%M-%S timestamp; `test` uses the most recent tune run.
 
 from __future__ import annotations
 
+import inspect
+import logging
 import os
 import sys
 import time
@@ -44,6 +46,35 @@ from bayescl.git import commit_message, commit_short_hash, is_git_status_clean
 from bayescl.metrics.results import Result
 from bayescl.runio import append_jsonl, latest_run, read_jsonl, write_json
 from bayescl.treatments._registry import arm_names
+
+
+class _InterceptHandler(logging.Handler):
+    """Route stdlib ``logging`` records (Optuna's, e.g.) through loguru so
+    they share this process's log format instead of their own."""
+
+    def emit(self, record: logging.LogRecord) -> None:
+        try:
+            level = logger.level(record.levelname).name
+        except ValueError:
+            level = record.levelno
+
+        # Walk past logging's own frames so loguru reports the record's real
+        # call site (e.g. optuna's) rather than this handler's ``emit``.
+        frame, depth = inspect.currentframe(), 0
+        while frame and (depth == 0 or frame.f_code.co_filename == logging.__file__):
+            frame = frame.f_back
+            depth += 1
+
+        logger.opt(depth=depth, exception=record.exc_info).log(
+            level, record.getMessage()
+        )
+
+
+# Optuna installs its own handler on its logger with propagation disabled;
+# swap that for propagation to the (now intercepted) root logger instead.
+optuna.logging.disable_default_handler()
+optuna.logging.enable_propagation()
+logging.basicConfig(handlers=[_InterceptHandler()], level=logging.INFO, force=True)
 
 _DATASET_PATH = os.environ.get("DATASETS")
 _RUNS_PATH = Path(os.environ.get("LOGDIR", "logs")) / "bayescl"

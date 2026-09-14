@@ -80,7 +80,7 @@ The validation set is also used for early stopping.
 
 ## 3. Architecture
 
-Use a standard ResNet18 pre-trained on ImageNet in the usual way. ResNet18 is used to keep the experiments efficient to run.
+Use a standard small ViT (ViT-Small/16) pre-trained on ImageNet in the usual way. This size is used to keep the experiments efficient to run.
 
 To ensure models converge and to avoid overfitting while supporting different LoRA architectures, we will use early stopping on the validation Brier score, evaluated every 2 epochs with a patience of 5.
 
