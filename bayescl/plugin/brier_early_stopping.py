@@ -70,7 +70,7 @@ class BrierEarlyStopping(SupervisedPlugin):
         ece = ContinualLearningEvaluator.ece(logits, y)
         with logger.contextualize(eval_tag="early_stop"):
             logger.info(
-                f"task={self._task_idx} epoch={self._epoch_in_task} | "
+                f"task={self._task_idx} epoch={max(self._epoch_in_task - 1, 0)} | "
                 f"brier={brier:.4f} ece={ece:.4f}"
             )
         if self._best_brier is None or brier < self._best_brier:

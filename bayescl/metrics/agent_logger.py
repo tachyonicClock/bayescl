@@ -51,7 +51,7 @@ def _format_record(record) -> str:
     # there without any extra handling on our part.
     return (
         "<green>{time:HH:mm:ss}</green>  "
-        f"<cyan>{location:<{_LOCATION_WIDTH}}</cyan> "
+        f"<cyan>{location:<{_LOCATION_WIDTH}}</cyan>  "
         f"{prefix}<level>{{message}}</level>\n"
     )
 

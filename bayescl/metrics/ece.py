@@ -1,9 +1,49 @@
 from avalanche.evaluation.metric_definitions import PluginMetric
 from avalanche.evaluation.metric_results import MetricResult, MetricValue
+import torch
 from avalanche.training.templates import SupervisedTemplate
 from torchmetrics.classification import (
     MulticlassCalibrationError as TorchMulticlassCalibrationError,
 )
+
+class PerExperienceBrier(PluginMetric[float]):
+    def __init__(self) -> None:
+        super().__init__()
+        self.brier_sum = torch.tensor(0.0)
+        self.sample_count = 0
+
+    def before_eval(self, strategy) -> None:
+        self.reset()
+
+    def after_eval_iteration(self, strategy) -> None:
+        self.update(strategy.mb_output, strategy.mb_y)
+
+    def update(self, logits: torch.Tensor, targets: torch.Tensor) -> None:
+        probabilities = logits.softmax(dim=1)
+        one_hot = torch.nn.functional.one_hot(
+            targets, num_classes=probabilities.shape[1]
+        ).to(probabilities.dtype)
+        self.brier_sum = self.brier_sum.to(probabilities.device)
+        self.brier_sum += (probabilities - one_hot).square().sum()
+        self.sample_count += targets.numel()
+
+    def after_eval_exp(self, strategy) -> MetricResult:
+        result = [MetricValue(self, "brier", self.compute(), 0)]
+        self.reset()
+        return result
+
+    def compute(self) -> float:
+        return (self.brier_sum / self.sample_count).item()
+
+    def result(self) -> float | None:
+        return None
+
+    def reset(self) -> None:
+        self.brier_sum = torch.tensor(0.0)
+        self.sample_count = 0
+
+    def __str__(self) -> str:
+        return "Brier"
 
 
 class ExpectedCalibrationError(PluginMetric[float]):

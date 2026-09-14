@@ -40,9 +40,7 @@ from bayescl.data.benchmark import (
 )
 from bayescl.data.datasets import SHIFT_SEVERITIES, get_ood_dataset, ood_dataset_names
 from bayescl.metrics.agent_logger import AgentLogger, set_log_file
-from bayescl.metrics.ece import (
-    ExpectedCalibrationError,
-)
+from bayescl.metrics.ece import ExpectedCalibrationError, PerExperienceBrier
 from bayescl.metrics.plugin import MetricsPlugin
 from bayescl.metrics.results import Result
 from bayescl.model import get_model
@@ -108,6 +106,7 @@ class Experiment:
                 num_classes=self.benchmark.n_classes, save_image=True
             ),
             ExpectedCalibrationError(self.num_classes),
+            PerExperienceBrier(),
             loggers=self.loggers,
         )
 
@@ -302,14 +301,6 @@ class Experiment:
             )
             self.tb_log.writer.add_scalar(f"Brier/{t:02d}/all", brier_all, t)
             self.tb_log.writer.add_scalar(f"Brier/{t:02d}/seen", brier_seen, t)
-            for test_tid, scores in sorted(
-                self.metrics_plugin.evaluator.per_task_scores(t).items()
-            ):
-                logger.info(
-                    f"checkpoint={t} task={test_tid} | "
-                    f"brier={scores['brier']:.4f} ece={scores['ece']:.4f}"
-                )
-
             if compute_shift_ood_metrics:
                 for name, stream in ood_streams.items():
                     logits, _ = self._eval_and_capture(
