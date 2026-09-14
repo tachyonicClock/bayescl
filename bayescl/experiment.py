@@ -23,7 +23,7 @@ from avalanche.evaluation.metrics import (
     loss_metrics,
     timing_metrics,
 )
-from avalanche.logging import BaseLogger, InteractiveLogger, TensorboardLogger
+from avalanche.logging import BaseLogger, TensorboardLogger
 from avalanche.training.plugins import EvaluationPlugin, SupervisedPlugin
 from loguru import logger
 from optuna import Trial
@@ -38,6 +38,7 @@ from bayescl.data.benchmark import (
     get_benchmark,
 )
 from bayescl.data.datasets import SHIFT_SEVERITIES, get_ood_dataset, ood_dataset_names
+from bayescl.metrics.agent_logger import AgentLogger
 from bayescl.metrics.ece import (
     ExpectedCalibrationError,
 )
@@ -120,7 +121,7 @@ class Experiment:
 
     def _new_logger(self) -> TensorboardLogger:
         tb_logger = TensorboardLogger(self.config.run_dir)
-        self.loggers.append(InteractiveLogger())
+        self.loggers.append(AgentLogger())
         self.loggers.append(tb_logger)
         return tb_logger
 

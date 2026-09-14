@@ -1,7 +1,6 @@
 from avalanche.evaluation.metric_definitions import PluginMetric
 from avalanche.evaluation.metric_results import MetricResult, MetricValue
 from avalanche.training.templates import SupervisedTemplate
-from loguru import logger
 from torchmetrics.classification import (
     MulticlassCalibrationError as TorchMulticlassCalibrationError,
 )
@@ -21,7 +20,6 @@ class ExpectedCalibrationError(PluginMetric[float]):
 
     def after_eval_exp(self, strategy: SupervisedTemplate) -> None:
         self.eval_exp_counter += 1
-        logger.info(f"{self.eval_exp_counter} {strategy.clock.train_exp_counter}")
 
     def after_eval_iteration(self, strategy) -> None:
         # ECE all
