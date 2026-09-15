@@ -38,6 +38,9 @@ class BrierEarlyStopping(SupervisedPlugin):
         self._best_brier: float | None = None
         self._epochs_without_improvement = 0
         self._best_state: dict | None = None
+        #: The epoch each finished task's training exited at (whether by
+        #: early stopping or exhausting the epoch budget), one entry per task.
+        self.exit_epochs: list[int] = []
 
     def before_training_exp(self, strategy: Any, *args, **kwargs) -> None:
         self._task_idx += 1
@@ -61,6 +64,7 @@ class BrierEarlyStopping(SupervisedPlugin):
     def after_training_exp(self, strategy: Any, *args, **kwargs) -> None:
         if self._best_state is not None:
             strategy.model.load_state_dict(self._best_state)
+        self.exit_epochs.append(self._epoch_in_task)
 
     def _check(self, strategy: Any) -> None:
         logits, y = self._eval_and_capture(

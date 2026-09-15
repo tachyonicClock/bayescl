@@ -90,6 +90,11 @@ def count_adapter_parameters(module: nn.Module) -> int:
     return sum(p.numel() for _, p in iter_adapter_parameters(module))
 
 
+def count_trainable_parameters(module: nn.Module) -> int:
+    """Count trainable parameters in the whole module (adapters + head, etc.)."""
+    return sum(p.numel() for p in module.parameters() if p.requires_grad)
+
+
 # def save_adapter(module: nn.Module, path: str) -> None:
 #     state = {}
 #     for name, param in iter_adapter_parameters(module):
@@ -101,7 +106,7 @@ def count_adapter_parameters(module: nn.Module) -> int:
 def parameter_summary_str(module: nn.Module) -> str:
     """Print a summary of the number of parameters in the module."""
     param_sum = sum(p.numel() for p in module.parameters())
-    param_grad_sum = sum(p.numel() for p in module.parameters() if p.requires_grad)
+    param_grad_sum = count_trainable_parameters(module)
     buf_sum = sum(p.numel() for p in module.buffers())
 
     adapter_param_sum = 0

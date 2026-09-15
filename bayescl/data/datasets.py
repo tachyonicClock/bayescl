@@ -176,68 +176,6 @@ class TinyImageNet(ImageFolder):
         super().__init__(Path(root) / "tiny-imagenet-200" / split, transform)
 
 
-@lru_cache(maxsize=None)
-def _core50_targets(hf_split: str) -> list[int]:
-    """Cache the (expensive to materialise) label column of a CORe50 Hub split."""
-    return [int(x) for x in _load_hf(CORe50Dataset.HF_REPO, hf_split)["label"]]
-
-
-@lru_cache(maxsize=None)
-def _core50_valid_indices() -> list[int]:
-    _, valid_idx = class_balanced_split(_core50_targets("train"), 0.1, seed=0)
-    return [int(i) for i in valid_idx]
-
-
-class CORe50Dataset(Dataset):
-    """CORe50 hosted on the Hugging Face Hub (``adrake17/core50``).
-
-    The Hub dataset provides ``train`` (131,892 images) and ``test`` (32,974
-    images) splits over the 50 object classes. The ``valid`` split is carved from
-    the Hub ``train`` split with a deterministic class-balanced 10% hold-out, and
-    ``train&valid`` is the full Hub ``train`` split.
-    """
-
-    HF_REPO = "adrake17/core50"
-
-    def __init__(
-        self,
-        root: str | Path | None = None,
-        split: Literal["train", "train&valid", "valid", "test"] = "train",
-        transform: Callable[..., Any] | None = None,
-    ):
-        if split == "test":
-            self._ds = _load_hf(self.HF_REPO, "test")
-            self.targets = _core50_targets("test")
-        elif split in ("train", "train&valid"):
-            self._ds = _load_hf(self.HF_REPO, "train")
-            self.targets = _core50_targets("train")
-        elif split == "valid":
-            valid_idx = _core50_valid_indices()
-            self._ds = _load_hf(self.HF_REPO, "train").select(valid_idx)
-            train_targets = _core50_targets("train")
-            self.targets = [train_targets[i] for i in valid_idx]
-        else:
-            raise ValueError(f"Unknown split: {split!r}")
-
-        self.transform = transform
-        self.classes = list(range(50))
-
-    def __len__(self) -> int:
-        return len(self._ds)
-
-    def __getitem__(self, index: int) -> tuple[Any, int]:
-        row = self._ds[int(index)]
-        image = row["image"]
-        if image.mode != "RGB":
-            image = image.convert("RGB")
-        target = int(row["label"])
-
-        if self.transform is not None:
-            image = self.transform(image)
-
-        return image, target
-
-
 def valid_split_indices(
     n: int,
     validation_set: float,
@@ -792,39 +730,6 @@ def get_ood_dataset(
 
 #: Corruption severities used for ``ece@$shift``/``ace@$shift``.
 SHIFT_SEVERITIES = [1, 2, 3, 4, 5]
-
-
-def SplitCORe50(
-    dataset_root: str | Path = datasets_path(),
-    n_experiences: int = 5,
-    train_transform: Callable[..., Any] | None = None,
-    eval_transform: Callable[..., Any] | None = None,
-    seed: int | None = None,
-    return_task_id: bool = False,
-    shuffle: bool = True,
-    validation_set: bool = False,
-) -> CLScenario:
-    if validation_set:
-        train_dataset = CORe50Dataset(dataset_root, "train", train_transform)
-        test_dataset = CORe50Dataset(dataset_root, "valid", eval_transform)
-    else:
-        train_dataset = CORe50Dataset(dataset_root, "train&valid", train_transform)
-        test_dataset = CORe50Dataset(dataset_root, "test", eval_transform)
-
-    # Default core50 test dataset is quite large so we downsample it
-    test_n = 10_000
-    rng = torch.Generator().manual_seed(0)
-    test_indices = torch.randperm(len(test_dataset), generator=rng).int()[:test_n]
-    test_dataset = Subset(test_dataset, test_indices)  # type: ignore
-
-    return nc_benchmark(
-        train_dataset=train_dataset,  # type: ignore
-        test_dataset=test_dataset,  # type: ignore
-        n_experiences=n_experiences,
-        task_labels=return_task_id,
-        seed=seed,
-        shuffle=shuffle,
-    )
 
 
 def SplitCUB200_2011(

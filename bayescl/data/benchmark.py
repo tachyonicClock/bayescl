@@ -13,7 +13,6 @@ from torchvision import transforms as T
 from bayescl.data.datasets import (
     SplitCIFAR100,
     SplitCLEAR10,
-    SplitCORe50,
     SplitCUB200_2011,
     SplitDomainNet,
     SplitImageNetR,
@@ -34,10 +33,6 @@ TRAIN_TRANSFORMS = {
         T.RandomHorizontalFlip(),
     ],
     "DomainNet": [
-        T.RandomResizedCrop(224),
-        T.RandomHorizontalFlip(),
-    ],
-    "CORe50": [
         T.RandomResizedCrop(224),
         T.RandomHorizontalFlip(),
     ],
@@ -169,6 +164,7 @@ def get_benchmark(config: "ExperimentConfig") -> NCScenario:
             n_experiences=config.n_tasks,
             train_transform=train_transform,
             eval_transform=eval_transform,
+            seed=config.seed,
             return_task_id=True,
             shuffle=config.shuffle,
             scale=config.scale,  # type: ignore
@@ -180,6 +176,7 @@ def get_benchmark(config: "ExperimentConfig") -> NCScenario:
             n_experiences=config.n_tasks,
             train_transform=train_transform,
             eval_transform=eval_transform,
+            seed=config.seed,
             return_task_id=True,
             shuffle=config.shuffle,
             scale=config.scale,  # type: ignore
@@ -202,20 +199,10 @@ def get_benchmark(config: "ExperimentConfig") -> NCScenario:
             n_experiences=config.n_tasks,
             train_transform=train_transform,
             eval_transform=eval_transform,
+            seed=config.seed,
             return_task_id=True,
             shuffle=config.shuffle,
             validation_set=validation_set,
-        )
-    elif config.dataset == "CORe50":
-        # SplitCORe50 takes a bool here, every other Split* takes a float fraction.
-        return SplitCORe50(  # type: ignore
-            dataset_root=dataset_root,
-            n_experiences=config.n_tasks,
-            train_transform=train_transform,
-            eval_transform=eval_transform,
-            return_task_id=True,
-            shuffle=config.shuffle,
-            validation_set=config.validation,
         )
     elif config.dataset == "CUB200_2011":
         return SplitCUB200_2011(  # type: ignore
@@ -223,6 +210,7 @@ def get_benchmark(config: "ExperimentConfig") -> NCScenario:
             n_experiences=config.n_tasks,
             train_transform=train_transform,
             eval_transform=eval_transform,
+            seed=config.seed,
             return_task_id=True,
             shuffle=config.shuffle,
             validation_set=validation_set,

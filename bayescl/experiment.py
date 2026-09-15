@@ -5,6 +5,7 @@ matplotlib.use("Agg")
 import json
 import pickle
 import random
+import time
 from dataclasses import asdict, replace
 from functools import partial
 from pathlib import Path
@@ -44,10 +45,27 @@ from bayescl.metrics.ece import ExpectedCalibrationError, PerExperienceBrier
 from bayescl.metrics.plugin import MetricsPlugin
 from bayescl.metrics.results import Result
 from bayescl.model import get_model
-from bayescl.peft import parameter_summary_str
+from bayescl.peft import count_trainable_parameters, parameter_summary_str
+from bayescl.plugin.autocast import Autocast
 from bayescl.plugin.brier_early_stopping import BrierEarlyStopping
 
 __all__ = ["Experiment", "ExperimentConfig"]
+
+# TF32 trades a few mantissa bits on fp32 matmuls/convolutions for a large
+# throughput gain on Ampere+ GPUs; negligible for this workload's precision
+# needs (classification logits, not e.g. iterative numerical solvers).
+torch.backends.cuda.matmul.allow_tf32 = True
+torch.backends.cudnn.allow_tf32 = True
+
+
+def _format_duration(seconds: float) -> str:
+    minutes, seconds = divmod(int(seconds), 60)
+    hours, minutes = divmod(minutes, 60)
+    if hours:
+        return f"{hours}h{minutes:02d}m"
+    if minutes:
+        return f"{minutes}m{seconds:02d}s"
+    return f"{seconds}s"
 
 
 def avalanche_class_schedule(
@@ -173,15 +191,15 @@ class Experiment:
         self.arm._build_peft(self)
         self.arm._build_plugins(self)
         self.arm.build(self)
-        self.plugins.append(
-            BrierEarlyStopping(
-                partial(self._eval_and_capture, tag="early_stop"),
-                self._val_stream(),
-                self.loader_kwargs,
-                eval_every=self.config.early_stop_eval_every,
-                patience=self.config.early_stop_patience,
-            )
+        self.plugins.append(Autocast())
+        self.early_stopping = BrierEarlyStopping(
+            partial(self._eval_and_capture, tag="early_stop"),
+            self._val_stream(),
+            self.loader_kwargs,
+            eval_every=self.config.early_stop_eval_every,
+            patience=self.config.early_stop_patience,
         )
+        self.plugins.append(self.early_stopping)
 
     def _config(self) -> dict:
         return asdict(self.config)
@@ -279,6 +297,9 @@ class Experiment:
 
         # TRAINING LOOP
         results: Sequence[Dict[str, float]] = []
+        train_times: list[float] = []
+        inference_times: list[float] = []
+        run_start = time.perf_counter()
         for t, experience in enumerate(self.benchmark.train_stream):
             logger.info(f"Start of experience: {experience.current_experience}")
             logger.info(f"Experience Size: {len(experience.dataset)}")
@@ -287,15 +308,31 @@ class Experiment:
             strategy.train_epochs = self.config.epochs
 
             # train returns a dictionary which contains all the metric values
+            train_start = time.perf_counter()
             strategy.train(
                 experience,
                 self.benchmark.test_stream[: t + 1],
                 **self.loader_kwargs,
             )
+            train_times.append(time.perf_counter() - train_start)
 
             results.append(
                 strategy.eval(self.benchmark.test_stream, **self.loader_kwargs)
             )
+
+            # Isolated pass over just this task's own test data -- separate
+            # from the growing multi-experience eval above, whose cost scales
+            # with how many tasks have been seen so far -- for a clean
+            # per-task inference-time measurement.
+            inference_start = time.perf_counter()
+            self._eval_and_capture(
+                strategy,
+                self.benchmark.test_stream[t : t + 1],
+                self.loader_kwargs,
+                tag="inference_timing",
+            )
+            inference_times.append(time.perf_counter() - inference_start)
+
             brier_all, brier_seen = (
                 self.metrics_plugin.evaluator.checkpoint_brier_scores(t)
             )
@@ -315,6 +352,16 @@ class Experiment:
                     )
                     self.metrics_plugin.evaluator.record_shift(severity, t, logits, y)
 
+            elapsed = time.perf_counter() - run_start
+            avg_per_task = elapsed / (t + 1)
+            remaining = self.num_tasks - (t + 1)
+            logger.info(
+                f"task {t + 1}/{self.num_tasks} done | "
+                f"elapsed={_format_duration(elapsed)} "
+                f"avg={_format_duration(avg_per_task)}/task | "
+                f"ETA={_format_duration(avg_per_task * remaining)}"
+            )
+
             if trial is not None and report_intermediate:
                 trial.report(
                     self.metrics_plugin.evaluator.intermediate_result(t), step=t
@@ -326,7 +373,13 @@ class Experiment:
         with open(self.config.run_dir / "avalanche_results.pkl", "wb") as f:
             pickle.dump(results, f)
 
-        results = self.metrics_plugin.evaluator.result()
+        results = replace(
+            self.metrics_plugin.evaluator.result(),
+            parameter_count=count_trainable_parameters(self.model),
+            train_time=np.array(train_times),
+            inference_time=np.array(inference_times),
+            exit_epoch=np.array(self.early_stopping.exit_epochs),
+        )
         pickle.dump(results, open(self.config.run_dir / "results.pkl", "wb"))
 
         for key, value in asdict(results).items():

@@ -51,10 +51,23 @@ class Dataset:
 
 
 DATASETS: dict[str, Dataset] = {
-    "cifar100": Dataset("cifar100", "CIFAR100", shuffle=True, full_epochs=30),
+    # train/eval batch size doubled from the class default (128/256): the
+    # ViT-Small/16 + LoRA forward/backward only used ~6GB of a 24GB GPU at
+    # the default size, leaving headroom to trade for fewer, larger steps.
+    # Kept to 2x rather than more: benchmarking showed larger multiples cut
+    # optimizer steps/epoch enough to noticeably slow convergence at a fixed
+    # (untuned) lr, and it's not yet confirmed that Optuna's per-trial lr
+    # search fully compensates for that at the larger batch size.
+    "cifar100": Dataset(
+        "cifar100",
+        "CIFAR100",
+        shuffle=True,
+        full_epochs=30,
+        train_mb_size=256,
+        eval_mb_size=512,
+    ),
     # 224px decode+augment is CPU-bound; these benefit from more workers than the
     # default 4 (measured ~1.8x from 4->8 workers on both pipelines).
-    "core50": Dataset("core50", "CORe50", full_epochs=30, num_workers=8),
     "imagenetr": Dataset(
         "imagenetr", "ImageNetR", shuffle=True, full_epochs=60, num_workers=8
     ),

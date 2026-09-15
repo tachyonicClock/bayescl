@@ -151,6 +151,16 @@ class AgentLogger(BaseLogger, SupervisedPlugin):
         super().after_training_epoch(strategy, metric_values, **kwargs)
         exp_id = strategy.experience.current_experience
         epoch = strategy.clock.train_exp_epochs
+        epoch_time = next(
+            (
+                v
+                for k, v in self.metric_vals.items()
+                if _short_metric_name(k, drop_granularity=True) == "Time"
+            ),
+            None,
+        )
+        if epoch_time:
+            self.metric_vals["ips"] = len(strategy.experience.dataset) / epoch_time
         self._flush(f"train exp={exp_id} epoch={epoch}")
 
     def after_eval_exp(self, strategy, metric_values, **kwargs) -> None:

@@ -174,6 +174,14 @@ class Result:
     r"""Mean shifted-data ACE values keyed by corruption severity."""
     duration_s: float | None = None
     r"""Elapsed time used to compute the evaluation metrics."""
+    parameter_count: int | None = None
+    r"""Number of trainable parameters in the model (backbone + adapters + head)."""
+    train_time: np.ndarray | None = None
+    r"""Wall-clock time to train on each task, in seconds."""
+    inference_time: np.ndarray | None = None
+    r"""Wall-clock time to evaluate each task's own test data, in seconds."""
+    exit_epoch: np.ndarray | None = None
+    r"""The epoch at which early stopping exited training for each task."""
 
     def __post_init__(self):
         t = self.n_tasks

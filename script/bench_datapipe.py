@@ -1,4 +1,4 @@
-"""Micro-benchmark the HF-backed data pipeline for ImageNet-R and CORe50.
+"""Micro-benchmark the HF-backed data pipeline for ImageNet-R.
 
 Measures raw ``__getitem__`` throughput and ``DataLoader`` throughput at a few
 worker counts so pipeline bottlenecks are visible.
@@ -12,7 +12,7 @@ from torch.utils.data import DataLoader
 from torchvision.datasets import CIFAR100
 
 from bayescl.data.benchmark import get_transforms
-from bayescl.data.datasets import CORe50Dataset, ImageNetR, datasets_path
+from bayescl.data.datasets import ImageNetR, datasets_path
 
 
 def time_raw(ds, n):
@@ -51,7 +51,7 @@ def time_loader(ds, batch_size, workers, batches):
 def main():
     p = argparse.ArgumentParser()
     p.add_argument(
-        "--dataset", choices=["imagenetr", "core50", "cifar100"], default="imagenetr"
+        "--dataset", choices=["imagenetr", "cifar100"], default="imagenetr"
     )
     p.add_argument("--batch-size", type=int, default=128)
     p.add_argument("--batches", type=int, default=20)
@@ -60,7 +60,6 @@ def main():
 
     scenario = {
         "imagenetr": "ImageNetR",
-        "core50": "CORe50",
         "cifar100": "CIFAR100",
     }[args.dataset]
     train_tf, _ = get_transforms(standardize=True, dataset=scenario)
@@ -68,8 +67,6 @@ def main():
     t = time.time()
     if args.dataset == "imagenetr":
         ds = ImageNetR(transform=train_tf)
-    elif args.dataset == "core50":
-        ds = CORe50Dataset(split="train&valid", transform=train_tf)
     else:
         ds = CIFAR100(datasets_path(), train=True, transform=train_tf)
     print(f"construct {args.dataset}: {time.time() - t:.2f}s, len={len(ds)}")
