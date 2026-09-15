@@ -54,7 +54,7 @@ class InfLoRA(ArmBase):
         threshold_end = trial.suggest_float("threshold_end", threshold_start, 0.999)
         return replace(
             base,
-            lr=trial.suggest_float("lr", 1e-4, 1e-2, log=True),
+            lr=ArmBase.suggest_lr(trial),
             threshold_start=threshold_start,
             threshold_end=threshold_end,
         )

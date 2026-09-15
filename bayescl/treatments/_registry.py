@@ -61,8 +61,15 @@ class ArmBase:
     # ---- hyperparameter search ----
 
     @staticmethod
+    def suggest_lr(trial: optuna.Trial) -> float:
+        # Floor raised from 1e-4 to 1e-3 after the cifar100/lora pilot: values
+        # near the old floor didn't converge within the epoch budget on any
+        # task, while every value >= ~2e-3 did (with some margin to spare).
+        return trial.suggest_float("lr", 1e-3, 1e-2, log=True)
+
+    @staticmethod
     def suggest_config(trial: optuna.Trial, base: "ArmBase") -> "ArmBase":
-        return replace(base, lr=trial.suggest_float("lr", 1e-4, 1e-2, log=True))
+        return replace(base, lr=ArmBase.suggest_lr(trial))
 
     # ---- experiment assembly ----
 

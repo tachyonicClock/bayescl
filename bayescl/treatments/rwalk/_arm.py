@@ -49,7 +49,7 @@ class RWalk(ArmBase):
     def suggest_config(trial, base):
         return replace(
             base,
-            lr=trial.suggest_float("lr", 1e-4, 1e-2, log=True),
+            lr=ArmBase.suggest_lr(trial),
             ewc_lambda=trial.suggest_float("ewc_lambda", 0.0, 1.0),
             ewc_alpha=trial.suggest_float("ewc_alpha", 0.0, 1.0),
         )

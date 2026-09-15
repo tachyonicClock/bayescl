@@ -55,7 +55,7 @@ class TBALL(ArmBase):
     def suggest_config(trial, base):
         return replace(
             base,
-            lr=trial.suggest_float("lr", 1e-4, 1e-2, log=True),
+            lr=ArmBase.suggest_lr(trial),
             beta=trial.suggest_float("beta", 0.0, 2.0),
         )
 

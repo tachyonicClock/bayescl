@@ -51,7 +51,7 @@ class EWC(ArmBase):
     def suggest_config(trial, base):
         return replace(
             base,
-            lr=trial.suggest_float("lr", 1e-4, 1e-2, log=True),
+            lr=ArmBase.suggest_lr(trial),
             ewc_lambda=trial.suggest_float("ewc_lambda", 0.0, 10.0),
             decay_factor=trial.suggest_float("decay_factor", 0.8, 1.0),
         )
