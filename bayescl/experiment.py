@@ -198,6 +198,12 @@ class Experiment:
             self.loader_kwargs,
             eval_every=self.config.early_stop_eval_every,
             patience=self.config.early_stop_patience,
+            # ``validation=True`` only during ``tune`` -- only there should a
+            # non-converged task abort the run, so a stale hyperparameter
+            # can't win Optuna's search just because it was cut off
+            # mid-improvement. ``test``'s final reported run should still
+            # record whatever the tuned config achieves either way.
+            strict=self.config.validation,
         )
         self.plugins.append(self.early_stopping)
 

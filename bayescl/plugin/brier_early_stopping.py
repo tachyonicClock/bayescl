@@ -4,6 +4,7 @@ from typing import Any, Sequence
 from avalanche.training.plugins import SupervisedPlugin
 from loguru import logger
 
+from bayescl.base import ConvergenceError
 from bayescl.metrics.results import ContinualLearningEvaluator
 
 
@@ -24,12 +25,20 @@ class BrierEarlyStopping(SupervisedPlugin):
         loader_kwargs: dict,
         eval_every: int,
         patience: int,
+        strict: bool = False,
     ) -> None:
         self._eval_and_capture = eval_and_capture
         self.val_stream = val_stream
         self.loader_kwargs = loader_kwargs
         self.eval_every = eval_every
         self.patience = patience
+        #: If True, a task that exhausts its epoch budget without early
+        #: stopping ever triggering raises ``ConvergenceError`` instead of
+        #: silently completing -- used during hyperparameter tuning so
+        #: Optuna can't select a "best" trial that was actually just cut off
+        #: mid-improvement rather than genuinely converged (see
+        #: ``Experiment.__init__``, which only sets this during tuning).
+        self.strict = strict
         self._task_idx = -1
         # Tracked locally rather than read off ``strategy.clock.train_exp_epochs``:
         # avalanche's ``Clock`` plugin must run last to keep its counters correct
@@ -65,6 +74,12 @@ class BrierEarlyStopping(SupervisedPlugin):
         if self._best_state is not None:
             strategy.model.load_state_dict(self._best_state)
         self.exit_epochs.append(self._epoch_in_task)
+        if self.strict and self._epoch_in_task >= strategy.train_epochs:
+            raise ConvergenceError(
+                f"task {self._task_idx} did not converge within the "
+                f"{strategy.train_epochs}-epoch budget (early stopping never "
+                "triggered)"
+            )
 
     def _check(self, strategy: Any) -> None:
         logits, y = self._eval_and_capture(

@@ -47,10 +47,12 @@ def _format_record(record) -> str:
         location = ".." + location[-(_LOCATION_WIDTH - 2) :].lstrip(":")
     location = location.replace("<", r"\<")  # "<" starts a loguru color tag
     # Colors are auto-disabled by loguru when the sink isn't a tty (e.g.
-    # redirected to a file or piped to an agent), so this stays plain text
-    # there without any extra handling on our part.
+    # redirected to a file or piped to an agent), so the level name (unlike
+    # color alone) is what keeps ERROR/WARNING lines distinguishable from
+    # INFO ones once colors are stripped -- e.g. in the persisted run.log.
     return (
         "<green>{time:HH:mm:ss}</green>  "
+        "<level>{level: <8}</level>"
         f"<cyan>{location:<{_LOCATION_WIDTH}}</cyan>  "
         f"{prefix}<level>{{message}}</level>\n"
     )

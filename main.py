@@ -33,7 +33,7 @@ import optuna
 from loguru import logger
 
 from bayescl.arms import get_arm
-from bayescl.base import NumericError
+from bayescl.base import ConvergenceError, NumericError
 from bayescl.config import (
     ExperimentConfig,
     dataset_names,
@@ -251,16 +251,20 @@ def tune(scale, dataset, method, runs, dataset_path, device, epochs, sqlite):
         try:
             result = exp.run(trial)
         except optuna.TrialPruned:
+            logger.warning(f"Trial {trial.number} pruned")
             record_result(results, None, row=row, trial=trial, state="pruned")
             raise
-        except NumericError as e:
+        except (NumericError, ConvergenceError) as e:
+            logger.error(f"Trial {trial.number} failed: {e}")
             record_result(
                 results, None, row=row, trial=trial, state="failed", error=str(e)
             )
             raise
         return record_result(results, result, row=row, trial=trial)
 
-    study.optimize(objective, n_trials=sc.n_trials, catch=(NumericError,))
+    study.optimize(
+        objective, n_trials=sc.n_trials, catch=(NumericError, ConvergenceError)
+    )
 
     best = study.best_trial
     write_json(

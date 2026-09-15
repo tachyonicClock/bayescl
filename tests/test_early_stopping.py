@@ -1,18 +1,21 @@
+import pytest
 import torch
 
+from bayescl.base import ConvergenceError
 from bayescl.experiment import BrierEarlyStopping
 
 
 class _FakeStrategy:
-    def __init__(self):
+    def __init__(self, train_epochs=None):
         self.model = torch.nn.Linear(2, 2)
         self.stopped = False
+        self.train_epochs = train_epochs
 
     def stop_training(self):
         self.stopped = True
 
 
-def _make_plugin(monkeypatch, briers, eval_every=2, patience=2):
+def _make_plugin(monkeypatch, briers, eval_every=2, patience=2, strict=False):
     calls = iter(briers)
 
     def fake_eval_and_capture(strategy, val_experience, loader_kwargs):
@@ -28,6 +31,7 @@ def _make_plugin(monkeypatch, briers, eval_every=2, patience=2):
         loader_kwargs={},
         eval_every=eval_every,
         patience=patience,
+        strict=strict,
     )
 
 
@@ -91,3 +95,42 @@ def test_after_training_exp_restores_best_checkpoint_even_without_early_stop(
 
     for k, v in strategy.model.state_dict().items():
         assert torch.equal(v, best_checkpoint[k])
+
+
+def test_strict_raises_convergence_error_when_epoch_budget_exhausted(monkeypatch):
+    strategy = _FakeStrategy(train_epochs=6)
+    # improves at every single checkpoint -- patience never accumulates, so
+    # training only stops because it runs out of its 6-epoch budget.
+    briers = [1.0, 0.9, 0.8, 0.7]
+    plugin = _make_plugin(monkeypatch, briers, eval_every=2, patience=2, strict=True)
+
+    plugin.before_training_exp(strategy)
+    _run_epochs(plugin, strategy, 6)
+
+    assert not strategy.stopped  # never hit patience, ran the full budget
+    with pytest.raises(ConvergenceError):
+        plugin.after_training_exp(strategy)
+
+
+def test_non_strict_does_not_raise_when_epoch_budget_exhausted(monkeypatch):
+    strategy = _FakeStrategy(train_epochs=6)
+    briers = [1.0, 0.9, 0.8, 0.7]
+    plugin = _make_plugin(monkeypatch, briers, eval_every=2, patience=2, strict=False)
+
+    plugin.before_training_exp(strategy)
+    _run_epochs(plugin, strategy, 6)
+
+    assert not strategy.stopped
+    plugin.after_training_exp(strategy)  # should not raise
+
+
+def test_strict_does_not_raise_when_early_stopping_triggered_first(monkeypatch):
+    strategy = _FakeStrategy(train_epochs=100)
+    briers = [1.0, 0.8, 0.8, 0.8, 0.8, 0.8, 0.8]
+    plugin = _make_plugin(monkeypatch, briers, eval_every=2, patience=2, strict=True)
+
+    plugin.before_training_exp(strategy)
+    _run_epochs(plugin, strategy, 10)
+
+    assert strategy.stopped  # converged well before the 100-epoch budget
+    plugin.after_training_exp(strategy)  # should not raise
