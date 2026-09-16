@@ -330,13 +330,8 @@ class ContinualLearningEvaluator:
 
     @staticmethod
     def _accuracy_from_confusion_counts(counts: Tensor) -> tuple[Tensor, Tensor]:
-        """Per-cell accuracy from confusion counts, plus which cells have data.
-
-        ``counts``'s last two dimensions are (true class, predicted class);
-        any leading dimensions are preserved elementwise. Cells with no
-        samples get an accuracy of 0 rather than NaN from 0/0 -- callers that
-        need to exclude them use the returned mask.
-        """
+        """Per-cell accuracy from confusion counts (last two dims), and a mask
+        of which cells have data -- 0 rather than NaN where they don't."""
         correct = counts.diagonal(dim1=-2, dim2=-1).sum(dim=-1).double()
         total = counts.sum(dim=(-2, -1)).double()
         evaluated = total > 0

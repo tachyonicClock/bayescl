@@ -202,8 +202,6 @@ class TensorboardMetricLogger(BaseLogger):
     def __init__(self, writer: "SummaryWriter") -> None:
         super().__init__()
         self.writer = writer
-        # Flushes even on an unhandled exception, matching
-        # avalanche.logging.TensorboardLogger's behavior.
         weakref.finalize(self, SummaryWriter.close, writer)
 
     def log_single_metric(self, name: str, value: Any, x_plot: int) -> None:
