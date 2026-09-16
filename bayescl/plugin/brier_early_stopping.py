@@ -90,8 +90,6 @@ class BrierEarlyStopping(SupervisedPlugin):
         logits, y = self._eval_and_capture(
             strategy, self.val_stream[self._task_idx], self.loader_kwargs
         )
-        # Normalized once and reused, rather than re-detected and
-        # re-softmaxed independently by brier/ece/nll.
         probs = normalize_predictive(logits)
         brier = ContinualLearningEvaluator.brier(probs, y)
         ece = ContinualLearningEvaluator.ece(probs, y)
