@@ -20,6 +20,9 @@ def draw_tensor(draw: st.DrawFn, *shape: int) -> Tensor:
             dtype=torch.float64,
             shape=shape,
             layout=torch.strided,
+            # Pin the device: left free, the strategy mixes cpu and cuda tensors
+            # within a single call and trips the functions' same-device check.
+            device=torch.device("cpu"),
             elements=st.floats(
                 min_value=-10.0,
                 max_value=10.0,

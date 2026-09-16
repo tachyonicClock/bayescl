@@ -97,6 +97,28 @@ class MatrixNormalPriorPosterior(nn.Module):
         raise NotImplementedError
 
 
+class TiedLoRAPriorPosterior(nn.Module):
+    """A LoRA pair whose factors share one rank-space covariance ``S = L L^T``.
+
+    ``A``'s columns and ``B``'s rows are each distributed over the same
+    ``rank_dim``-dimensional space, so a single covariance can be shared between
+    them. Sharing it is what makes the pair identifiable: rescaling ``A`` by
+    ``c`` and ``B`` by ``1/c`` leaves the product ``B @ A`` alone but would need
+    ``A``'s covariance scaled by ``c**2`` and ``B``'s by ``1/c**2``, which the
+    shared ``S`` cannot represent unless ``c = +/-1``.
+    """
+
+    A: Tensor
+    B: Tensor
+    prior_A: Tensor
+    prior_B: Tensor
+    prior_L: Tensor
+
+    @property
+    def L(self) -> Tensor:
+        raise NotImplementedError
+
+
 class VariationalParameter(nn.Module):
     """Implements a Gaussian variational parameter using the reparameterization trick.
 
@@ -257,6 +279,16 @@ def posterior_to_prior(module: nn.Module):
             assert isinstance(submodule.inducing_mean, Tensor)
             assert isinstance(submodule.inducing_scale_tril, Tensor)
             pass
+        elif isinstance(submodule, TiedLoRAPriorPosterior):
+            assert isinstance(submodule.A, Tensor)
+            assert isinstance(submodule.B, Tensor)
+            assert isinstance(submodule.prior_A, Tensor)
+            assert isinstance(submodule.prior_B, Tensor)
+            assert isinstance(submodule.prior_L, Tensor)
+
+            submodule.prior_A.copy_(submodule.A)
+            submodule.prior_B.copy_(submodule.B)
+            submodule.prior_L.copy_(submodule.L)
         elif isinstance(submodule, MatrixNormalPriorPosterior):
             assert isinstance(submodule.M, Tensor)
             assert isinstance(submodule.L_u, Tensor)

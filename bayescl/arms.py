@@ -6,6 +6,7 @@ The CLI imports this before reading :func:`arm_names`.
 
 from bayescl.treatments._registry import ARMS, ArmBase, arm_names, get_arm, register
 from bayescl.treatments.ball._arm import BALL
+from bayescl.treatments.ball._tied_arm import TiedBALL
 from bayescl.treatments.clora._arm import CLoRA
 from bayescl.treatments.ewc._arm import EWC
 from bayescl.treatments.inflora._arm import InfLoRA
@@ -31,6 +32,7 @@ __all__ = [
     "LoRAJoint",
     "RWalk",
     "SDLoRA",
+    "TiedBALL",
     "TBALL",
     "TBALLMND",
 ]
