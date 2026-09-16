@@ -90,6 +90,8 @@ Use a standard small ViT (ViT-Small/16) pre-trained on ImageNet in the usual way
 
 To ensure models converge and to avoid overfitting while supporting different LoRA architectures, we will use early stopping on the validation Brier score, evaluated every 2 epochs with a patience of 5.
 
+During tuning, a trial where any task exhausts its epoch budget without early stopping ever triggering is rejected and excluded from hyperparameter selection, since it was cut off before reaching a genuine plateau and so cannot be fairly compared against a trial that converged.
+
 ## 4. Datasets
 
 Class-incremental and domain-incremental continual learning scenarios, constructed by splitting datasets based on classes/domains:
