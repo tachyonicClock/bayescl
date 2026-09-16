@@ -5,7 +5,7 @@ from avalanche.training.plugins import SupervisedPlugin
 from loguru import logger
 
 from bayescl.base import ConvergenceError
-from bayescl.metrics.results import ContinualLearningEvaluator
+from bayescl.metrics.results import ContinualLearningEvaluator, normalize_predictive
 
 
 class BrierEarlyStopping(SupervisedPlugin):
@@ -90,14 +90,17 @@ class BrierEarlyStopping(SupervisedPlugin):
         logits, y = self._eval_and_capture(
             strategy, self.val_stream[self._task_idx], self.loader_kwargs
         )
-        brier = ContinualLearningEvaluator.brier(logits, y)
-        ece = ContinualLearningEvaluator.ece(logits, y)
+        # Normalized once and reused, rather than re-detected and
+        # re-softmaxed independently by brier/ece/nll.
+        probs = normalize_predictive(logits)
+        brier = ContinualLearningEvaluator.brier(probs, y)
+        ece = ContinualLearningEvaluator.ece(probs, y)
         # Accuracy and NLL are computed here rather than read off the metric
         # stream: this pass evaluates a single task's validation split, so the
         # stream-level metrics describe something other than what their names
         # say and are muted for its duration.
-        accuracy = float((logits.argmax(dim=1) == y).double().mean())
-        nll = ContinualLearningEvaluator.nll(logits, y)
+        accuracy = float((probs.argmax(dim=1) == y).double().mean())
+        nll = ContinualLearningEvaluator.nll(probs, y)
         epoch = max(self._epoch_in_task - 1, 0)
         with logger.contextualize(eval_tag="early_stop"):
             logger.info(

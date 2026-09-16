@@ -9,11 +9,26 @@ import torch
 import torch.nn.functional as F
 from sklearn.metrics import brier_score_loss, roc_auc_score
 from torch import Tensor
-from torchmetrics.utilities.compute import normalize_logits_if_needed
 
 from .callibration import calibration_curve, expected_calibration_error
 
 N_BINS = 15
+
+
+def normalize_predictive(y_logit: Tensor) -> Tensor:
+    """Softmax ``y_logit`` unless it's already a probability distribution.
+
+    Strategies disagree on what their model output is (see
+    ``VCLStrategy.predict_step``). Checking values lie in ``[0, 1]`` alone,
+    as ``torchmetrics.normalize_logits_if_needed`` does, also matches
+    small-magnitude raw logits; this additionally requires rows to sum to 1.
+    """
+    in_unit_interval = bool(((y_logit >= 0) & (y_logit <= 1)).all())
+    if in_unit_interval:
+        row_sums = y_logit.sum(dim=1)
+        if torch.allclose(row_sums, torch.ones_like(row_sums), atol=1e-3):
+            return y_logit
+    return y_logit.softmax(dim=1)
 
 
 def _backwards_transfer(R: torch.Tensor) -> float:
@@ -313,6 +328,23 @@ class ContinualLearningEvaluator:
         ]
         return float(np.mean(scores)), float(np.mean(seen_scores))
 
+    @staticmethod
+    def _accuracy_from_confusion_counts(counts: Tensor) -> tuple[Tensor, Tensor]:
+        """Per-cell accuracy from confusion counts, plus which cells have data.
+
+        ``counts``'s last two dimensions are (true class, predicted class);
+        any leading dimensions are preserved elementwise. Cells with no
+        samples get an accuracy of 0 rather than NaN from 0/0 -- callers that
+        need to exclude them use the returned mask.
+        """
+        correct = counts.diagonal(dim1=-2, dim2=-1).sum(dim=-1).double()
+        total = counts.sum(dim=(-2, -1)).double()
+        evaluated = total > 0
+        accuracy = torch.where(
+            evaluated, correct / total.clamp(min=1), torch.zeros_like(total)
+        )
+        return accuracy, evaluated
+
     def _accuracy_submatrix(self, train_task_idx: int) -> Tensor:
         """Accuracy of checkpoints ``0..train_task_idx`` on test tasks
         ``0..train_task_idx``, from the running confusion counts.
@@ -323,24 +355,32 @@ class ContinualLearningEvaluator:
         only in the final pickle.
         """
         counts = self._big_r[: train_task_idx + 1, : train_task_idx + 1]
-        correct = counts.diagonal(dim1=2, dim2=3).sum(dim=-1).double()
-        total = counts.sum(dim=(2, 3)).double()
-        return torch.where(total > 0, correct / total.clamp(min=1), torch.zeros_like(total))
+        accuracy, _ = self._accuracy_from_confusion_counts(counts)
+        return accuracy
 
     @torch.no_grad()
     def checkpoint_accuracy(self, train_task_idx: int) -> tuple[float, float]:
         """All-task and seen-task accuracy after training on ``train_task_idx``."""
-        counts = self._big_r[train_task_idx]
-        correct = counts.diagonal(dim1=1, dim2=2).sum(dim=-1).double()
-        total = counts.sum(dim=(1, 2)).double()
-        evaluated = total > 0
+        accuracy, evaluated = self._accuracy_from_confusion_counts(
+            self._big_r[train_task_idx]
+        )
         if not bool(evaluated.any()):
             return float("nan"), float("nan")
-        accuracy = correct[evaluated] / total[evaluated]
         seen = evaluated.clone()
         seen[train_task_idx + 1 :] = False
-        seen_accuracy = correct[seen] / total[seen]
-        return float(accuracy.mean()), float(seen_accuracy.mean())
+        return float(accuracy[evaluated].mean()), float(accuracy[seen].mean())
+
+    @torch.no_grad()
+    def checkpoint_confusion_counts(self, train_task_idx: int) -> Tensor:
+        """Confusion counts over the seen test tasks (``0..train_task_idx``)
+        at this checkpoint.
+
+        Read from ``_big_r``, which ``MetricsPlugin`` only populates from the
+        real per-checkpoint eval, never validation/OOD/shift passes -- so
+        unlike a metric tied to every ``strategy.eval`` call, it can't mix
+        validation-time and test-time predictions.
+        """
+        return self._big_r[train_task_idx, : train_task_idx + 1].sum(dim=0)
 
     @torch.no_grad()
     def checkpoint_backward_transfer(self, train_task_idx: int) -> float:
@@ -375,7 +415,7 @@ class ContinualLearningEvaluator:
     @staticmethod
     def ece(y_logit: Tensor, y_true: Tensor, num_bins: int = N_BINS) -> float:
         """Expected Calibration Error. Use probabilities from the predicted class only."""
-        y_prob = normalize_logits_if_needed(y_logit, "softmax")
+        y_prob = normalize_predictive(y_logit)
         bin_prob, bin_freq, bin_weights = calibration_curve(
             y_prob.numpy(),
             y_true.numpy(),
@@ -386,7 +426,7 @@ class ContinualLearningEvaluator:
     @staticmethod
     def sce(y_logit: Tensor, y_true: Tensor, num_bins: int = N_BINS) -> float:
         """Static Calibration Error. Use probabilities from all classes."""
-        y_prob = normalize_logits_if_needed(y_logit, "softmax")
+        y_prob = normalize_predictive(y_logit)
         bin_prob, bin_freq, bin_weights = calibration_curve(
             y_prob.numpy(),
             y_true.numpy(),
@@ -398,7 +438,7 @@ class ContinualLearningEvaluator:
     @staticmethod
     def ace(y_logit: Tensor, y_true: Tensor, num_bins: int = N_BINS) -> float:
         """Adaptive Calibration Error. Bins have equal number of samples."""
-        y_prob = normalize_logits_if_needed(y_logit, "softmax")
+        y_prob = normalize_predictive(y_logit)
         bin_prob, bin_freq, bin_weights = calibration_curve(
             y_prob.numpy(),
             y_true.numpy(),
@@ -417,7 +457,7 @@ class ContinualLearningEvaluator:
         contain every class -- always true for ``brier_seen`` early in
         training, when only a handful of tasks (hence classes) have been seen.
         """
-        y_prob = normalize_logits_if_needed(y_logit, "softmax")
+        y_prob = normalize_predictive(y_logit)
         labels = list(range(y_logit.shape[1]))
         return float(brier_score_loss(y_true.numpy(), y_prob.numpy(), labels=labels))
 
@@ -430,7 +470,7 @@ class ContinualLearningEvaluator:
         than logits, and taking ``log_softmax`` of a distribution flattens it
         towards uniform instead of failing.
         """
-        log_prob = normalize_logits_if_needed(y_logit, "softmax").clamp_min(1e-12).log()
+        log_prob = normalize_predictive(y_logit).clamp_min(1e-12).log()
         return float(F.nll_loss(log_prob, y_true))
 
     @staticmethod
@@ -438,8 +478,8 @@ class ContinualLearningEvaluator:
         """AUROC distinguishing in-distribution (``id_logit``) samples from
         out-of-distribution (``ood_logit``) samples, scored by max softmax
         probability with in-distribution as the positive class."""
-        id_score = normalize_logits_if_needed(id_logit, "softmax").amax(dim=1)
-        ood_score = normalize_logits_if_needed(ood_logit, "softmax").amax(dim=1)
+        id_score = normalize_predictive(id_logit).amax(dim=1)
+        ood_score = normalize_predictive(ood_logit).amax(dim=1)
         score = torch.cat([id_score, ood_score]).numpy()
         label = np.concatenate(
             [np.ones(id_score.shape[0]), np.zeros(ood_score.shape[0])]

@@ -5,7 +5,8 @@ from avalanche.training.templates import SupervisedTemplate
 from torchmetrics.classification import (
     MulticlassCalibrationError as TorchMulticlassCalibrationError,
 )
-from torchmetrics.utilities.compute import normalize_logits_if_needed
+
+from bayescl.metrics.results import normalize_predictive
 
 
 class PerExperienceBrier(PluginMetric[float]):
@@ -29,7 +30,7 @@ class PerExperienceBrier(PluginMetric[float]):
         # ~0.05 into ~0.96, which looks like a plausible score rather than an
         # obviously broken one. Normalize only when the input isn't already a
         # distribution, as the scoring helpers in ``results`` do.
-        probabilities = normalize_logits_if_needed(logits, "softmax")
+        probabilities = normalize_predictive(logits)
         one_hot = torch.nn.functional.one_hot(
             targets, num_classes=probabilities.shape[1]
         ).to(probabilities.dtype)

@@ -20,7 +20,6 @@ from avalanche.benchmarks.scenarios.deprecated.generic_benchmark_creation import
     create_multi_dataset_generic_benchmark,
 )
 from avalanche.evaluation.metrics import (
-    StreamConfusionMatrix,
     accuracy_metrics,
     forgetting_metrics,
     loss_metrics,
@@ -47,6 +46,7 @@ from bayescl.metrics.agent_logger import (
     TensorboardMetricLogger,
     set_log_file,
 )
+from bayescl.metrics.confusion import plot_confusion_matrix
 from bayescl.metrics.ece import ExpectedCalibrationError, PerExperienceBrier
 from bayescl.metrics.plugin import MetricsPlugin
 from bayescl.metrics.results import Result
@@ -126,9 +126,6 @@ class Experiment:
             loss_metrics(minibatch=True, epoch=True, experience=True, stream=True),
             timing_metrics(epoch=True),
             forgetting_metrics(experience=True, stream=True),
-            StreamConfusionMatrix(
-                num_classes=self.benchmark.n_classes, save_image=True
-            ),
             ExpectedCalibrationError(self.num_classes),
             PerExperienceBrier(),
             loggers=self.loggers,
@@ -205,6 +202,13 @@ class Experiment:
             self.tb_log.writer.add_scalar(
                 f"result/ece_task_{test_task:02d}", scores["ece"], t
             )
+        self.tb_log.writer.add_figure(
+            "result/confusion_matrix",
+            plot_confusion_matrix(
+                evaluator.checkpoint_confusion_counts(t), title=f"checkpoint {t}"
+            ),
+            t,
+        )
 
         breakdown = " ".join(
             f"t{test_task}={scores['brier']:.4f}"
@@ -422,8 +426,6 @@ class Experiment:
             brier_all, brier_seen = (
                 self.metrics_plugin.evaluator.checkpoint_brier_scores(t)
             )
-            self.tb_log.writer.add_scalar("result/brier_all", brier_all, t)
-            self.tb_log.writer.add_scalar("result/brier_seen", brier_seen, t)
             self._log_checkpoint_result(t, brier_all, brier_seen)
             if compute_shift_ood_metrics:
                 for name, stream in ood_streams.items():
