@@ -15,7 +15,11 @@ import torch.nn as nn
 from torch import Tensor
 from torch.nn import functional as F
 
-from bayescl.bnn.tied import forward_tied_lora_fast, kl_divergence_tied_lora_fast
+from bayescl.bnn.tied import (
+    forward_tied_lora_fast,
+    kl_divergence_tied_lora_fast,
+    sample_tied_lora_weights,
+)
 from bayescl.bnn.vbnn import TiedLoRAPriorPosterior, inv_softplus
 from bayescl.peft._base import AdapterBase, AdapterFactory
 
@@ -33,6 +37,7 @@ class TiedLoRAParameter(TiedLoRAPriorPosterior):
     def __init__(self, in_features: int, out_features: int, config: TiedBALLConfig):
         super().__init__()
         r = config.r
+        self.sampling = config.sampling
         self.A = nn.Parameter(torch.zeros(r, in_features))
         self.B = nn.Parameter(torch.zeros(out_features, r))
         self.L_raw = nn.Parameter(torch.zeros(r, r))
@@ -71,13 +76,18 @@ class TiedLoRAParameter(TiedLoRAPriorPosterior):
         )
 
     def forward(self, x: Tensor) -> Tensor:
-        """Sample ``B @ A @ x`` for inputs of any leading shape.
+        """Sample ``B @ A @ x`` for inputs of any leading shape."""
+        if self.sampling == "weight":
+            # One draw shared by the whole batch. The matmuls are left to
+            # autocast, matching how the mean-field adapter runs.
+            A, B = sample_tied_lora_weights(self.A, self.B, self.L)
+            return (x @ A.T) @ B.T
 
-        The tied forward pass is defined for a 2D batch, so leading dimensions
-        (e.g. a transformer's sequence axis) are folded into the batch and each
-        resulting row draws its own weights. Inputs are cast to the parameter
-        dtype so the sampling stays in fp32 under bf16 autocast.
-        """
+        # Local reparameterization: the tied forward is defined for a 2D batch,
+        # so leading dimensions (e.g. a transformer's sequence axis) are folded
+        # into the batch and each resulting row draws its own weights. Inputs
+        # are cast to the parameter dtype so sampling stays in fp32 under bf16
+        # autocast.
         dtype = self.A.dtype
         flat = x.reshape(-1, x.shape[-1]).to(dtype)
         out = forward_tied_lora_fast(self.A, self.B, self.L, flat)

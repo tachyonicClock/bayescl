@@ -82,7 +82,10 @@ class VCLStrategy(Naive):
         x, y, _ = batch
 
         ys_hat = torch.stack(
-            [self.model(x).masked_fill(~mask, -torch.inf) for _ in range(self._train_samples)]
+            [
+                self.model(x).masked_fill(~mask, -torch.inf)
+                for _ in range(self._train_samples)
+            ]
         )
         if self._softmax_avg:
             log_pred_probs = ys_hat.log_softmax(dim=-1).logsumexp(dim=0)

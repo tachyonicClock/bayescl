@@ -81,7 +81,7 @@ class BALLLinear(nn.Linear, BALLLayer):
         z = forward_flipout(bottleneck, self.ball_B.mu, self.ball_B.sigma())
         return F.linear(input, self.weight, self.bias) + z * self.scaling
 
-    def forward_none(self, input):
+    def forward_weight(self, input):
         lora_A = self.ball_A.forward()
         lora_B = self.ball_B.forward()
         z = (input @ lora_A.T) @ lora_B.T
@@ -90,12 +90,12 @@ class BALLLinear(nn.Linear, BALLLayer):
     def forward(self, input):
         input = self.dropout(input)
         if not self.training:
-            return self.forward_none(input)
-        if self.config.mode == "lrt":
+            return self.forward_weight(input)
+        if self.config.sampling == "lrt":
             return self.forward_lrt(input)
-        if self.config.mode == "flipout":
+        if self.config.sampling == "flipout":
             return self.forward_flipout(input)
-        return self.forward_none(input)
+        return self.forward_weight(input)
 
 
 class BALLConv2d(BALLLayer, nn.Conv2d):

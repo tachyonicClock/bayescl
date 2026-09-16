@@ -1,4 +1,5 @@
 from dataclasses import dataclass, replace
+from typing import Literal
 
 import torch
 from loguru import logger
@@ -25,6 +26,7 @@ class TiedBALL(ArmBase):
     lora_alpha: int = 1
     dropout: float = 0.0
     bll: bool = False
+    sampling: Literal["weight", "lrt"] = "weight"
     # VCL strategy
     beta: float = 1.0
     train_samples: int = 1
@@ -40,6 +42,7 @@ class TiedBALL(ArmBase):
             lora_alpha=self.lora_alpha,
             dropout=self.dropout,
             bll=self.bll,
+            sampling=self.sampling,
             prior_mean=self.prior_mean,
             prior_sd=self.prior_sd,
             init_sd=self.init_sd,

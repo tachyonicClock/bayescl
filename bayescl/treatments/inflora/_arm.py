@@ -2,7 +2,11 @@ from dataclasses import dataclass, replace
 
 import torch
 from bayescl.treatments._registry import ArmBase, register
-from bayescl.treatments.inflora import InfLoRAAdapterFactory, InfLoRAConfig, InfLoRAPlugin
+from bayescl.treatments.inflora import (
+    InfLoRAAdapterFactory,
+    InfLoRAConfig,
+    InfLoRAPlugin,
+)
 from bayescl.peft import RegexFilter, add_adapters
 from loguru import logger
 
@@ -43,7 +47,9 @@ class InfLoRA(ArmBase):
                 max_activation_batches=peft.max_activation_batches,
             )
         )
-        experiment.model.get_submodule(experiment.config.head_module).requires_grad_(True)
+        experiment.model.get_submodule(experiment.config.head_module).requires_grad_(
+            True
+        )
 
     def _build_strategy(self, experiment):
         return self._build_naive_strategy(experiment)

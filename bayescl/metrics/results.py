@@ -199,6 +199,7 @@ class Result:
         elif isinstance(f, BinaryIO):
             pickle.dump(asdict(self), f)
 
+
 class ContinualLearningEvaluator:
     def __init__(
         self,
@@ -393,7 +394,9 @@ class ContinualLearningEvaluator:
         id_score = normalize_logits_if_needed(id_logit, "softmax").amax(dim=1)
         ood_score = normalize_logits_if_needed(ood_logit, "softmax").amax(dim=1)
         score = torch.cat([id_score, ood_score]).numpy()
-        label = np.concatenate([np.ones(id_score.shape[0]), np.zeros(ood_score.shape[0])])
+        label = np.concatenate(
+            [np.ones(id_score.shape[0]), np.zeros(ood_score.shape[0])]
+        )
         return float(roc_auc_score(label, score))
 
     @torch.no_grad()
@@ -452,9 +455,7 @@ class ContinualLearningEvaluator:
         total = self._big_r.sum(dim=(2, 3))
         accuracy = correct / total
         accuracy_all = accuracy.mean(dim=1)
-        accuracy_seen = torch.tensor(
-            [accuracy[t, : t + 1].mean() for t in range(T)]
-        )
+        accuracy_seen = torch.tensor([accuracy[t, : t + 1].mean() for t in range(T)])
         result = Result(
             n_tasks=T,
             accuracy_all=accuracy_all.numpy(),
@@ -517,7 +518,9 @@ class ContinualLearningEvaluator:
         ood_names = sorted({name for name, _ in self._ood_logit})
         for name in ood_names:
             values = [
-                self.auroc(y_logit_seen[t], torch.cat(self._ood_logit[(name, t)], dim=0))
+                self.auroc(
+                    y_logit_seen[t], torch.cat(self._ood_logit[(name, t)], dim=0)
+                )
                 for t in range(T)
                 if (name, t) in self._ood_logit
             ]
@@ -549,35 +552,56 @@ class ContinualLearningEvaluator:
             **{
                 key: metrics[key]
                 for key in (
-                    "ece_all", "ece_all_avg", "ece_seen", "ece_seen_avg", "ece_final",
-                    "ace_all", "ace_all_avg", "ace_seen", "ace_seen_avg", "ace_final",
-                    "sce_all", "sce_all_avg", "sce_seen", "sce_seen_avg", "sce_final",
-                    "brier_all", "brier_all_avg", "brier_seen", "brier_seen_avg", "brier_final",
-                    "nll_all", "nll_all_avg", "nll_seen", "nll_seen_avg", "nll_final",
+                    "ece_all",
+                    "ece_all_avg",
+                    "ece_seen",
+                    "ece_seen_avg",
+                    "ece_final",
+                    "ace_all",
+                    "ace_all_avg",
+                    "ace_seen",
+                    "ace_seen_avg",
+                    "ace_final",
+                    "sce_all",
+                    "sce_all_avg",
+                    "sce_seen",
+                    "sce_seen_avg",
+                    "sce_final",
+                    "brier_all",
+                    "brier_all_avg",
+                    "brier_seen",
+                    "brier_seen_avg",
+                    "brier_final",
+                    "nll_all",
+                    "nll_all_avg",
+                    "nll_seen",
+                    "nll_seen_avg",
+                    "nll_final",
                     "duration_s",
                 )
             },
             auroc_future=metrics.get("auroc_future"),
             auroc_future_avg=metrics.get("auroc_future_avg"),
-            auroc_ood={
-                name: metrics[f"auroc_{name}"] for name in ood_names
-            } or None,
-            auroc_ood_avg={
-                name: metrics[f"auroc_{name}_avg"] for name in ood_names
-            } or None,
+            auroc_ood={name: metrics[f"auroc_{name}"] for name in ood_names} or None,
+            auroc_ood_avg={name: metrics[f"auroc_{name}_avg"] for name in ood_names}
+            or None,
             mean_auroc_ood=(
                 float(np.mean([metrics[f"auroc_{name}_avg"] for name in ood_names]))
                 if any(f"auroc_{name}_avg" in metrics for name in ood_names)
                 else None
             ),
             ece_shift={
-                severity: metrics[f"ece_shift_{severity}"] for severity in severities
+                severity: metrics[f"ece_shift_{severity}"]
+                for severity in severities
                 if f"ece_shift_{severity}" in metrics
-            } or None,
+            }
+            or None,
             ece_shift_avg={
-                severity: metrics[f"ece_shift_{severity}_avg"] for severity in severities
+                severity: metrics[f"ece_shift_{severity}_avg"]
+                for severity in severities
                 if f"ece_shift_{severity}_avg" in metrics
-            } or None,
+            }
+            or None,
             mean_ece_shift=(
                 float(
                     np.mean(
@@ -588,17 +612,23 @@ class ContinualLearningEvaluator:
                         ]
                     )
                 )
-                if any(f"ece_shift_{severity}_avg" in metrics for severity in severities)
+                if any(
+                    f"ece_shift_{severity}_avg" in metrics for severity in severities
+                )
                 else None
             ),
             ace_shift={
-                severity: metrics[f"ace_shift_{severity}"] for severity in severities
+                severity: metrics[f"ace_shift_{severity}"]
+                for severity in severities
                 if f"ace_shift_{severity}" in metrics
-            } or None,
+            }
+            or None,
             ace_shift_avg={
-                severity: metrics[f"ace_shift_{severity}_avg"] for severity in severities
+                severity: metrics[f"ace_shift_{severity}_avg"]
+                for severity in severities
                 if f"ace_shift_{severity}_avg" in metrics
-            } or None,
+            }
+            or None,
         )
 
         return result

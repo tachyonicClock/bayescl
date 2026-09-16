@@ -114,9 +114,7 @@ class CLoRAConv2d(nn.Conv2d, CLoRAModule):
         self._init_clora(config, fan_in, out_channels, n_tasks)
 
     def forward(self, input: torch.Tensor) -> torch.Tensor:
-        return self._conv_forward(
-            input, self.adapted_weight(self.weight), self.bias
-        )
+        return self._conv_forward(input, self.adapted_weight(self.weight), self.bias)
 
 
 class CLoRAAdapterFactory(AdapterFactory):

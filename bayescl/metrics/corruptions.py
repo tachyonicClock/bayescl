@@ -242,9 +242,12 @@ def fog(x, severity=1):
 
     x_shape = np.array(x).shape
     if len(x_shape) < 3 or x_shape[2] < 3:
-        x += c[0] * _plasma_fractal(mapsize=map_size, wibbledecay=c[1])[
-            : shape[0], : shape[1]
-        ]
+        x += (
+            c[0]
+            * _plasma_fractal(mapsize=map_size, wibbledecay=c[1])[
+                : shape[0], : shape[1]
+            ]
+        )
     else:
         x += (
             c[0]

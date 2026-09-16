@@ -16,7 +16,9 @@ _SCALAR_TYPES = (int, float, str)
 # "<name>/<train|eval>_phase/<stream>_stream[/TaskNNN][/ExpNNN]" -- everything
 # from "/<phase>_phase" onward duplicates what ``_exp_header`` already prints,
 # and the granularity suffix (e.g. "_Exp") duplicates which flush call this is.
-_METRIC_NAME_NOISE = re.compile(r"/(train|eval)_phase/\w+_stream(?:/Task\d+)?(?:/Exp\d+)?$")
+_METRIC_NAME_NOISE = re.compile(
+    r"/(train|eval)_phase/\w+_stream(?:/Task\d+)?(?:/Exp\d+)?$"
+)
 _METRIC_GRANULARITY_SUFFIX = re.compile(r"_(Epoch|Exp|MB|Stream)$")
 
 
@@ -129,8 +131,10 @@ class AgentLogger(BaseLogger, SupervisedPlugin):
         parts = []
         for k, v in sorted(self.metric_vals.items()):
             collapsed = _short_metric_name(k, drop_granularity=True)
-            name = collapsed if collapsed_counts[collapsed] == 1 else _short_metric_name(
-                k, drop_granularity=False
+            name = (
+                collapsed
+                if collapsed_counts[collapsed] == 1
+                else _short_metric_name(k, drop_granularity=False)
             )
             parts.append(f"{name}={self._format_value(v)}")
 

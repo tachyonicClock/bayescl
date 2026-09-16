@@ -253,7 +253,9 @@ def split_named(
         # Give the leftover units to the splits with the largest fractional
         # part, so per-class allocations sum to ``keep`` exactly and aggregate
         # split sizes converge to ``sizes`` rather than always rounding down.
-        order = sorted(range(len(names)), key=lambda i: raw[i] - counts[i], reverse=True)
+        order = sorted(
+            range(len(names)), key=lambda i: raw[i] - counts[i], reverse=True
+        )
         for i in order[:remainder]:
             counts[i] += 1
 
@@ -263,7 +265,7 @@ def split_named(
             cursor += count
 
     logger.info(
-        f"Splitting {n} samples into {({k: len(v) for k, v in out.items()})} with class balance"
+        f"Splitting {n} samples into { ({k: len(v) for k, v in out.items()}) } with class balance"
     )
     return out
 
@@ -401,7 +403,10 @@ def _cifar100_pool():
     with pilot_test carved out of train.
     """
     return concatenate_datasets(
-        [_load_hf(CIFAR100Dataset.HF_REPO, "train"), _load_hf(CIFAR100Dataset.HF_REPO, "test")]
+        [
+            _load_hf(CIFAR100Dataset.HF_REPO, "train"),
+            _load_hf(CIFAR100Dataset.HF_REPO, "test"),
+        ]
     )
 
 
@@ -411,7 +416,12 @@ def _cifar100_pool_targets() -> list[int]:
 
 
 #: iCIFAR100/10 split sizes.
-CIFAR100_SPLIT_SIZES = {"valid": 5000, "pilot_test": 5000, "full_test": 10000, "train": 40000}
+CIFAR100_SPLIT_SIZES = {
+    "valid": 5000,
+    "pilot_test": 5000,
+    "full_test": 10000,
+    "train": 40000,
+}
 
 
 @lru_cache(maxsize=None)
@@ -538,11 +548,15 @@ def _clear10_buckets(
     )
 
     background = next(
-        i for i, name in enumerate(ds.class_names) if name.strip().upper() == "BACKGROUND"
+        i
+        for i, name in enumerate(ds.class_names)
+        if name.strip().upper() == "BACKGROUND"
     )
     remap = {
         old: new
-        for new, old in enumerate(i for i in range(len(ds.class_names)) if i != background)
+        for new, old in enumerate(
+            i for i in range(len(ds.class_names)) if i != background
+        )
     }
 
     all_buckets = ds.get_paths_and_targets(root_appended=True)

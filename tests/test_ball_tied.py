@@ -13,7 +13,11 @@ import pytest
 import torch
 from torch import nn
 
-from bayescl.bnn.tied import forward_tied_lora_fast, kl_divergence_tied_lora_fast
+from bayescl.bnn.tied import (
+    forward_tied_lora_fast,
+    kl_divergence_tied_lora_fast,
+    sample_tied_lora_weights,
+)
 from bayescl.bnn.vbnn import posterior_to_prior
 from bayescl.treatments.ball._tied_config import TiedBALLConfig
 from bayescl.treatments.ball._tied_module import (
@@ -118,6 +122,27 @@ class TestGaugeFreedom:
             torch.testing.assert_close(var_q, var_base, rtol=0.05, atol=0.0)
             torch.testing.assert_close(kl_q, kl_base, rtol=1e-4, atol=1e-4)
 
+    @pytest.mark.parametrize("c", [0.25, 4.0])
+    def test_weight_sampling_also_breaks_the_rescaling(self, tied, c):
+        """The fix must come from the family, not the sampling scheme.
+
+        ``sampling="weight"`` shares one draw across the batch instead of
+        drawing per row, so if the rescaling were flat here the cheap mode
+        would quietly give up the identifiability the tied posterior buys.
+        """
+        A, B, L, x, *_ = tied
+
+        def predictive_var(A_, B_, L_):
+            draws = []
+            for _ in range(SAMPLES):
+                A_s, B_s = sample_tied_lora_weights(A_, B_, L_)
+                draws.append((x @ A_s.T) @ B_s.T)
+            return torch.stack(draws).var(0).mean()
+
+        var_base = predictive_var(A, B, L)
+        var_scaled = predictive_var(A * c, B / c, L * c)
+        assert not torch.isclose(var_base, var_scaled, rtol=0.1)
+
     def test_rotation_symmetry_breaks_once_the_prior_is_a_learned_posterior(self, tied):
         """After a task boundary the prior mean is non-zero, breaking ``O(r)`` too."""
         A, B, L, _, _, _, prior_L = tied
@@ -135,6 +160,36 @@ class TestGaugeFreedom:
             prior_L,
         )
         assert not torch.isclose(kl_base, kl_q, rtol=1e-3)
+
+
+class TestSampleTiedLoRAWeights:
+    def test_draws_match_the_shared_covariance(self):
+        """Columns of A and rows of B must both be drawn from S = L L^T."""
+        torch.manual_seed(0)
+        A = torch.zeros(RANK, IN_DIM)
+        B = torch.zeros(OUT_DIM, RANK)
+        L = torch.linalg.cholesky(torch.eye(RANK) * 0.4 + 0.1 * torch.ones(RANK, RANK))
+        S = L @ L.T
+
+        n = 20000
+        draws = [sample_tied_lora_weights(A, B, L) for _ in range(n)]
+        # Column 0 of A and row 0 of B, stacked over draws
+        a_cols = torch.stack([d[0][:, 0] for d in draws])
+        b_rows = torch.stack([d[1][0, :] for d in draws])
+
+        tol = 4 * S.abs().max().item() / math.sqrt(n)
+        for label, sample in (("A columns", a_cols), ("B rows", b_rows)):
+            cov = (sample - sample.mean(0)).T @ (sample - sample.mean(0)) / (n - 1)
+            torch.testing.assert_close(cov, S, atol=tol, rtol=0.0, msg=label)
+
+    def test_is_differentiable_through_the_means_and_factor(self):
+        A = torch.zeros(RANK, IN_DIM, requires_grad=True)
+        B = torch.zeros(OUT_DIM, RANK, requires_grad=True)
+        L = (torch.eye(RANK) * 0.1).requires_grad_(True)
+        A_s, B_s = sample_tied_lora_weights(A, B, L)
+        (A_s.sum() + B_s.sum()).backward()
+        for p in (A, B, L):
+            assert p.grad is not None and torch.isfinite(p.grad).all()
 
 
 class TestTiedLoRAParameter:
@@ -190,26 +245,54 @@ class TestTiedLoRAParameter:
             param.kl_divergence(), torch.tensor(0.0), atol=1e-4, rtol=0.0
         )
 
+    @pytest.mark.parametrize("sampling", ["weight", "lrt"])
     @pytest.mark.parametrize("shape", [(5, IN_DIM), (3, 7, IN_DIM)])
-    def test_forward_preserves_leading_dimensions(self, shape):
-        param = TiedLoRAParameter(IN_DIM, OUT_DIM, TiedBALLConfig(r=RANK))
+    def test_forward_preserves_leading_dimensions(self, shape, sampling):
+        param = TiedLoRAParameter(
+            IN_DIM, OUT_DIM, TiedBALLConfig(r=RANK, sampling=sampling)
+        )
         out = param(torch.randn(*shape))
         assert out.shape == (*shape[:-1], OUT_DIM)
         assert torch.isfinite(out).all()
 
-    def test_forward_stays_fp32_under_bf16_autocast(self):
-        param = TiedLoRAParameter(IN_DIM, OUT_DIM, TiedBALLConfig(r=RANK))
+    @pytest.mark.parametrize("sampling", ["weight", "lrt"])
+    def test_forward_returns_input_dtype_under_bf16_autocast(self, sampling):
+        param = TiedLoRAParameter(
+            IN_DIM, OUT_DIM, TiedBALLConfig(r=RANK, sampling=sampling)
+        )
         with torch.autocast(device_type="cpu", dtype=torch.bfloat16):
             out = param(torch.randn(5, IN_DIM, dtype=torch.bfloat16))
         assert out.dtype == torch.bfloat16
         assert torch.isfinite(out).all()
 
+    def test_weight_sampling_shares_one_draw_across_the_batch(self):
+        """Identical rows in must give identical rows out under ``weight``.
+
+        This is what makes the mode cheap, and it is the property that
+        distinguishes it from ``lrt``, where every row is drawn independently.
+        """
+        row = torch.randn(1, IN_DIM)
+        x = row.repeat(16, 1)
+
+        shared = TiedLoRAParameter(
+            IN_DIM, OUT_DIM, TiedBALLConfig(r=RANK, sampling="weight")
+        )(x)
+        torch.testing.assert_close(shared, shared[:1].expand_as(shared))
+
+        per_row = TiedLoRAParameter(
+            IN_DIM, OUT_DIM, TiedBALLConfig(r=RANK, sampling="lrt")
+        )(x)
+        assert not torch.allclose(per_row, per_row[:1].expand_as(per_row))
+
 
 class TestTiedBALLLinear:
-    def test_starts_as_the_wrapped_linear_in_expectation(self):
+    @pytest.mark.parametrize("sampling", ["weight", "lrt"])
+    def test_starts_as_the_wrapped_linear_in_expectation(self, sampling):
         torch.manual_seed(0)
         base = nn.Linear(IN_DIM, OUT_DIM)
-        adapter = TiedBALLAdapterFactory(TiedBALLConfig(r=RANK, init_sd=1e-6))(base)
+        adapter = TiedBALLAdapterFactory(
+            TiedBALLConfig(r=RANK, init_sd=1e-6, sampling=sampling)
+        )(base)
         assert isinstance(adapter, TiedBALLLinear)
 
         x = torch.randn(32, IN_DIM)

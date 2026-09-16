@@ -60,7 +60,9 @@ class EnsembleStrategy(Naive):
 
             self._after_training_iteration(**kwargs)
 
-    def _training_step(self, batch: Tuple[Tensor, Tensor, Tensor]) -> Tuple[Tensor, Tensor]:
+    def _training_step(
+        self, batch: Tuple[Tensor, Tensor, Tensor]
+    ) -> Tuple[Tensor, Tensor]:
         mask = self._mask[self.clock.train_exp_counter]
         x, y, _ = batch
 

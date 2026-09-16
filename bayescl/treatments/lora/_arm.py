@@ -29,7 +29,9 @@ class LoRA(ArmBase):
                 )
             ),
         )
-        experiment.model.get_submodule(experiment.config.head_module).requires_grad_(True)
+        experiment.model.get_submodule(experiment.config.head_module).requires_grad_(
+            True
+        )
 
     def _build_strategy(self, experiment):
         return self._build_naive_strategy(experiment)

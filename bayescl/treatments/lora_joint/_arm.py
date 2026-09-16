@@ -30,7 +30,9 @@ class LoRAJoint(ArmBase):
                 )
             ),
         )
-        experiment.model.get_submodule(experiment.config.head_module).requires_grad_(True)
+        experiment.model.get_submodule(experiment.config.head_module).requires_grad_(
+            True
+        )
 
     def _build_plugins(self, experiment):
         # Every minibatch already contains every class seen so far (the

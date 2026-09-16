@@ -6,6 +6,7 @@ from torchmetrics.classification import (
     MulticlassCalibrationError as TorchMulticlassCalibrationError,
 )
 
+
 class PerExperienceBrier(PluginMetric[float]):
     def __init__(self) -> None:
         super().__init__()

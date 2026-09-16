@@ -114,6 +114,51 @@ def forward_tied_lora_fast(A: Tensor, B: Tensor, L: Tensor, x: Tensor) -> Tensor
     return out
 
 
+def sample_tied_lora_weights(A: Tensor, B: Tensor, L: Tensor) -> tuple[Tensor, Tensor]:
+    r"""Draw one ``(A, B)`` pair from the tied posterior.
+
+    The counterpart to :func:`forward_tied_lora_fast`, which draws independent
+    weights per batch element. Here a single pair is drawn and the caller
+    applies it to a whole batch, so the noise is ``O(rank_dim * (in_dim +
+    out_dim))`` rather than ``O(batch_dim * (rank_dim + out_dim))``. That is a
+    higher-variance gradient estimator but a much cheaper one once
+    ``batch_dim`` exceeds the adapter's own size.
+
+    Each column of ``A`` and each row of ``B`` is drawn from the shared
+    covariance :math:`S = LL^\top`:
+
+    .. math::
+
+        A + LZ, \quad Z \sim \mathcal{N}(0, I_{r \times n}), \qquad
+        B + WL^\top, \quad W \sim \mathcal{N}(0, I_{m \times r})
+
+    :param A: Mean matrix of the ``A`` distribution ``(rank_dim, in_dim)``.
+    :param B: Mean matrix of the ``B`` distribution ``(out_dim, rank_dim)``.
+    :param L: Lower-triangular Cholesky factor, with a positive diagonal, of the
+        covariance :math:`S = LL^\top` shared across ranks. ``(rank_dim, rank_dim)``.
+    :return: A sampled ``(A, B)`` pair with the same shapes as the means.
+    """
+    device, dtype = A.device, A.dtype
+    rank_dim, _ = A.shape
+    out_dim, B_rank_dim = B.shape
+
+    # Check shape, device, and dtype
+    if B_rank_dim != rank_dim:
+        raise ValueError(f"B has rank_dim {B_rank_dim}, expected {rank_dim}")
+    if L.shape != (rank_dim, rank_dim):
+        raise ValueError(
+            f"L has shape {tuple(L.shape)}, expected {(rank_dim, rank_dim)}"
+        )
+    if not device == B.device == L.device:
+        raise ValueError("A, B, and L must be on the same device")
+    if not dtype == B.dtype == L.dtype:
+        raise ValueError("A, B, and L must have the same dtype")
+
+    z_A = torch.randn_like(A)  # (rank_dim, in_dim)
+    z_B = torch.randn(out_dim, rank_dim, device=device, dtype=dtype)
+    return A + L @ z_A, B + z_B @ L.T
+
+
 def kl_divergence_tied_lora(
     A: Tensor, B: Tensor, L: Tensor, prior_A: Tensor, prior_B: Tensor, prior_L: Tensor
 ) -> Tensor:

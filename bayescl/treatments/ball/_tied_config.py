@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import ClassVar
+from typing import ClassVar, Literal
 
 
 @dataclass
@@ -22,6 +22,15 @@ class TiedBALLConfig:
     """Dropout rate to use on the adapter inputs."""
     bll: bool = False
     """Whether to use Bayesian layers for the output layer."""
+    sampling: Literal["weight", "lrt"] = "weight"
+    """How many weight draws each forward pass takes.
+
+    ``weight`` draws one ``(A, B)`` pair and shares it across the batch.
+    ``lrt`` applies the local reparameterization trick, giving every row its own
+    implicit draw: a lower-variance gradient estimator, but it allocates noise
+    proportional to the batch rather than to the adapter, which on a ViT costs
+    roughly 2x the step time and 2x the activation memory.
+    """
 
     prior_mean: float = 0.0
     """Mean of the prior over every column of ``A`` and every row of ``B``."""

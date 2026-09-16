@@ -19,7 +19,7 @@ class BALL(ArmBase):
     lora_alpha: int = 1
     dropout: float = 0.0
     bll: bool = False
-    mode: Literal["none", "lrt", "flipout"] = "none"
+    sampling: Literal["weight", "lrt", "flipout"] = "weight"
     # VCL strategy
     beta: float = 1.0
     train_samples: int = 1
@@ -36,7 +36,7 @@ class BALL(ArmBase):
             lora_alpha=self.lora_alpha,
             dropout=self.dropout,
             bll=self.bll,
-            mode=self.mode,
+            sampling=self.sampling,
             vbnn=VBNNConfig(
                 prior_mean=self.prior_mean,
                 prior_sd=self.prior_sd,

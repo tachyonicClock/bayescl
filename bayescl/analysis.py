@@ -24,7 +24,7 @@ from scipy.stats import norm, wilcoxon
 
 from bayescl.runio import latest_run
 
-OUR_METHODS = ("ball", "tball", "tball_mnd")
+OUR_METHODS = ("ball", "ball_tied", "tball", "tball_mnd")
 BASELINES = ("lora", "clora", "ewc", "inflora", "rwalk", "sdlora")
 DATASETS = ("cifar100", "imagenetr", "clear10")
 OOD_DATASETS = ("svhn", "cifar10")
