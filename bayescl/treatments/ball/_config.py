@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import ClassVar
+from typing import ClassVar, Literal
 
 from bayescl.bnn.vbnn import VBNNConfig
 
@@ -17,5 +17,7 @@ class BALLConfig:
     """Configuration for the underlying Bayesian Neural Network."""
     bll: bool = False
     """Whether to use Bayesian layers for the output layer."""
+    mode: Literal["none", "lrt", "flipout"] = "none"
+    """Variance reduction estimator used for the training-time forward pass."""
 
     type: ClassVar[str] = "BALL"

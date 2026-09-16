@@ -1,4 +1,5 @@
 import math
+from dataclasses import replace
 
 import torch
 import torch.nn as nn
@@ -6,7 +7,7 @@ from torch import Tensor
 from torch.nn import functional as F
 from torch.nn.modules.utils import _pair
 
-from bayescl.bnn.vbnn import VariationalParameter
+from bayescl.bnn.vbnn import VariationalParameter, VBNNConfig
 from bayescl.peft._base import AdapterBase, AdapterFactory
 
 from ._config import BALLConfig
@@ -19,6 +20,20 @@ class BALLLayer(AdapterBase):
         "ball_B.mu",
         "ball_B.rho",
     )
+
+
+def fan_in_scaled_prior(vbnn: VBNNConfig, fan_in: int) -> VBNNConfig:
+    """Scale the prior standard deviation down by ``1/sqrt(fan_in)``.
+
+    ``vbnn.prior_sd`` is a single value shared by every adapter matrix regardless of
+    shape. Left unscaled, it sits ~2 orders of magnitude above the natural scale of a
+    Kaiming-initialized matrix once ``fan_in`` grows past a few hundred (e.g. a ViT's
+    hidden dimension), so the KL term is dominated by this fixed prior/posterior scale
+    mismatch rather than anything learned. Scaling by ``1/sqrt(fan_in)`` mirrors
+    standard weight-init scaling and keeps the prior commensurate with the matrix it
+    regularizes.
+    """
+    return replace(vbnn, prior_sd=vbnn.prior_sd / math.sqrt(fan_in))
 
 
 def forward_lrt(x: Tensor, weight_mean: Tensor, weight_sd: Tensor) -> Tensor:
@@ -43,8 +58,12 @@ class BALLLinear(nn.Linear, BALLLayer):
         self.config = config
         nn.Linear.__init__(self, in_features, out_features, **kwargs)
         BALLLayer.__init__(self)
-        self.ball_A = VariationalParameter((config.r, in_features), config.vbnn)
-        self.ball_B = VariationalParameter((out_features, config.r), config.vbnn)
+        self.ball_A = VariationalParameter(
+            (config.r, in_features), fan_in_scaled_prior(config.vbnn, in_features)
+        )
+        self.ball_B = VariationalParameter(
+            (out_features, config.r), fan_in_scaled_prior(config.vbnn, config.r)
+        )
         self.scaling = config.lora_alpha / config.r
         self.dropout = (
             nn.Dropout(config.dropout) if config.dropout > 0 else nn.Identity()
@@ -72,6 +91,10 @@ class BALLLinear(nn.Linear, BALLLayer):
         input = self.dropout(input)
         if not self.training:
             return self.forward_none(input)
+        if self.config.mode == "lrt":
+            return self.forward_lrt(input)
+        if self.config.mode == "flipout":
+            return self.forward_flipout(input)
         return self.forward_none(input)
 
 
@@ -88,9 +111,13 @@ class BALLConv2d(BALLLayer, nn.Conv2d):
         ks = kh
         groups = self.groups
         rank_ks = config.r * ks
-        self.ball_A = VariationalParameter((rank_ks, in_channels * ks), config.vbnn)
+        a_fan_in = in_channels * ks
+        self.ball_A = VariationalParameter(
+            (rank_ks, a_fan_in), fan_in_scaled_prior(config.vbnn, a_fan_in)
+        )
         self.ball_B = VariationalParameter(
-            (out_channels // groups * ks, rank_ks), config.vbnn
+            (out_channels // groups * ks, rank_ks),
+            fan_in_scaled_prior(config.vbnn, rank_ks),
         )
         self.scaling = config.lora_alpha / config.r
 
