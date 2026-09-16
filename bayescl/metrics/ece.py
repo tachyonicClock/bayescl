@@ -5,6 +5,7 @@ from avalanche.training.templates import SupervisedTemplate
 from torchmetrics.classification import (
     MulticlassCalibrationError as TorchMulticlassCalibrationError,
 )
+from torchmetrics.utilities.compute import normalize_logits_if_needed
 
 
 class PerExperienceBrier(PluginMetric[float]):
@@ -20,7 +21,15 @@ class PerExperienceBrier(PluginMetric[float]):
         self.update(strategy.mb_output, strategy.mb_y)
 
     def update(self, logits: torch.Tensor, targets: torch.Tensor) -> None:
-        probabilities = logits.softmax(dim=1)
+        # ``strategy.mb_output`` is not the same quantity for every arm: the
+        # deterministic templates hand back raw logits, while the variational
+        # ones return an already-normalized posterior predictive (see
+        # ``VCLStrategy.predict_step``). Softmaxing the latter a second time
+        # flattens it towards uniform -- on 100 classes that turns a Brier of
+        # ~0.05 into ~0.96, which looks like a plausible score rather than an
+        # obviously broken one. Normalize only when the input isn't already a
+        # distribution, as the scoring helpers in ``results`` do.
+        probabilities = normalize_logits_if_needed(logits, "softmax")
         one_hot = torch.nn.functional.one_hot(
             targets, num_classes=probabilities.shape[1]
         ).to(probabilities.dtype)

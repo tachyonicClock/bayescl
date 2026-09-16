@@ -26,12 +26,17 @@ class BrierEarlyStopping(SupervisedPlugin):
         eval_every: int,
         patience: int,
         strict: bool = False,
+        writer: Any = None,
     ) -> None:
         self._eval_and_capture = eval_and_capture
         self.val_stream = val_stream
         self.loader_kwargs = loader_kwargs
         self.eval_every = eval_every
         self.patience = patience
+        #: Optional ``SummaryWriter``. The probe's scores are the only
+        #: per-epoch view of held-out performance, so they're worth a curve;
+        #: left optional so the plugin stays constructible in tests.
+        self._writer = writer
         #: If True, a task that exhausts its epoch budget without early
         #: stopping ever triggering raises ``ConvergenceError`` instead of
         #: silently completing -- used during hyperparameter tuning so
@@ -87,11 +92,29 @@ class BrierEarlyStopping(SupervisedPlugin):
         )
         brier = ContinualLearningEvaluator.brier(logits, y)
         ece = ContinualLearningEvaluator.ece(logits, y)
+        # Accuracy and NLL are computed here rather than read off the metric
+        # stream: this pass evaluates a single task's validation split, so the
+        # stream-level metrics describe something other than what their names
+        # say and are muted for its duration.
+        accuracy = float((logits.argmax(dim=1) == y).double().mean())
+        nll = ContinualLearningEvaluator.nll(logits, y)
+        epoch = max(self._epoch_in_task - 1, 0)
         with logger.contextualize(eval_tag="early_stop"):
             logger.info(
-                f"task={self._task_idx} epoch={max(self._epoch_in_task - 1, 0)} | "
+                f"task={self._task_idx} epoch={epoch} | "
+                f"val_accuracy={accuracy:.4f} val_nll={nll:.4f} "
                 f"brier={brier:.4f} ece={ece:.4f}"
             )
+        if self._writer is not None:
+            for name, value in (
+                ("accuracy", accuracy),
+                ("nll", nll),
+                ("brier", brier),
+                ("ece", ece),
+            ):
+                self._writer.add_scalar(
+                    f"val/task_{self._task_idx:02d}/{name}", value, epoch
+                )
         if self._best_brier is None or brier < self._best_brier:
             self._best_brier = brier
             self._epochs_without_improvement = 0

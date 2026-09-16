@@ -6,6 +6,7 @@ import json
 import pickle
 import random
 import time
+from contextlib import contextmanager
 from dataclasses import asdict, replace
 from functools import partial
 from pathlib import Path
@@ -25,13 +26,14 @@ from avalanche.evaluation.metrics import (
     loss_metrics,
     timing_metrics,
 )
-from avalanche.logging import BaseLogger, TensorboardLogger
+from avalanche.logging import BaseLogger
 from avalanche.training.plugins import EvaluationPlugin, SupervisedPlugin
 from loguru import logger
 from optuna import Trial
 from setproctitle import setproctitle
 from torch import BoolTensor
 from torch.utils.data import ConcatDataset
+from torch.utils.tensorboard import SummaryWriter
 
 from bayescl.config import ExperimentConfig
 from bayescl.data.benchmark import (
@@ -40,7 +42,11 @@ from bayescl.data.benchmark import (
     get_benchmark,
 )
 from bayescl.data.datasets import SHIFT_SEVERITIES, get_ood_dataset, ood_dataset_names
-from bayescl.metrics.agent_logger import AgentLogger, set_log_file
+from bayescl.metrics.agent_logger import (
+    AgentLogger,
+    TensorboardMetricLogger,
+    set_log_file,
+)
 from bayescl.metrics.ece import ExpectedCalibrationError, PerExperienceBrier
 from bayescl.metrics.plugin import MetricsPlugin
 from bayescl.metrics.results import Result
@@ -138,11 +144,78 @@ class Experiment:
         logger.info(f"Logging to '{run_dir}'")
         return run_dir
 
-    def _new_logger(self) -> TensorboardLogger:
-        tb_logger = TensorboardLogger(self.config.run_dir)
+    def _new_logger(self) -> TensorboardMetricLogger:
+        tb_logger = TensorboardMetricLogger(SummaryWriter(str(self.config.run_dir)))
         self.loggers.append(AgentLogger())
         self.loggers.append(tb_logger)
         return tb_logger
+
+    @contextmanager
+    def _muted_metric_stream(self):
+        """Stop the Avalanche metric stream reaching any logger for the
+        duration of an auxiliary eval pass.
+
+        The early-stopping probe, the inference-timing pass and the OOD/shift
+        passes all call ``strategy.eval`` on a *subset* stream, which makes
+        stream-level metrics describe something quite different from what
+        their names claim: ``Accuracy_On_Trained_Experiences`` over a probe of
+        the task about to be trained is 0 by construction, and
+        ``StreamForgetting`` over a single experience is 0 because there is
+        nothing else to forget. Emitting them produced ~117 such lines per run
+        against one real checkpoint line, so a search for either metric found a
+        probe value far more often than the answer.
+        """
+        saved = self.eval_plugin.loggers
+        self.eval_plugin.loggers = []
+        try:
+            yield
+        finally:
+            self.eval_plugin.loggers = saved
+
+    def _log_checkpoint_result(
+        self, t: int, brier_all: float, brier_seen: float
+    ) -> None:
+        """Emit one canonical line per checkpoint, sourced from our own
+        evaluator rather than the metric stream.
+
+        Everything else in the log is progress telemetry or Avalanche's view of
+        a single eval pass. This is the line carrying the numbers the analysis
+        actually uses, under the same names ``Result`` uses, so reading a run
+        doesn't mean reassembling them -- and in particular so ``brier`` in a
+        log line means the same thing as ``brier_seen_avg`` in ``results.pkl``
+        instead of the current task's validation score.
+        """
+        evaluator = self.metrics_plugin.evaluator
+        accuracy_all, accuracy_seen = evaluator.checkpoint_accuracy(t)
+        backward_transfer = evaluator.checkpoint_backward_transfer(t)
+        per_task = evaluator.per_task_scores(t)
+
+        for name, value in (
+            ("brier_all", brier_all),
+            ("brier_seen", brier_seen),
+            ("accuracy_all", accuracy_all),
+            ("accuracy_seen", accuracy_seen),
+            ("backward_transfer", backward_transfer),
+        ):
+            self.tb_log.writer.add_scalar(f"result/{name}", value, t)
+        for test_task, scores in sorted(per_task.items()):
+            self.tb_log.writer.add_scalar(
+                f"result/brier_task_{test_task:02d}", scores["brier"], t
+            )
+            self.tb_log.writer.add_scalar(
+                f"result/ece_task_{test_task:02d}", scores["ece"], t
+            )
+
+        breakdown = " ".join(
+            f"t{test_task}={scores['brier']:.4f}"
+            for test_task, scores in sorted(per_task.items())
+        )
+        logger.info(
+            f"RESULT checkpoint={t} "
+            f"accuracy_seen={accuracy_seen:.4f} accuracy_all={accuracy_all:.4f} "
+            f"brier_seen={brier_seen:.4f} brier_all={brier_all:.4f} "
+            f"backward_transfer={backward_transfer:.4f} | per_task_brier: {breakdown}"
+        )
 
     def _preflight(self):
         logger.info("Parameter Counts:\n{}", parameter_summary_str(self.model))
@@ -204,6 +277,7 @@ class Experiment:
             # mid-improvement. ``test``'s final reported run should still
             # record whatever the tuned config achieves either way.
             strict=self.config.validation,
+            writer=self.tb_log.writer,
         )
         self.plugins.append(self.early_stopping)
 
@@ -273,6 +347,7 @@ class Experiment:
                     (logits.detach().cpu(), y.detach().cpu())
                 )
             ),
+            self._muted_metric_stream(),
             logger.contextualize(eval_tag=tag),
         ):
             strategy.eval(stream, **loader_kwargs)
@@ -322,9 +397,14 @@ class Experiment:
             )
             train_times.append(time.perf_counter() - train_start)
 
-            results.append(
-                strategy.eval(self.benchmark.test_stream, **self.loader_kwargs)
-            )
+            # Tagged like the auxiliary passes rather than left bare: this is
+            # the one eval whose stream-level metrics mean what they say, and
+            # identifying it by the *absence* of a tag is the one thing a log
+            # search can't express.
+            with logger.contextualize(eval_tag="checkpoint"):
+                results.append(
+                    strategy.eval(self.benchmark.test_stream, **self.loader_kwargs)
+                )
 
             # Isolated pass over just this task's own test data -- separate
             # from the growing multi-experience eval above, whose cost scales
@@ -342,8 +422,9 @@ class Experiment:
             brier_all, brier_seen = (
                 self.metrics_plugin.evaluator.checkpoint_brier_scores(t)
             )
-            self.tb_log.writer.add_scalar(f"Brier/{t:02d}/all", brier_all, t)
-            self.tb_log.writer.add_scalar(f"Brier/{t:02d}/seen", brier_seen, t)
+            self.tb_log.writer.add_scalar("result/brier_all", brier_all, t)
+            self.tb_log.writer.add_scalar("result/brier_seen", brier_seen, t)
+            self._log_checkpoint_result(t, brier_all, brier_seen)
             if compute_shift_ood_metrics:
                 for name, stream in ood_streams.items():
                     logits, _ = self._eval_and_capture(
@@ -361,11 +442,15 @@ class Experiment:
             elapsed = time.perf_counter() - run_start
             avg_per_task = elapsed / (t + 1)
             remaining = self.num_tasks - (t + 1)
+            # ETA is flagged as a lower bound because it extrapolates a flat
+            # per-task cost, while each checkpoint evaluates every task seen so
+            # far and so gets steadily more expensive: on the cifar100 pilots
+            # the estimate at task 1 came in at roughly half the true total.
             logger.info(
                 f"task {t + 1}/{self.num_tasks} done | "
                 f"elapsed={_format_duration(elapsed)} "
                 f"avg={_format_duration(avg_per_task)}/task | "
-                f"ETA={_format_duration(avg_per_task * remaining)}"
+                f"ETA>={_format_duration(avg_per_task * remaining)}"
             )
 
             if trial is not None and report_intermediate:

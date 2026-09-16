@@ -9,6 +9,7 @@ from avalanche.logging import BaseLogger
 from avalanche.training.plugins import SupervisedPlugin
 from loguru import logger
 from torch import Tensor
+from torch.utils.tensorboard import SummaryWriter
 
 _SCALAR_TYPES = (int, float, str)
 
@@ -119,25 +120,18 @@ class AgentLogger(BaseLogger, SupervisedPlugin):
         if not self.metric_vals:
             log.info(header)
             return
-        # Drop the granularity suffix (e.g. "_Epoch") only when it's safe to --
-        # some metrics (e.g. loss_metrics(minibatch=True, epoch=True)) report
-        # the same base name at multiple granularities in the same flush, and
-        # collapsing those would silently clobber one value with the other.
-        collapsed_counts: Dict[str, int] = {}
-        for k in self.metric_vals:
-            collapsed = _short_metric_name(k, drop_granularity=True)
-            collapsed_counts[collapsed] = collapsed_counts.get(collapsed, 0) + 1
-
-        parts = []
-        for k, v in sorted(self.metric_vals.items()):
-            collapsed = _short_metric_name(k, drop_granularity=True)
-            name = (
-                collapsed
-                if collapsed_counts[collapsed] == 1
-                else _short_metric_name(k, drop_granularity=False)
-            )
-            parts.append(f"{name}={self._format_value(v)}")
-
+        # The granularity suffix (e.g. "_Epoch") is always kept. It used to be
+        # dropped whenever it was unambiguous within a single flush, which made
+        # a metric's key depend on what else happened to be reported alongside
+        # it: with loss_metrics(minibatch=True, epoch=True) the epoch loss
+        # appeared as "Loss_Epoch" on epochs that also carried a minibatch
+        # value and as plain "Loss" on the rest, so grepping either name
+        # silently sampled half the epochs. Stable keys matter more here than
+        # short ones.
+        parts = [
+            f"{_short_metric_name(k, drop_granularity=False)}={self._format_value(v)}"
+            for k, v in sorted(self.metric_vals.items())
+        ]
         log.info(f"{header} | {', '.join(parts)}")
         self.metric_vals = {}
 
@@ -176,3 +170,45 @@ class AgentLogger(BaseLogger, SupervisedPlugin):
     def after_eval(self, strategy, metric_values, **kwargs) -> None:
         super().after_eval(strategy, metric_values, **kwargs)
         self._flush("eval stream summary")
+
+
+_PHASE = re.compile(r"/(train|eval)_phase/")
+
+
+def _tb_tag(name: str) -> str:
+    """Avalanche's own tag, re-grouped under its phase.
+
+    ``Loss_Epoch/train_phase/train_stream/Task000`` becomes
+    ``train/Loss_Epoch``: the phase is worth keeping as a tensorboard group,
+    the rest duplicates the run itself.
+    """
+    match = _PHASE.search(name)
+    phase = match.group(1) if match else "misc"
+    return f"{phase}/{_short_metric_name(name, drop_granularity=False)}"
+
+
+class TensorboardMetricLogger(BaseLogger):
+    """Writes Avalanche's metric stream to a ``SummaryWriter`` we own.
+
+    Replaces ``avalanche.logging.TensorboardLogger`` so the process has exactly
+    one writer. The scientific metrics are written directly from
+    ``ContinualLearningEvaluator`` (see ``Experiment.run``), and routing the
+    progress telemetry through here too keeps both kinds of scalar in one file
+    under tags we control, rather than splitting them across two writers with
+    two naming schemes.
+    """
+
+    def __init__(self, writer: "SummaryWriter") -> None:
+        super().__init__()
+        self.writer = writer
+
+    def log_single_metric(self, name: str, value: Any, x_plot: int) -> None:
+        if isinstance(value, AlternativeValues):
+            value = value.best_supported_value(*_SCALAR_TYPES, Tensor)
+        if isinstance(value, Tensor):
+            if value.numel() != 1:
+                return
+            value = value.item()
+        if not isinstance(value, (int, float)) or isinstance(value, bool):
+            return
+        self.writer.add_scalar(_tb_tag(name), value, x_plot)

@@ -313,6 +313,47 @@ class ContinualLearningEvaluator:
         ]
         return float(np.mean(scores)), float(np.mean(seen_scores))
 
+    def _accuracy_submatrix(self, train_task_idx: int) -> Tensor:
+        """Accuracy of checkpoints ``0..train_task_idx`` on test tasks
+        ``0..train_task_idx``, from the running confusion counts.
+
+        The same quantity :attr:`Result.accuracy_matrix` holds at the end of a
+        run, restricted to the part that exists so far, so progress on
+        ``accuracy_seen``/``backward_transfer`` is visible mid-run rather than
+        only in the final pickle.
+        """
+        counts = self._big_r[: train_task_idx + 1, : train_task_idx + 1]
+        correct = counts.diagonal(dim1=2, dim2=3).sum(dim=-1).double()
+        total = counts.sum(dim=(2, 3)).double()
+        return torch.where(total > 0, correct / total.clamp(min=1), torch.zeros_like(total))
+
+    @torch.no_grad()
+    def checkpoint_accuracy(self, train_task_idx: int) -> tuple[float, float]:
+        """All-task and seen-task accuracy after training on ``train_task_idx``."""
+        counts = self._big_r[train_task_idx]
+        correct = counts.diagonal(dim1=1, dim2=2).sum(dim=-1).double()
+        total = counts.sum(dim=(1, 2)).double()
+        evaluated = total > 0
+        if not bool(evaluated.any()):
+            return float("nan"), float("nan")
+        accuracy = correct[evaluated] / total[evaluated]
+        seen = evaluated.clone()
+        seen[train_task_idx + 1 :] = False
+        seen_accuracy = correct[seen] / total[seen]
+        return float(accuracy.mean()), float(seen_accuracy.mean())
+
+    @torch.no_grad()
+    def checkpoint_backward_transfer(self, train_task_idx: int) -> float:
+        """Backward transfer over the tasks trained so far.
+
+        Undefined before a second task has been trained -- there is no past
+        task to have transferred to -- and returns NaN there rather than 0,
+        which would read as "no forgetting".
+        """
+        if train_task_idx < 1:
+            return float("nan")
+        return _backwards_transfer(self._accuracy_submatrix(train_task_idx))
+
     @torch.no_grad()
     def per_task_scores(self, train_task_idx: int) -> Dict[int, Dict[str, float]]:
         """Brier and ECE for each test task evaluated at this checkpoint,
@@ -382,8 +423,14 @@ class ContinualLearningEvaluator:
 
     @staticmethod
     def nll(y_logit: Tensor, y_true: Tensor) -> float:
-        """Mean negative log-likelihood."""
-        log_prob = F.log_softmax(y_logit, dim=1)
+        """Mean negative log-likelihood.
+
+        Normalizes conditionally, like the other scorers here: the variational
+        strategies hand back an already-normalized posterior predictive rather
+        than logits, and taking ``log_softmax`` of a distribution flattens it
+        towards uniform instead of failing.
+        """
+        log_prob = normalize_logits_if_needed(y_logit, "softmax").clamp_min(1e-12).log()
         return float(F.nll_loss(log_prob, y_true))
 
     @staticmethod

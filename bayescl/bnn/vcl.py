@@ -110,6 +110,12 @@ class VCLStrategy(Naive):
         self._writer.add_scalar("vcl/nll", nll, step)
         self._writer.add_scalar("vcl/kl", kl, step)
         self._writer.add_scalar("vcl/beta_kl", beta_kl, step)
+        # These are one continuous series over the whole run, so a slice of it
+        # says nothing on its own about whether the KL converged *within* a
+        # task -- the prior is replaced at every boundary, which resets the
+        # quantity being measured. Logged alongside so boundaries are
+        # recoverable from the series itself.
+        self._writer.add_scalar("vcl/task", self.clock.train_exp_counter, step)
 
         return log_pred_probs.exp(), loss
 
