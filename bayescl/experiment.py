@@ -224,6 +224,14 @@ class Experiment:
         logger.info("Parameter Counts:\n{}", parameter_summary_str(self.model))
         logger.info("Resolved Spec: {}", self._config())
         logger.info("Plugins:{}", [type(p).__name__ for p in self.plugins])
+        # The tuned hyperparameters, on one greppable line. ``Resolved Spec``
+        # covers the dataset and schedule but says nothing about the arm, so
+        # until now a run's log recorded how training went without recording
+        # what configuration produced it -- Optuna only writes the sampled
+        # params once a trial finishes, which is no help while one is running
+        # or when one dies partway.
+        arm = " ".join(f"{k}={v}" for k, v in sorted(asdict(self.arm).items()))
+        logger.info(f"ARM {getattr(self.arm, 'name', type(self.arm).__name__)} | {arm}")
 
     def _seed_everything(self):
         if self.config.seed is not None:
