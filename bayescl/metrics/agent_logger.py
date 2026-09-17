@@ -184,8 +184,11 @@ def _tb_tag(name: str) -> str:
     the rest duplicates the run itself.
     """
     match = _PHASE.search(name)
-    phase = match.group(1) if match else "misc"
-    return f"{phase}/{_short_metric_name(name, drop_granularity=False)}"
+    short = _short_metric_name(name, drop_granularity=False)
+    # Metrics defined in this repo (e.g. ``ECE/all``) carry no phase suffix and
+    # already namespace themselves, so they're passed through rather than
+    # swept under a "misc" group.
+    return f"{match.group(1)}/{short}" if match else short
 
 
 class TensorboardMetricLogger(BaseLogger):

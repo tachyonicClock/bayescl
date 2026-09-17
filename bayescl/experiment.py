@@ -47,7 +47,7 @@ from bayescl.metrics.agent_logger import (
     set_log_file,
 )
 from bayescl.metrics.confusion import plot_confusion_matrix
-from bayescl.metrics.ece import ExpectedCalibrationError, PerExperienceBrier
+from bayescl.metrics.ece import ExpectedCalibrationError
 from bayescl.metrics.plugin import MetricsPlugin
 from bayescl.metrics.results import Result
 from bayescl.model import get_model
@@ -127,7 +127,6 @@ class Experiment:
             timing_metrics(epoch=True),
             forgetting_metrics(experience=True, stream=True),
             ExpectedCalibrationError(self.num_classes),
-            PerExperienceBrier(),
             loggers=self.loggers,
         )
 
@@ -159,7 +158,7 @@ class Experiment:
         the task about to be trained is 0 by construction, and
         ``StreamForgetting`` over a single experience is 0 because there is
         nothing else to forget. Emitting them produced ~117 such lines per run
-        against one real checkpoint line, so a search for either metric found a
+        against one real task_end line, so a search for either metric found a
         probe value far more often than the answer.
         """
         saved = self.eval_plugin.loggers
@@ -172,7 +171,7 @@ class Experiment:
     def _log_checkpoint_result(
         self, t: int, brier_all: float, brier_seen: float
     ) -> None:
-        """Emit one canonical line per checkpoint, sourced from our own
+        """Emit one canonical line per finished task, sourced from our own
         evaluator rather than the metric stream.
 
         Everything else in the log is progress telemetry or Avalanche's view of
@@ -205,7 +204,7 @@ class Experiment:
         self.tb_log.writer.add_figure(
             "result/confusion_matrix",
             plot_confusion_matrix(
-                evaluator.checkpoint_confusion_counts(t), title=f"checkpoint {t}"
+                evaluator.checkpoint_confusion_counts(t), title=f"after task {t}"
             ),
             t,
         )
@@ -215,7 +214,7 @@ class Experiment:
             for test_task, scores in sorted(per_task.items())
         )
         logger.info(
-            f"RESULT checkpoint={t} "
+            f"RESULT task={t} "
             f"accuracy_seen={accuracy_seen:.4f} accuracy_all={accuracy_all:.4f} "
             f"brier_seen={brier_seen:.4f} brier_all={brier_all:.4f} "
             f"backward_transfer={backward_transfer:.4f} | per_task_brier: {breakdown}"
@@ -341,7 +340,7 @@ class Experiment:
 
         ``tag`` is attached to the eval's log lines (via ``logger.contextualize``)
         so these auxiliary passes -- early-stopping probes, OOD/shift eval --
-        are distinguishable from the real per-checkpoint eval on
+        are distinguishable from the real end-of-task eval on
         ``self.benchmark.test_stream``, which doesn't go through this method.
         """
         buffer: list[tuple] = []
@@ -373,8 +372,8 @@ class Experiment:
         compute_shift_ood_metrics = trial is None
         if compute_shift_ood_metrics:
             logger.info(
-                "Computing OOD ({}) and shift (severities {}) metrics every "
-                "checkpoint -- multiplies per-checkpoint eval cost.",
+                "Computing OOD ({}) and shift (severities {}) metrics after "
+                "every task -- multiplies per-task eval cost.",
                 ood_dataset_names(),
                 SHIFT_SEVERITIES,
             )
@@ -405,7 +404,7 @@ class Experiment:
             # the one eval whose stream-level metrics mean what they say, and
             # identifying it by the *absence* of a tag is the one thing a log
             # search can't express.
-            with logger.contextualize(eval_tag="checkpoint"):
+            with logger.contextualize(eval_tag="task_end"):
                 results.append(
                     strategy.eval(self.benchmark.test_stream, **self.loader_kwargs)
                 )
@@ -445,7 +444,7 @@ class Experiment:
             avg_per_task = elapsed / (t + 1)
             remaining = self.num_tasks - (t + 1)
             # ETA is flagged as a lower bound because it extrapolates a flat
-            # per-task cost, while each checkpoint evaluates every task seen so
+            # per-task cost, while each task-end eval covers every task seen so
             # far and so gets steadily more expensive: on the cifar100 pilots
             # the estimate at task 1 came in at roughly half the true total.
             logger.info(
