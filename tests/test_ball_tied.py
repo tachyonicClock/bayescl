@@ -24,6 +24,7 @@ from bayescl.treatments.ball._tied_module import (
     TiedBALLAdapterFactory,
     TiedBALLLinear,
     TiedLoRAParameter,
+    balanced_scale,
 )
 
 RANK, IN_DIM, OUT_DIM, BATCH = 4, 16, 8, 8192
@@ -194,14 +195,48 @@ class TestSampleTiedLoRAWeights:
 
 class TestTiedLoRAParameter:
     def test_kl_is_zero_when_the_posterior_equals_the_prior(self):
-        config = TiedBALLConfig(r=RANK, prior_sd=0.1, init_sd=0.1)
+        # ``prior_sd`` is a fan-in scaled width while ``init_sd`` is an absolute
+        # entry scale, so lining the two up takes the scale factor. The two
+        # previously coincided only because the prior went unscaled.
+        prior_sd = 0.1
+        config = TiedBALLConfig(
+            r=RANK,
+            prior_sd=prior_sd,
+            init_sd=prior_sd / balanced_scale(IN_DIM, RANK),
+        )
         param = TiedLoRAParameter(IN_DIM, OUT_DIM, config)
         with torch.no_grad():
             param.A.copy_(param.prior_A)
             param.B.copy_(param.prior_B)
+        torch.testing.assert_close(param.L, param.prior_L, atol=1e-6, rtol=0.0)
         torch.testing.assert_close(
             param.kl_divergence(), torch.tensor(0.0), atol=1e-3, rtol=0.0
         )
+
+    def test_prior_width_is_fan_in_scaled(self):
+        """The shared prior is scaled by layer width, as the mean-field
+        adapter's is -- an absolute ``prior_sd`` would sit orders of magnitude
+        above the factors it regularizes once ``in_features`` grows, and would
+        make the two arms differ in prior as well as posterior family."""
+        config = TiedBALLConfig(r=RANK, prior_sd=1.0)
+        param = TiedLoRAParameter(IN_DIM, OUT_DIM, config)
+        expected = 1.0 / balanced_scale(IN_DIM, RANK)
+        torch.testing.assert_close(
+            param.prior_L, torch.eye(RANK) * expected, atol=1e-6, rtol=0.0
+        )
+        assert expected < 1.0
+
+    def test_balanced_scale_equalizes_both_factors_fan_ins(self):
+        """``A``'s and ``B``'s own fan-in scales differ, but ``B @ A`` is
+        invariant to ``A -> kA, B -> B/k``; the balanced gauge is where the two
+        coincide, and that common value is what one shared covariance can hold.
+        """
+        in_features, rank = 384, 8
+        k = (in_features / rank) ** 0.25
+        a_scale = k / math.sqrt(in_features)  # A's fan-in scale, rescaled by k
+        b_scale = 1.0 / (k * math.sqrt(rank))  # B's, rescaled by 1/k
+        assert a_scale == pytest.approx(b_scale)
+        assert a_scale == pytest.approx(1.0 / balanced_scale(in_features, rank))
 
     @pytest.mark.parametrize("init_sd", [1e-3, 0.1])
     def test_l_starts_isotropic_at_init_sd(self, init_sd):

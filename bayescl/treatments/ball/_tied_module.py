@@ -31,6 +31,30 @@ from ._tied_config import TiedBALLConfig
 _DIAG_EPS = 1e-4
 
 
+def balanced_scale(in_features: int, rank_dim: int) -> float:
+    r"""The one entry scale a shared rank-space covariance can carry.
+
+    The mean-field adapter scales each factor's prior by its own fan-in:
+    ``1/sqrt(in_features)`` for ``A``, ``1/sqrt(rank_dim)`` for ``B``. A single
+    ``r x r`` covariance shared by ``A``'s columns and ``B``'s rows cannot hold
+    two different scales, and for a ViT-Small attention block those two differ
+    by ``sqrt(in_features / rank_dim) ~= 6.9``.
+
+    It doesn't have to. ``B @ A`` is unchanged by ``A -> kA, B -> B/k``, so the
+    factors can be put in whichever gauge is convenient; the two fan-in scales
+    coincide at ``k = (in_features / rank_dim) ** 0.25``, where both become
+    ``(in_features * rank_dim) ** -0.25``. So the geometric mean of the fan-ins
+    is not a compromise between the two, it is the scale the balanced gauge
+    picks out -- and tying the covariance is exactly what makes that gauge
+    well-defined rather than arbitrary.
+
+    This sets the *prior* width only. The posterior means are left in Kaiming's
+    gauge, matching the mean-field adapter, and ``init_sd`` stays an absolute
+    entry scale there too.
+    """
+    return (in_features * rank_dim) ** 0.25
+
+
 class TiedLoRAParameter(TiedLoRAPriorPosterior):
     """Variational parameters for one tied Bayesian LoRA pair."""
 
@@ -42,6 +66,10 @@ class TiedLoRAParameter(TiedLoRAPriorPosterior):
         self.B = nn.Parameter(torch.zeros(out_features, r))
         self.L_raw = nn.Parameter(torch.zeros(r, r))
 
+        # Left in Kaiming's gauge rather than rescaled into the balanced one the
+        # covariance uses: the prior mean is zero, so moving A *away* from zero
+        # only adds to the KL, and keeping the init identical to the mean-field
+        # adapter's is what makes the two comparable as an ablation.
         nn.init.kaiming_uniform_(self.A, a=math.sqrt(5))
         # B's mean stays at zero so the adapter contributes no mean shift at the
         # start of task 0, as in standard LoRA.
@@ -52,7 +80,14 @@ class TiedLoRAParameter(TiedLoRAPriorPosterior):
         self.register_buffer(
             "prior_B", torch.full((out_features, r), config.prior_mean)
         )
-        self.register_buffer("prior_L", torch.eye(r) * config.prior_sd)
+        # Scaled like the mean-field adapter's prior, which would otherwise be
+        # ~20x tighter on A than this one: an unscaled prior leaves the KL
+        # dominated by a fixed prior/posterior scale mismatch rather than
+        # anything learned, and makes the two arms incomparable as an ablation.
+        self.register_buffer(
+            "prior_L",
+            torch.eye(r) * (config.prior_sd / balanced_scale(in_features, r)),
+        )
 
     @property
     def L(self) -> Tensor:
