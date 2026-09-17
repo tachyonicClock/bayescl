@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import Any, Dict
 
 from avalanche.evaluation.metric_results import AlternativeValues, TensorImage
-from avalanche.evaluation.metric_utils import phase_and_task, stream_type
+from avalanche.evaluation.metric_utils import stream_type
 from avalanche.logging import BaseLogger
 from avalanche.training.plugins import SupervisedPlugin
 from loguru import logger
