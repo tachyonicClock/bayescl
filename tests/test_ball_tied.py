@@ -24,8 +24,19 @@ from bayescl.treatments.ball._tied_module import (
     TiedBALLAdapterFactory,
     TiedBALLLinear,
     TiedLoRAParameter,
-    balanced_scale,
 )
+
+
+def balanced_scale(in_features: int, rank_dim: int) -> float:
+    """The width the shared prior is scaled by, mirrored from the module.
+
+    Each factor's own fan-in scale differs -- ``1/sqrt(in_features)`` for ``A``,
+    ``1/sqrt(rank_dim)`` for ``B`` -- and one shared covariance cannot hold
+    both. It doesn't need to: ``B @ A`` is invariant to ``A -> kA, B -> B/k``,
+    and the two coincide at ``k = (in_features / rank_dim) ** 0.25`` where both
+    become ``(in_features * rank_dim) ** -0.25``.
+    """
+    return (in_features * rank_dim) ** 0.25
 
 RANK, IN_DIM, OUT_DIM, BATCH = 4, 16, 8, 8192
 SAMPLES = 400

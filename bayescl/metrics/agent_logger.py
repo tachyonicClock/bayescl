@@ -138,11 +138,8 @@ class AgentLogger(BaseLogger, SupervisedPlugin):
 
     def _exp_header(self, strategy, action: str) -> str:
         exp_id = strategy.experience.current_experience
-        task_id = phase_and_task(strategy)[1]
         stream = stream_type(strategy.experience)
-        if task_id is None:
-            return f"{action} exp={exp_id} stream={stream}"
-        return f"{action} exp={exp_id} task={task_id} stream={stream}"
+        return f"{action} task={exp_id} stream={stream}"
 
     def before_training_exp(self, strategy, metric_values, **kwargs) -> None:
         super().before_training_exp(strategy, metric_values, **kwargs)
@@ -162,7 +159,7 @@ class AgentLogger(BaseLogger, SupervisedPlugin):
         )
         if epoch_time:
             self.metric_vals["ips"] = len(strategy.experience.dataset) / epoch_time
-        self._flush(f"train exp={exp_id} epoch={epoch}")
+        self._flush(f"train task={exp_id} epoch={epoch}")
 
     def after_eval_exp(self, strategy, metric_values, **kwargs) -> None:
         super().after_eval_exp(strategy, metric_values, **kwargs)
